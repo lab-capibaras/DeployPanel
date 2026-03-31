@@ -56,11 +56,12 @@ app.post('/deploy', async (req, res) => {
 
             // Le decimos a Docker que lance el 'pack' más moderno y comparta nuestra carpeta temp
             const packCommand = `docker run --rm \
-              -v /var/run/docker.sock:/var/run/docker.sock \
-              --volumes-from ${containerId} \
-              -w "${absoluteRepoPath}" \
-              buildpacksio/pack:latest \
-              build "${imageName}" --builder paketobuildpacks/builder-jammy-base`;
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                --volumes-from ${containerId} \
+                -w "${absoluteRepoPath}" \
+                -e PORT=3000 \
+                buildpacksio/pack:latest \
+                build "${imageName}" --builder paketobuildpacks/builder-jammy-base`;
 
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
