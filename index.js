@@ -3,7 +3,7 @@ const git = require('simple-git')();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const os = require('os'); // ¡Añadido para obtener el ID del contenedor!
+const os = require('os');
 const { exec } = require('child_process');
 
 const app = express();
@@ -30,11 +30,9 @@ app.post('/deploy', async (req, res) => {
         // 1. CLONAR
         console.log(`Clonando ${repoUrl}...`);
         if (fs.existsSync(repoPath)) fs.rmSync(repoPath, { recursive: true, force: true });
-        
-        // Configuramos git para que clone con profundidad 1 (más rápido)
         await git.clone(repoUrl, repoPath, ['--depth', '1']);
 
-        // 2. ESTRATEGIA DE BUILD (Dockerfile vs Buildpacks)
+        // 2. ESTRATEGIA DE BUILD
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
 
         if (hasDockerfile) {
@@ -50,11 +48,11 @@ app.post('/deploy', async (req, res) => {
         } else {
             console.log(`No hay Dockerfile. Usando Buildpacks para detectar el lenguaje...`);
             
-            // LA MAGIA DE DOCKER-IN-DOCKER COMIENZA AQUÍ
             const absoluteRepoPath = path.resolve(repoPath);
-            const containerId = os.hostname(); // Obtenemos el ID de este panel
+            const containerId = os.hostname();
 
-            // Le decimos a Docker que lance el 'pack' más moderno y comparta nuestra carpeta temp
+            // MODIFICACIÓN: Añadimos instalación de dependencias y límites de memoria
+            // Cambiamos el comando para asegurar que existan los módulos antes del build de Next.js
             const packCommand = `docker run --rm \
                 -v /var/run/docker.sock:/var/run/docker.sock \
                 --volumes-from ${containerId} \
@@ -65,21 +63,30 @@ app.post('/deploy', async (req, res) => {
                 buildpacksio/pack:latest \
                 build "${imageName}" \
                 --builder paketobuildpacks/builder-jammy-base \
-                --env "BP_NODE_PROJECT_BUILD_COMMAND=npm run build"`;
+                --env "BP_NODE_PROJECT_BUILD_COMMAND=npm install && npm run build"`;
+
+            console.log("Iniciando construcción con Buildpacks (esto puede tardar)...");
 
             await new Promise((resolve, reject) => {
-                exec(packCommand, (error, stdout, stderr) => {
+                const packProcess = exec(packCommand, (error, stdout, stderr) => {
                     if (error) {
-                        console.error(`Error en Buildpacks: ${stderr || error.message}`);
-                        return reject(new Error("Fallo en la autodetección del lenguaje (Buildpacks)"));
+                        // Si falla, mostramos TODO en el log del servidor
+                        console.log("--- ERROR DETALLADO DE BUILDPACKS ---");
+                        console.log(stdout);
+                        console.log(stderr);
+                        console.log("---------------------------------------");
+                        return reject(new Error(`Fallo en Buildpacks: ${stderr || error.message}`));
                     }
-                    console.log(stdout);
                     resolve();
                 });
+
+                // ESTO TE MUESTRA EL PROGRESO EN VIVO EN TU TERMINAL
+                packProcess.stdout.pipe(process.stdout);
+                packProcess.stderr.pipe(process.stderr);
             });
         }
 
-        // 3. LIMPIEZA: Borrar contenedor viejo
+        // 3. LIMPIEZA
         console.log(`Limpiando versiones anteriores...`);
         const containers = await docker.listContainers({ all: true });
         const existing = containers.find(c => c.Names.includes(`/container-${subdomain}`));
@@ -87,7 +94,7 @@ app.post('/deploy', async (req, res) => {
             await docker.getContainer(existing.Id).remove({ force: true });
         }
 
-        // 4. DEPLOY: Lanzar con etiquetas para Traefik
+        // 4. DEPLOY
         console.log(`Lanzando contenedor en la red de Traefik...`);
         
         const container = await docker.createContainer({
@@ -97,7 +104,6 @@ app.post('/deploy', async (req, res) => {
                 "traefik.enable": "true",
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
                 [`traefik.http.routers.${subdomain}.entrypoints`]: "web",
-                // NOTA: Buildpacks suele exponer las apps en el puerto 8080 por defecto
                 [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000"
             },
             HostConfig: {
@@ -111,7 +117,6 @@ app.post('/deploy', async (req, res) => {
         res.json({ 
             status: 'success', 
             url: `http://${subdomain}.stardest.com`,
-            subdomain: subdomain,
             message: 'Aplicación desplegada exitosamente'
         });
 
