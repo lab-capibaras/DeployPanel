@@ -52,6 +52,27 @@ app.post('/deploy', async (req, res) => {
             }
         }
 
+        // Helper: ejecutar docker build y lanzar error si falla
+        const runDockerBuild = (stream) => new Promise((resolve, reject) => {
+            docker.modem.followProgress(stream, (err, outputRes) => {
+                if (err) return reject(err);
+
+                // Mostrar output en consola línea a línea
+                outputRes.forEach(line => {
+                    if (line.stream) process.stdout.write(line.stream);
+                    if (line.error) process.stderr.write(line.error);
+                });
+
+                // Si alguna línea tiene error, el build falló
+                const errorLine = outputRes.find(l => l.error);
+                if (errorLine) {
+                    return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
+                }
+
+                resolve(outputRes);
+            });
+        });
+
         // 3. ESTRATEGIA DE BUILD
         if (hasDockerfile) {
             // --- ESTRATEGIA A: Dockerfile existente ---
@@ -62,16 +83,13 @@ app.post('/deploy', async (req, res) => {
                 src: ['.']
             }, { t: imageName });
 
-            await new Promise((resolve, reject) => {
-                docker.modem.followProgress(stream, (err, res) => err ? reject(err) : resolve(res));
-            });
+            await runDockerBuild(stream);
 
         } else if (isNextJs) {
             // --- ESTRATEGIA B: Proyecto Next.js sin Dockerfile ---
             console.log(`Proyecto Next.js detectado. Generando Dockerfile optimizado...`);
 
             // Verificar si el proyecto tiene "output: standalone" en next.config
-            // Si no, usamos npm start directamente para evitar el problema de server.js faltante
             let hasStandaloneOutput = false;
             const nextConfigFiles = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
             for (const configFile of nextConfigFiles) {
@@ -92,7 +110,7 @@ app.post('/deploy', async (req, res) => {
                 dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && npm install @swc/helpers --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -113,11 +131,11 @@ ENV PORT=3000
 CMD ["node", "server.js"]
 `;
             } else {
-                // Sin standalone: build y npm start
+                // Sin standalone: build completo y npm start
                 dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && npm install @swc/helpers --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -148,15 +166,7 @@ CMD ["npm", "start"]
                 src: ['.']
             }, { t: imageName });
 
-            await new Promise((resolve, reject) => {
-                docker.modem.followProgress(stream, (err, outputRes) => {
-                    if (err) return reject(err);
-                    // Mostrar últimas líneas del build en caso de error
-                    const lastLines = outputRes.slice(-10).map(l => l.stream || l.error || '').join('');
-                    console.log('Build finalizado:\n', lastLines);
-                    resolve(outputRes);
-                });
-            });
+            await runDockerBuild(stream);
 
         } else {
             // --- ESTRATEGIA C: Buildpacks para otros lenguajes/frameworks ---
@@ -230,7 +240,7 @@ CMD ["npm", "start"]
         });
 
     } catch (error) {
-        console.error("Error durante el despliegue:", error);
+        console.error("Error durante el despliegue:", error.message);
         res.status(500).json({
             status: 'error',
             details: error.message
