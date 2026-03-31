@@ -37,10 +37,9 @@ app.post('/deploy', async (req, res) => {
 
         const nextConfigFileNames = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
         const existingNextConfig = nextConfigFileNames.find(f => fs.existsSync(path.join(repoPath, f)));
-        const hasNextConfig = !!existingNextConfig;
 
         const packageJsonPath = path.join(repoPath, 'package.json');
-        let isNextJs = hasNextConfig;
+        let isNextJs = !!existingNextConfig;
 
         if (!isNextJs && fs.existsSync(packageJsonPath)) {
             try {
@@ -93,69 +92,63 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
-            // FIX DEFINITIVO:
-            // Next.js 12 hace alias en webpack: "@swc/helpers" -> next/node_modules/@swc/helpers (v0.4.x)
-            // que NO tiene la carpeta /_/ que necesitan @nextui-org/react y @react-aria.
-            // Solución: sobreescribir ese alias en next.config.js para que apunte
-            // al @swc/helpers@0.5 instalado en la raíz del proyecto.
-            const nextConfigPath = path.join(repoPath, 'next.config.js');
+            // FIX DEFINITIVO para Next.js 12 + @nextui-org/react:
+            //
+            // El problema:
+            //   - Next.js 12 hace alias: "@swc/helpers" -> next/node_modules/@swc/helpers@0.4
+            //   - @swc/helpers@0.4 solo tiene /lib/, NO tiene /_/
+            //   - @nextui-org/react y @react-aria importan @swc/helpers/_/_class_private_field_*
+            //   - webpack no los encuentra porque el alias apunta a 0.4
+            //
+            // La solución:
+            //   - NO tocar el alias general de @swc/helpers (Next necesita 0.4/lib/)
+            //   - Crear aliases PRECISOS solo para los 3 subpaths /_/ que necesitan
+            //     @nextui-org y @react-aria, apuntando directamente a los archivos ESM de 0.5
 
-            let originalConfig = '{}';
+            // Extraer config original si existe
+            let originalConfigStr = '{}';
             if (existingNextConfig) {
                 const existingPath = path.join(repoPath, existingNextConfig);
                 const content = fs.readFileSync(existingPath, 'utf8');
-
-                // Extraer solo el objeto de configuración
-                const match = content.match(/(?:module\.exports\s*=\s*|export\s+default\s+)(\{[\s\S]*\})/);
-                if (match) {
-                    originalConfig = match[1];
-                }
-
-                // Eliminar el config original si no es next.config.js (ts/mjs)
-                if (existingNextConfig !== 'next.config.js') {
-                    fs.unlinkSync(existingPath);
-                }
-
-                console.log(`next.config existente encontrado (${existingNextConfig}), inyectando alias fix...`);
+                const match = content.match(/(?:module\.exports\s*=\s*|export\s+default\s+)(\{[\s\S]*?\});?\s*$/);
+                if (match) originalConfigStr = match[1];
+                if (existingNextConfig !== 'next.config.js') fs.unlinkSync(existingPath);
+                console.log(`next.config existente (${existingNextConfig}) encontrado, aplicando fix...`);
             }
 
-            // Generar next.config.js con el alias fix
-            // Usamos path.resolve en el Dockerfile para obtener la ruta correcta en runtime
-            const newNextConfig = `
-const path = require('path');
+            // Verificar si tiene standalone
+            let hasStandaloneOutput = originalConfigStr.includes('standalone');
 
-const originalConfig = ${originalConfig};
+            const newNextConfig = `const path = require('path');
+
+const originalConfig = ${originalConfigStr};
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = {
   ...originalConfig,
   webpack: (config, options) => {
-    // FIX: Redirigir @swc/helpers al 0.5.x de la raiz que tiene la API /_/
-    // Next.js 12 internamente apunta @swc/helpers a su propio 0.4.x que NO tiene /_/
-    config.resolve.alias['@swc/helpers'] = path.dirname(
-      require.resolve('@swc/helpers/package.json')
-    );
+    // FIX: aliases precisos para los subpaths /_/ de @swc/helpers que
+    // NO existen en la version 0.4.x interna de Next.js 12.
+    // Apuntamos directamente a los archivos ESM de la version 0.5.x en raiz.
+    // El alias general "@swc/helpers" NO se toca para no romper Next internamente.
+    const swc05 = path.dirname(require.resolve('@swc/helpers/package.json'));
 
-    // Llamar al webpack config original si existe
+    config.resolve.alias['@swc/helpers/_/_class_private_field_init'] =
+      path.join(swc05, 'esm', '_class_private_field_init.js');
+    config.resolve.alias['@swc/helpers/_/_class_private_field_get'] =
+      path.join(swc05, 'esm', '_class_private_field_get.js');
+    config.resolve.alias['@swc/helpers/_/_class_private_field_set'] =
+      path.join(swc05, 'esm', '_class_private_field_set.js');
+
     if (typeof originalConfig.webpack === 'function') {
       return originalConfig.webpack(config, options);
     }
     return config;
   },
 };
-
-module.exports = nextConfig;
 `;
-
-            fs.writeFileSync(nextConfigPath, newNextConfig);
-            console.log('next.config.js generado con alias fix para @swc/helpers');
-
-            // Verificar si el proyecto tiene "output: standalone"
-            let hasStandaloneOutput = false;
-            if (existingNextConfig) {
-                const content = fs.readFileSync(nextConfigPath, 'utf8');
-                if (content.includes('standalone')) hasStandaloneOutput = true;
-            }
+            fs.writeFileSync(path.join(repoPath, 'next.config.js'), newNextConfig);
+            console.log('next.config.js generado con aliases precisos para @swc/helpers/_/');
 
             let runnerStage;
             if (hasStandaloneOutput) {
@@ -197,15 +190,10 @@ RUN npm run build
 
 ${runnerStage}
 `;
-
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
 
-            const stream = await docker.buildImage({
-                context: repoPath,
-                src: ['.']
-            }, { t: imageName });
-
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
         } else {
