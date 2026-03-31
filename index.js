@@ -52,7 +52,7 @@ app.post('/deploy', async (req, res) => {
             }
         }
 
-        // Helper: detectar versión de Next.js en el proyecto
+        // Helper: detectar versión mayor de Next.js
         const getNextVersion = (pkgPath) => {
             try {
                 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
@@ -114,23 +114,6 @@ app.post('/deploy', async (req, res) => {
                 }
             }
 
-            // Script que instala @swc/helpers@0.5 SOLO en los node_modules anidados
-            // que lo necesitan, sin tocar el @swc/helpers que usa next internamente
-            const patchSwcScript = `
-# Parchear @swc/helpers en paquetes anidados que usan la API /_/ (>=0.5)
-# sin afectar al @swc/helpers raíz que usa Next.js (API /lib/ de 0.4.x)
-find /app/node_modules -mindepth 3 -maxdepth 5 -name "package.json" \\
-  -path "*/node_modules/*/node_modules/*/package.json" | while read pkgjson; do
-  dir=$(dirname "$pkgjson")
-  if grep -q '"@swc/helpers"' "$pkgjson" 2>/dev/null; then
-    if [ ! -d "$dir/node_modules/@swc/helpers" ]; then
-      echo "Instalando @swc/helpers@0.5 en $dir"
-      cd "$dir" && npm install @swc/helpers@0.5 --no-save --legacy-peer-deps 2>/dev/null || true
-    fi
-  fi
-done
-`;
-
             let runnerStage;
             if (hasStandaloneOutput) {
                 runnerStage = `FROM node:20-alpine AS runner
@@ -157,12 +140,27 @@ ENV PORT=3000
 CMD ["npm", "start"]`;
             }
 
+            // Parche quirúrgico: instalar @swc/helpers@0.5 directamente
+            // en cada paquete que lo necesita (los que usan la API /_/)
+            // Esto NO afecta al @swc/helpers que usa Next.js internamente
+            const swcPatch = `
+mkdir -p /app/node_modules/@internationalized/date/node_modules/@swc/helpers && \\
+  npm pack @swc/helpers@0.5 --pack-destination /tmp 2>/dev/null && \\
+  tar -xzf /tmp/swc-helpers-*.tgz -C /tmp && \\
+  cp -r /tmp/package/. /app/node_modules/@internationalized/date/node_modules/@swc/helpers/ && \\
+  for pkg in $(find /app/node_modules -mindepth 2 -maxdepth 6 -name "package.json" | xargs grep -l '"@swc/helpers"' 2>/dev/null); do \\
+    dir=$(dirname $pkg); \\
+    if [ ! -d "$dir/node_modules/@swc/helpers" ]; then \\
+      mkdir -p "$dir/node_modules/@swc/helpers" && \\
+      cp -r /tmp/package/. "$dir/node_modules/@swc/helpers/"; \\
+    fi; \\
+  done`;
+
             const dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
-RUN apk add --no-cache bash
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-RUN ${patchSwcScript.trim().split('\n').join(' \\\n    ')}
+RUN ${swcPatch.trim()}
 
 FROM node:20-alpine AS builder
 WORKDIR /app
