@@ -59,13 +59,13 @@ app.post('/deploy', async (req, res) => {
                 -w "${absoluteRepoPath}" \
                 -e DOCKER_API_VERSION=1.44 \
                 -e PORT=3000 \
+                -e NODE_ENV=production \
                 -e NODE_OPTIONS="--max-old-space-size=2048" \
                 buildpacksio/pack:latest \
                 build "${imageName}" \
                 --builder paketobuildpacks/builder-jammy-base \
                 --env "BP_NODE_PROJECT_BUILD_COMMAND=npm install @swc/helpers --legacy-peer-deps && npm install --legacy-peer-deps && npm run build"`;
-
-            console.log("Iniciando construcción con Buildpacks (esto puede tardar)...");
+                console.log("Iniciando construcción con Buildpacks (esto puede tardar)...");
 
             await new Promise((resolve, reject) => {
                 const packProcess = exec(packCommand, (error, stdout, stderr) => {
