@@ -35,8 +35,8 @@ app.post('/deploy', async (req, res) => {
         // 2. DETECTAR TIPO DE PROYECTO
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
 
-        const nextConfigFiles = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
-        const existingNextConfig = nextConfigFiles.find(f => fs.existsSync(path.join(repoPath, f)));
+        const nextConfigFileNames = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
+        const existingNextConfig = nextConfigFileNames.find(f => fs.existsSync(path.join(repoPath, f)));
         const hasNextConfig = !!existingNextConfig;
 
         const packageJsonPath = path.join(repoPath, 'package.json');
@@ -93,10 +93,67 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
+            // FIX DEFINITIVO:
+            // Next.js 12 hace alias en webpack: "@swc/helpers" -> next/node_modules/@swc/helpers (v0.4.x)
+            // que NO tiene la carpeta /_/ que necesitan @nextui-org/react y @react-aria.
+            // Solución: sobreescribir ese alias en next.config.js para que apunte
+            // al @swc/helpers@0.5 instalado en la raíz del proyecto.
+            const nextConfigPath = path.join(repoPath, 'next.config.js');
+
+            let originalConfig = '{}';
+            if (existingNextConfig) {
+                const existingPath = path.join(repoPath, existingNextConfig);
+                const content = fs.readFileSync(existingPath, 'utf8');
+
+                // Extraer solo el objeto de configuración
+                const match = content.match(/(?:module\.exports\s*=\s*|export\s+default\s+)(\{[\s\S]*\})/);
+                if (match) {
+                    originalConfig = match[1];
+                }
+
+                // Eliminar el config original si no es next.config.js (ts/mjs)
+                if (existingNextConfig !== 'next.config.js') {
+                    fs.unlinkSync(existingPath);
+                }
+
+                console.log(`next.config existente encontrado (${existingNextConfig}), inyectando alias fix...`);
+            }
+
+            // Generar next.config.js con el alias fix
+            // Usamos path.resolve en el Dockerfile para obtener la ruta correcta en runtime
+            const newNextConfig = `
+const path = require('path');
+
+const originalConfig = ${originalConfig};
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  ...originalConfig,
+  webpack: (config, options) => {
+    // FIX: Redirigir @swc/helpers al 0.5.x de la raiz que tiene la API /_/
+    // Next.js 12 internamente apunta @swc/helpers a su propio 0.4.x que NO tiene /_/
+    config.resolve.alias['@swc/helpers'] = path.dirname(
+      require.resolve('@swc/helpers/package.json')
+    );
+
+    // Llamar al webpack config original si existe
+    if (typeof originalConfig.webpack === 'function') {
+      return originalConfig.webpack(config, options);
+    }
+    return config;
+  },
+};
+
+module.exports = nextConfig;
+`;
+
+            fs.writeFileSync(nextConfigPath, newNextConfig);
+            console.log('next.config.js generado con alias fix para @swc/helpers');
+
             // Verificar si el proyecto tiene "output: standalone"
             let hasStandaloneOutput = false;
             if (existingNextConfig) {
-                const content = fs.readFileSync(path.join(repoPath, existingNextConfig), 'utf8');
+                const content = fs.readFileSync(nextConfigPath, 'utf8');
                 if (content.includes('standalone')) hasStandaloneOutput = true;
             }
 
@@ -126,15 +183,10 @@ ENV PORT=3000
 CMD ["npm", "start"]`;
             }
 
-            // IMPORTANTE: usar comillas simples para el string del Dockerfile
-            // así los $ del shell script NO se interpolan como variables de JavaScript
-            const swcFixScript = 'for dir in /app/node_modules/@swc/helpers/_/*/; do helper=$(basename "$dir"); echo "export * from \'../../esm/${helper}.js\';" > "${dir}index.js"; done';
-
             const dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-RUN ${swcFixScript}
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -148,11 +200,6 @@ ${runnerStage}
 
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
-
-            // Log del Dockerfile generado para debug
-            console.log('--- Dockerfile generado ---');
-            console.log(dockerfile);
-            console.log('---------------------------');
 
             const stream = await docker.buildImage({
                 context: repoPath,
