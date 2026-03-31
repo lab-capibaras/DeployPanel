@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Vercel Chafa</title>
+    <style>
+        body { font-family: sans-serif; background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .card { background: #111; padding: 2rem; border-radius: 8px; border: 1px solid #333; width: 400px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #fff; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        #status { margin-top: 15px; font-size: 0.9rem; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Desplegar Proyecto</h2>
+        <input type="text" id="repo" placeholder="URL de GitHub (https://...)">
+        <input type="text" id="sub" placeholder="Subdominio deseado (ej: mi-app)">
+        <button onclick="deploy()">Desplegar ahora</button>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function deploy() {
+            const status = document.getElementById('status');
+            status.innerText = "Construyendo... (esto puede tardar 1-2 min)";
+            
+            const res = await fetch('/deploy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    repoUrl: document.getElementById('repo').value, 
+                    subdomain: document.getElementById('sub').value 
+                })
+            });
+            const data = await res.json();
+            status.innerHTML = data.status === 'success' 
+                ? ` ¡Éxito! <a href="${data.url}" target="_blank" style="color:cyan">Ir a la web</a>`
+                : ` Error: ${data.details}`;
+        }
+    </script>
+</body>
+</html>
