@@ -52,18 +52,29 @@ app.post('/deploy', async (req, res) => {
             }
         }
 
+        // Helper: inyectar "overrides" en el package.json del usuario para forzar @swc/helpers
+        const injectSwcOverride = (pkgPath) => {
+            try {
+                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                pkg.overrides = pkg.overrides || {};
+                pkg.overrides['@swc/helpers'] = '^0.5.0';
+                fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+                console.log('✅ Override de @swc/helpers inyectado en package.json');
+            } catch (e) {
+                console.warn('No se pudo inyectar override:', e.message);
+            }
+        };
+
         // Helper: ejecutar docker build y lanzar error si falla
         const runDockerBuild = (stream) => new Promise((resolve, reject) => {
             docker.modem.followProgress(stream, (err, outputRes) => {
                 if (err) return reject(err);
 
-                // Mostrar output en consola línea a línea
                 outputRes.forEach(line => {
                     if (line.stream) process.stdout.write(line.stream);
                     if (line.error) process.stderr.write(line.error);
                 });
 
-                // Si alguna línea tiene error, el build falló
                 const errorLine = outputRes.find(l => l.error);
                 if (errorLine) {
                     return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
@@ -89,6 +100,11 @@ app.post('/deploy', async (req, res) => {
             // --- ESTRATEGIA B: Proyecto Next.js sin Dockerfile ---
             console.log(`Proyecto Next.js detectado. Generando Dockerfile optimizado...`);
 
+            // Inyectar override de @swc/helpers para resolver dependencias anidadas
+            if (fs.existsSync(packageJsonPath)) {
+                injectSwcOverride(packageJsonPath);
+            }
+
             // Verificar si el proyecto tiene "output: standalone" en next.config
             let hasStandaloneOutput = false;
             const nextConfigFiles = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
@@ -106,11 +122,10 @@ app.post('/deploy', async (req, res) => {
             let dockerfile;
 
             if (hasStandaloneOutput) {
-                // Usa output standalone (más eficiente)
                 dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps && npm install @swc/helpers --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -131,11 +146,10 @@ ENV PORT=3000
 CMD ["node", "server.js"]
 `;
             } else {
-                // Sin standalone: build completo y npm start
                 dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps && npm install @swc/helpers --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
