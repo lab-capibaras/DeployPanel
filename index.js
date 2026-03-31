@@ -38,7 +38,7 @@ app.post('/deploy', async (req, res) => {
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
 
         if (hasDockerfile) {
-            console.log(`🐳 Dockerfile detectado. Usando build tradicional...`);
+            console.log(`Dockerfile detectado. Usando build tradicional...`);
             const stream = await docker.buildImage({
                 context: repoPath,
                 src: ['.']
@@ -48,7 +48,7 @@ app.post('/deploy', async (req, res) => {
                 docker.modem.followProgress(stream, (err, res) => err ? reject(err) : resolve(res));
             });
         } else {
-            console.log(`✨ No hay Dockerfile. Usando Buildpacks para detectar el lenguaje...`);
+            console.log(`No hay Dockerfile. Usando Buildpacks para detectar el lenguaje...`);
             
             // LA MAGIA DE DOCKER-IN-DOCKER COMIENZA AQUÍ
             const absoluteRepoPath = path.resolve(repoPath);
@@ -104,12 +104,20 @@ app.post('/deploy', async (req, res) => {
 
         await container.start();
         
-        res.send(`<h1>🚀 Desplegado con Buildpacks</h1><p>Tu app está en <a href="http://${subdomain}.stardest.com">http://${subdomain}.stardest.com</a></p><a href="/">Volver</a>`);
+        res.json({ 
+            status: 'success', 
+            url: `http://${subdomain}.stardest.com`,
+            subdomain: subdomain,
+            message: 'Aplicación desplegada exitosamente'
+        });
 
     } catch (error) {
-        console.error("❌ Error:", error);
-        res.status(500).send(`Error: ${error.message}`);
+        console.error("Error durante el despliegue:", error);
+        res.status(500).json({ 
+            status: 'error', 
+            details: error.message 
+        });
     }
 });
 
-app.listen(4000, () => console.log("Panel PRO con Buildpacks en puerto 4000"));
+app.listen(4000, () => console.log("DeployPanel iniciado en puerto 4000"));
