@@ -93,62 +93,10 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
-            // Inyectar webpack alias en next.config.js para redirigir @swc/helpers/_/ 
-            // a la versión 0.5 instalada en la raíz, sin romper la versión que usa Next internamente
-            const nextConfigPath = path.join(repoPath, existingNextConfig || 'next.config.js');
-            let nextConfigContent = '';
-
-            if (existingNextConfig) {
-                nextConfigContent = fs.readFileSync(nextConfigPath, 'utf8');
-                console.log(`next.config.js existente encontrado, inyectando webpack alias...`);
-            }
-
-            // Si ya tiene webpack config, la envolvemos; si no, creamos una nueva
-            const hasWebpackConfig = nextConfigContent.includes('webpack');
-
-            if (!hasWebpackConfig) {
-                // Crear o reemplazar con configuración que incluye webpack alias
-                const newConfig = `
-/** @type {import('next').NextConfig} */
-const originalConfig = (() => {
-  try {
-    ${nextConfigContent ? `
-    // Configuración original del proyecto
-    ${nextConfigContent
-        .replace(/module\.exports\s*=\s*/, 'return ')
-        .replace(/export default\s*/, 'return ')
-    }
-    ` : 'return {};'}
-  } catch(e) { return {}; }
-})() || {};
-
-module.exports = {
-  ...originalConfig,
-  webpack: (config, options) => {
-    // Alias para redirigir @swc/helpers/_/ a la versión compatible (0.5.x)
-    config.resolve = config.resolve || {};
-    config.resolve.alias = config.resolve.alias || {};
-    
-    const swcHelpersNew = require('path').resolve('./node_modules/@swc/helpers-new');
-    
-    // Redirigir las importaciones problemáticas de /_/ al nuevo @swc/helpers
-    config.resolve.alias['@swc/helpers/_'] = swcHelpersNew + '/_';
-    
-    if (originalConfig.webpack) {
-      return originalConfig.webpack(config, options);
-    }
-    return config;
-  },
-};
-`;
-                fs.writeFileSync(nextConfigPath, newConfig);
-                console.log('next.config.js generado con webpack alias');
-            }
-
             // Verificar si el proyecto tiene "output: standalone"
             let hasStandaloneOutput = false;
             if (existingNextConfig) {
-                const content = fs.readFileSync(nextConfigPath, 'utf8');
+                const content = fs.readFileSync(path.join(repoPath, existingNextConfig), 'utf8');
                 if (content.includes('standalone')) hasStandaloneOutput = true;
             }
 
@@ -178,20 +126,21 @@ ENV PORT=3000
 CMD ["npm", "start"]`;
             }
 
-            // El Dockerfile instala @swc/helpers@0.5 con un alias de nombre
-            // para que Next.js siga usando su propio @swc/helpers@0.4 internamente
+            // FIX DEFINITIVO:
+            // Next.js 12 no soporta el campo "exports" de package.json para subpaths /_/
+            // @swc/helpers@0.5 expone sus helpers via exports map pero NO tiene index.js
+            // en cada subdirectorio /_/<helper>/, así webpack no puede resolverlos.
+            // Solución: crear un index.js en cada subdirectorio que re-exporte desde /esm/
             const dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-# Instalar @swc/helpers 0.5 con nombre alternativo para no colisionar con el de Next.js
-RUN cp -r /app/node_modules/@swc/helpers /app/node_modules/@swc/helpers-new-backup 2>/dev/null || true && \\
-    npm install @swc/helpers@0.5 --legacy-peer-deps --no-save && \\
-    cp -r /app/node_modules/@swc/helpers /app/node_modules/@swc/helpers-new && \\
-    # Restaurar la versión original de @swc/helpers para Next.js
-    rm -rf /app/node_modules/@swc/helpers && \\
-    mv /app/node_modules/@swc/helpers-new-backup /app/node_modules/@swc/helpers 2>/dev/null || \\
-    npm install @swc/helpers@0.4 --legacy-peer-deps --no-save
+# Fix: crear index.js en cada subdirectorio /_/ de @swc/helpers
+# para que webpack pueda resolverlos sin soporte de exports map
+RUN for dir in /app/node_modules/@swc/helpers/_/*/; do \\
+      helper=$(basename "$dir"); \\
+      echo "export * from '../../esm/${helper}.js';" > "${dir}index.js"; \\
+    done
 
 FROM node:20-alpine AS builder
 WORKDIR /app
