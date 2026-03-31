@@ -92,111 +92,70 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
-            // Detectar standalone en el config existente (solo lectura de texto, no ejecución)
+            // Detectar standalone en el config existente
             let hasStandaloneOutput = false;
             if (existingNextConfig) {
                 const content = fs.readFileSync(path.join(repoPath, existingNextConfig), 'utf8');
                 if (content.includes('standalone')) hasStandaloneOutput = true;
             }
 
-            // Determinar si necesitamos inyectar el fix de @swc/helpers
-            // Solo aplica a Next.js 12 o inferior (13+ no tiene este problema)
             const needsSwcFix = nextMajor <= 12;
 
-            if (needsSwcFix) {
-                // Solo para Next.js 12: inyectar NormalModuleReplacementPlugin
-                // ESTRATEGIA: renombrar el config existente y crear un next.config.js
-                // wrapper que cargue el original y aplique el fix encima.
-                // Si el original es .js lo wrapeamos, si es .ts/.mjs lo renombramos
-                // a _next.config.original y lo cargamos con require si es posible,
-                // o simplemente creamos un config fresco con solo el plugin.
+            // Siempre generamos un next.config.js que:
+            // 1. Ignora errores de TypeScript y ESLint en el build (para tolerancia de errores del usuario)
+            // 2. En Next 12: aplica NormalModuleReplacementPlugin para @swc/helpers
+            const nextConfigPath = path.join(repoPath, 'next.config.js');
 
-                const nextConfigPath = path.join(repoPath, 'next.config.js');
-
-                if (existingNextConfig && existingNextConfig !== 'next.config.js') {
-                    // Es .ts o .mjs — no podemos hacer require() de ellos en un .js
-                    // Renombrar a un nombre reservado y crear config.js limpio con el fix
-                    const originalPath = path.join(repoPath, existingNextConfig);
-                    const backupName = '_original' + existingNextConfig;
-                    fs.renameSync(originalPath, path.join(repoPath, backupName));
-                    console.log(`${existingNextConfig} renombrado a ${backupName} (no compatible con require)`);
-                }
-
-                let newNextConfig;
-
-                if (!existingNextConfig || existingNextConfig !== 'next.config.js') {
-                    // Crear config limpio solo con el plugin
-                    newNextConfig = `const path = require('path');
-const swc05dir = path.dirname(require.resolve('@swc/helpers/package.json'));
-
-/** @type {import('next').NextConfig} */
-module.exports = {
-  webpack(config, options) {
-    const { webpack } = options;
-    config.plugins.push(
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_init$/,
-        path.join(swc05dir, 'esm', '_class_private_field_init.js')
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_get$/,
-        path.join(swc05dir, 'esm', '_class_private_field_get.js')
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_set$/,
-        path.join(swc05dir, 'esm', '_class_private_field_set.js')
-      )
-    );
-    return config;
-  },
-};
-`;
-                } else {
-                    // Es next.config.js — leerlo y wrapear su export
-                    const originalContent = fs.readFileSync(nextConfigPath, 'utf8');
-                    // Extraer el objeto de configuración del module.exports
-                    const exportMatch = originalContent.match(/module\.exports\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/);
-                    const originalConfigObj = exportMatch ? exportMatch[1] : '{}';
-
-                    newNextConfig = `const path = require('path');
-const swc05dir = path.dirname(require.resolve('@swc/helpers/package.json'));
-
-const originalConfig = ${originalConfigObj};
-
-/** @type {import('next').NextConfig} */
-module.exports = {
-  ...originalConfig,
-  webpack(config, options) {
-    const { webpack } = options;
-    config.plugins.push(
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_init$/,
-        path.join(swc05dir, 'esm', '_class_private_field_init.js')
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_get$/,
-        path.join(swc05dir, 'esm', '_class_private_field_get.js')
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /^@swc\\/helpers\\/_\\/_class_private_field_set$/,
-        path.join(swc05dir, 'esm', '_class_private_field_set.js')
-      )
-    );
-    if (typeof originalConfig.webpack === 'function') {
-      return originalConfig.webpack(config, options);
-    }
-    return config;
-  },
-};
-`;
-                }
-
-                fs.writeFileSync(nextConfigPath, newNextConfig);
-                console.log('next.config.js generado con NormalModuleReplacementPlugin fix');
-
-            } else {
-                console.log(`Next.js ${nextMajor}.x — no necesita fix de @swc/helpers, usando config original`);
+            if (existingNextConfig && existingNextConfig !== 'next.config.js') {
+                // Renombrar .ts/.mjs para que Next no lo cargue
+                fs.renameSync(
+                    path.join(repoPath, existingNextConfig),
+                    path.join(repoPath, '_original_' + existingNextConfig)
+                );
+                console.log(`${existingNextConfig} renombrado para evitar conflicto`);
             }
+
+            let webpackSection = '';
+            if (needsSwcFix) {
+                webpackSection = `
+  webpack(config, options) {
+    const { webpack } = options;
+    const swc05dir = path.dirname(require.resolve('@swc/helpers/package.json'));
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_init$/,
+        path.join(swc05dir, 'esm', '_class_private_field_init.js')
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_get$/,
+        path.join(swc05dir, 'esm', '_class_private_field_get.js')
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_set$/,
+        path.join(swc05dir, 'esm', '_class_private_field_set.js')
+      )
+    );
+    return config;
+  },`;
+                console.log('Aplicando fix de @swc/helpers para Next.js 12');
+            }
+
+            const newNextConfig = `const path = require('path');
+
+/** @type {import('next').NextConfig} */
+module.exports = {
+  // Ignorar errores de TypeScript y ESLint durante el build
+  // para maximizar compatibilidad con proyectos de usuarios
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },${webpackSection}
+};
+`;
+            fs.writeFileSync(nextConfigPath, newNextConfig);
+            console.log('next.config.js generado (typescript y eslint errors ignorados)');
 
             let runnerStage;
             if (hasStandaloneOutput) {
