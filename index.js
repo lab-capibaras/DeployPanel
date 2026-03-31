@@ -40,11 +40,14 @@ app.post('/deploy', async (req, res) => {
 
         const packageJsonPath = path.join(repoPath, 'package.json');
         let isNextJs = !!existingNextConfig;
+        let isVite = false; // <-- Nueva variable para detectar Vite
 
         if (!isNextJs && fs.existsSync(packageJsonPath)) {
             try {
                 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
                 isNextJs = !!(pkg.dependencies?.next || pkg.devDependencies?.next);
+                // Detectar si el proyecto usa Vite (React/Vue SPA)
+                isVite = !!(pkg.dependencies?.vite || pkg.devDependencies?.vite);
             } catch (e) {
                 console.warn('No se pudo leer package.json:', e.message);
             }
@@ -101,13 +104,9 @@ app.post('/deploy', async (req, res) => {
 
             const needsSwcFix = nextMajor <= 12;
 
-            // Siempre generamos un next.config.js que:
-            // 1. Ignora errores de TypeScript y ESLint en el build (para tolerancia de errores del usuario)
-            // 2. En Next 12: aplica NormalModuleReplacementPlugin para @swc/helpers
             const nextConfigPath = path.join(repoPath, 'next.config.js');
 
             if (existingNextConfig && existingNextConfig !== 'next.config.js') {
-                // Renombrar .ts/.mjs para que Next no lo cargue
                 fs.renameSync(
                     path.join(repoPath, existingNextConfig),
                     path.join(repoPath, '_original_' + existingNextConfig)
@@ -144,8 +143,6 @@ app.post('/deploy', async (req, res) => {
 
 /** @type {import('next').NextConfig} */
 module.exports = {
-  // Ignorar errores de TypeScript y ESLint durante el build
-  // para maximizar compatibilidad con proyectos de usuarios
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -203,9 +200,32 @@ ${runnerStage}
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
+        } else if (isVite) {
+            // --- ESTRATEGIA C: Proyecto Vite / React Puro ---
+            console.log(`Proyecto Vite/React detectado. Generando Dockerfile con Nginx...`);
+
+            const dockerfile = `FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+# Configuramos Nginx para escuchar en el puerto 3000 y manejar el enrutamiento interno de React
+RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 3000
+`;
+            fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
+            console.log('Dockerfile de Nginx generado exitosamente.');
+
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+            await runDockerBuild(stream);
+
         } else {
-            // --- ESTRATEGIA C: Buildpacks para otros lenguajes/frameworks ---
-            console.log(`No hay Dockerfile ni Next.js detectado. Usando Buildpacks...`);
+            // --- ESTRATEGIA D: Buildpacks para otros lenguajes ---
+            console.log(`No hay Dockerfile, Next.js ni Vite. Usando Buildpacks...`);
 
             const absoluteRepoPath = path.resolve(repoPath);
             const containerId = os.hostname();
