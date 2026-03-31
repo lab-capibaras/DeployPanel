@@ -52,16 +52,15 @@ app.post('/deploy', async (req, res) => {
             }
         }
 
-        // Helper: inyectar "overrides" en el package.json del usuario para forzar @swc/helpers
-        const injectSwcOverride = (pkgPath) => {
+        // Helper: detectar versión de Next.js en el proyecto
+        const getNextVersion = (pkgPath) => {
             try {
                 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-                pkg.overrides = pkg.overrides || {};
-                pkg.overrides['@swc/helpers'] = '^0.5.0';
-                fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-                console.log('✅ Override de @swc/helpers inyectado en package.json');
-            } catch (e) {
-                console.warn('No se pudo inyectar override:', e.message);
+                const ver = pkg.dependencies?.next || pkg.devDependencies?.next || '';
+                const match = ver.match(/(\d+)/);
+                return match ? parseInt(match[1]) : 13;
+            } catch {
+                return 13;
             }
         };
 
@@ -100,10 +99,8 @@ app.post('/deploy', async (req, res) => {
             // --- ESTRATEGIA B: Proyecto Next.js sin Dockerfile ---
             console.log(`Proyecto Next.js detectado. Generando Dockerfile optimizado...`);
 
-            // Inyectar override de @swc/helpers para resolver dependencias anidadas
-            if (fs.existsSync(packageJsonPath)) {
-                injectSwcOverride(packageJsonPath);
-            }
+            const nextMajor = getNextVersion(packageJsonPath);
+            console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
             // Verificar si el proyecto tiene "output: standalone" en next.config
             let hasStandaloneOutput = false;
@@ -112,29 +109,31 @@ app.post('/deploy', async (req, res) => {
                 const configPath = path.join(repoPath, configFile);
                 if (fs.existsSync(configPath)) {
                     const content = fs.readFileSync(configPath, 'utf8');
-                    if (content.includes('standalone')) {
-                        hasStandaloneOutput = true;
-                    }
+                    if (content.includes('standalone')) hasStandaloneOutput = true;
                     break;
                 }
             }
 
-            let dockerfile;
+            // Script que instala @swc/helpers@0.5 SOLO en los node_modules anidados
+            // que lo necesitan, sin tocar el @swc/helpers que usa next internamente
+            const patchSwcScript = `
+# Parchear @swc/helpers en paquetes anidados que usan la API /_/ (>=0.5)
+# sin afectar al @swc/helpers raíz que usa Next.js (API /lib/ de 0.4.x)
+find /app/node_modules -mindepth 3 -maxdepth 5 -name "package.json" \\
+  -path "*/node_modules/*/node_modules/*/package.json" | while read pkgjson; do
+  dir=$(dirname "$pkgjson")
+  if grep -q '"@swc/helpers"' "$pkgjson" 2>/dev/null; then
+    if [ ! -d "$dir/node_modules/@swc/helpers" ]; then
+      echo "Instalando @swc/helpers@0.5 en $dir"
+      cd "$dir" && npm install @swc/helpers@0.5 --no-save --legacy-peer-deps 2>/dev/null || true
+    fi
+  fi
+done
+`;
 
+            let runnerStage;
             if (hasStandaloneOutput) {
-                dockerfile = `FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --legacy-peer-deps
-
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-FROM node:20-alpine AS runner
+                runnerStage = `FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -143,22 +142,9 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "server.js"]
-`;
+CMD ["node", "server.js"]`;
             } else {
-                dockerfile = `FROM node:20-alpine AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --legacy-peer-deps
-
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-FROM node:20-alpine AS runner
+                runnerStage = `FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -168,9 +154,25 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 EXPOSE 3000
 ENV PORT=3000
-CMD ["npm", "start"]
-`;
+CMD ["npm", "start"]`;
             }
+
+            const dockerfile = `FROM node:20-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache bash
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+RUN ${patchSwcScript.trim().split('\n').join(' \\\n    ')}
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+${runnerStage}
+`;
 
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
