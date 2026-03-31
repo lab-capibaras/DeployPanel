@@ -59,9 +59,13 @@ app.post('/deploy', async (req, res) => {
                 -v /var/run/docker.sock:/var/run/docker.sock \
                 --volumes-from ${containerId} \
                 -w "${absoluteRepoPath}" \
+                -e DOCKER_API_VERSION=1.44 \
                 -e PORT=3000 \
+                -e NODE_OPTIONS="--max-old-space-size=2048" \
                 buildpacksio/pack:latest \
-                build "${imageName}" --builder paketobuildpacks/builder-jammy-base`;
+                build "${imageName}" \
+                --builder paketobuildpacks/builder-jammy-base \
+                --env "BP_NODE_PROJECT_BUILD_COMMAND=npm run build"`;
 
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
