@@ -256,12 +256,12 @@
             }
 
             //Validaciones básicas
-            const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w-]+$/;
-            if (!githubPattern.test(repoUrl)) {
+            const githubPattern = /^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+(\.git)?$/;
+
+                if (!githubPattern.test(repoUrl)) {
                 alert('Por favor ingresa una URL de GitHub válida');
                 return;
-            }
-
+                }
             // Show progress section
             document.getElementById('formSection').classList.add('hidden');
             document.getElementById('progressSection').classList.remove('hidden');
