@@ -51,12 +51,8 @@ app.post('/deploy', async (req, res) => {
             // Usamos el builder de Google (v1) que soporta Node, Python, Go, Java, etc.
             const absoluteRepoPath = path.resolve(repoPath);
 
- const packCommand = `docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "${absoluteRepoPath}":/workspace \
-  -w /workspace \
-  buildpacksio/pack:latest \
-  build "${imageName}" --builder gcr.io/buildpacks/builder:v1`;
+// Usamos el comando nativo directamente
+            const packCommand = `pack build ${imageName} --path ${repoPath} --builder gcr.io/buildpacks/builder:v1`;
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
                     if (error) {
