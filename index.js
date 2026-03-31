@@ -126,21 +126,15 @@ ENV PORT=3000
 CMD ["npm", "start"]`;
             }
 
-            // FIX DEFINITIVO:
-            // Next.js 12 no soporta el campo "exports" de package.json para subpaths /_/
-            // @swc/helpers@0.5 expone sus helpers via exports map pero NO tiene index.js
-            // en cada subdirectorio /_/<helper>/, así webpack no puede resolverlos.
-            // Solución: crear un index.js en cada subdirectorio que re-exporte desde /esm/
+            // IMPORTANTE: usar comillas simples para el string del Dockerfile
+            // así los $ del shell script NO se interpolan como variables de JavaScript
+            const swcFixScript = 'for dir in /app/node_modules/@swc/helpers/_/*/; do helper=$(basename "$dir"); echo "export * from \'../../esm/${helper}.js\';" > "${dir}index.js"; done';
+
             const dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-# Fix: crear index.js en cada subdirectorio /_/ de @swc/helpers
-# para que webpack pueda resolverlos sin soporte de exports map
-RUN for dir in /app/node_modules/@swc/helpers/_/*/; do \\
-      helper=$(basename "$dir"); \\
-      echo "export * from '../../esm/${helper}.js';" > "${dir}index.js"; \\
-    done
+RUN ${swcFixScript}
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -154,6 +148,11 @@ ${runnerStage}
 
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
+
+            // Log del Dockerfile generado para debug
+            console.log('--- Dockerfile generado ---');
+            console.log(dockerfile);
+            console.log('---------------------------');
 
             const stream = await docker.buildImage({
                 context: repoPath,
