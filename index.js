@@ -63,7 +63,7 @@ app.post('/deploy', async (req, res) => {
                 buildpacksio/pack:latest \
                 build "${imageName}" \
                 --builder paketobuildpacks/builder-jammy-base \
-                --env "BP_NODE_PROJECT_BUILD_COMMAND=npm install && npm run build"`;
+                --env "BP_NODE_PROJECT_BUILD_COMMAND=npm install @swc/helpers --legacy-peer-deps && npm install --legacy-peer-deps && npm run build"`;
 
             console.log("Iniciando construcción con Buildpacks (esto puede tardar)...");
 
