@@ -3,7 +3,8 @@ const git = require('simple-git')();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process'); // Necesario para ejecutar 'pack'
+const os = require('os'); // ¡Añadido para obtener el ID del contenedor!
+const { exec } = require('child_process');
 
 const app = express();
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -48,16 +49,23 @@ app.post('/deploy', async (req, res) => {
             });
         } else {
             console.log(`✨ No hay Dockerfile. Usando Buildpacks para detectar el lenguaje...`);
-            // Usamos el builder de Google (v1) que soporta Node, Python, Go, Java, etc.
+            
+            // LA MAGIA DE DOCKER-IN-DOCKER COMIENZA AQUÍ
             const absoluteRepoPath = path.resolve(repoPath);
+            const containerId = os.hostname(); // Obtenemos el ID de este panel
 
-        // Usamos el comando nativo directamente
-            // Forzamos la API moderna para que no pelee con tu servidor nuevo
-            const packCommand = `DOCKER_API_VERSION=1.44 pack build ${imageName} --path ${repoPath} --builder gcr.io/buildpacks/builder:v1`;
+            // Le decimos a Docker que lance el 'pack' más moderno y comparta nuestra carpeta temp
+            const packCommand = `docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              --volumes-from ${containerId} \
+              -w "${absoluteRepoPath}" \
+              buildpacksio/pack:latest \
+              build "${imageName}" --builder gcr.io/buildpacks/builder:v1`;
+
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
                     if (error) {
-                        console.error(`Error en Buildpacks: ${stderr}`);
+                        console.error(`Error en Buildpacks: ${stderr || error.message}`);
                         return reject(new Error("Fallo en la autodetección del lenguaje (Buildpacks)"));
                     }
                     console.log(stdout);
