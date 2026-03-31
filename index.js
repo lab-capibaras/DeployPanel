@@ -52,6 +52,7 @@ app.post('/deploy', async (req, res) => {
             const absoluteRepoPath = path.resolve(repoPath);
 
         // Usamos el comando nativo directamente
+            // Forzamos la API moderna para que no pelee con tu servidor nuevo
             const packCommand = `DOCKER_API_VERSION=1.44 pack build ${imageName} --path ${repoPath} --builder gcr.io/buildpacks/builder:v1`;
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
