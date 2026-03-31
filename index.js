@@ -108,7 +108,8 @@ app.post('/deploy', async (req, res) => {
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network", 
-                RestartPolicy: { Name: "always" }
+                RestartPolicy: { Name: "always" },
+                Privileged: true // <--- AÑADE ESTA LÍNEA para evitar el error EACCES
             }
         });
 
