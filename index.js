@@ -92,60 +92,46 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
-            // FIX DEFINITIVO para Next.js 12 + @nextui-org/react:
-            //
-            // El problema:
-            //   - Next.js 12 hace alias webpack: "@swc/helpers" -> next/node_modules/@swc/helpers@0.4
-            //   - @swc/helpers@0.4 NO tiene la carpeta /_/, solo /lib/
-            //   - @nextui-org/react y @react-aria importan @swc/helpers/_/_class_private_field_*
-            //   - webpack.resolve.alias con subpaths no funciona porque el alias general de Next
-            //     tiene mayor prioridad
-            //
-            // La solución: NormalModuleReplacementPlugin intercepta las importaciones
-            // por regex ANTES de que webpack aplique sus aliases, redirigiendo los 3
-            // subpaths problemáticos a los archivos ESM de @swc/helpers@0.5 en la raíz.
-
-            // Extraer config original si existe
-            let originalConfigBody = '';
+            // Detectar standalone en el config existente (solo lectura de texto, no ejecución)
             let hasStandaloneOutput = false;
-
             if (existingNextConfig) {
-                const existingPath = path.join(repoPath, existingNextConfig);
-                const content = fs.readFileSync(existingPath, 'utf8');
+                const content = fs.readFileSync(path.join(repoPath, existingNextConfig), 'utf8');
                 if (content.includes('standalone')) hasStandaloneOutput = true;
-
-                // Guardar contenido original para envolverlo
-                originalConfigBody = content;
-
-                // Eliminar si no es .js (lo reemplazaremos con next.config.js)
-                if (existingNextConfig !== 'next.config.js') {
-                    fs.unlinkSync(existingPath);
-                }
-                console.log(`next.config existente (${existingNextConfig}) encontrado, aplicando NormalModuleReplacementPlugin fix...`);
             }
 
-            // Generar next.config.js con el fix
-            const newNextConfig = `const path = require('path');
+            // Determinar si necesitamos inyectar el fix de @swc/helpers
+            // Solo aplica a Next.js 12 o inferior (13+ no tiene este problema)
+            const needsSwcFix = nextMajor <= 12;
 
-// @swc/helpers@0.5 instalado en la raiz del proyecto
+            if (needsSwcFix) {
+                // Solo para Next.js 12: inyectar NormalModuleReplacementPlugin
+                // ESTRATEGIA: renombrar el config existente y crear un next.config.js
+                // wrapper que cargue el original y aplique el fix encima.
+                // Si el original es .js lo wrapeamos, si es .ts/.mjs lo renombramos
+                // a _next.config.original y lo cargamos con require si es posible,
+                // o simplemente creamos un config fresco con solo el plugin.
+
+                const nextConfigPath = path.join(repoPath, 'next.config.js');
+
+                if (existingNextConfig && existingNextConfig !== 'next.config.js') {
+                    // Es .ts o .mjs — no podemos hacer require() de ellos en un .js
+                    // Renombrar a un nombre reservado y crear config.js limpio con el fix
+                    const originalPath = path.join(repoPath, existingNextConfig);
+                    const backupName = '_original' + existingNextConfig;
+                    fs.renameSync(originalPath, path.join(repoPath, backupName));
+                    console.log(`${existingNextConfig} renombrado a ${backupName} (no compatible con require)`);
+                }
+
+                let newNextConfig;
+
+                if (!existingNextConfig || existingNextConfig !== 'next.config.js') {
+                    // Crear config limpio solo con el plugin
+                    newNextConfig = `const path = require('path');
 const swc05dir = path.dirname(require.resolve('@swc/helpers/package.json'));
 
-// Config original del proyecto (si existia)
-${originalConfigBody ? `// --- inicio config original ---\n${originalConfigBody}\n// --- fin config original ---` : ''}
-
 /** @type {import('next').NextConfig} */
-const baseConfig = ${originalConfigBody
-    ? (() => {
-        const m = originalConfigBody.match(/(?:module\.exports\s*=\s*|export\s+default\s+)(\{[\s\S]*?\})\s*;?\s*$/);
-        return m ? m[1] : '{}';
-    })()
-    : '{}'};
-
 module.exports = {
-  ...baseConfig,
   webpack(config, options) {
-    // FIX: NormalModuleReplacementPlugin redirige los imports /_/ de @swc/helpers
-    // a los archivos reales de la version 0.5.x, evitando el alias 0.4.x de Next.js 12
     const { webpack } = options;
     config.plugins.push(
       new webpack.NormalModuleReplacementPlugin(
@@ -161,18 +147,56 @@ module.exports = {
         path.join(swc05dir, 'esm', '_class_private_field_set.js')
       )
     );
+    return config;
+  },
+};
+`;
+                } else {
+                    // Es next.config.js — leerlo y wrapear su export
+                    const originalContent = fs.readFileSync(nextConfigPath, 'utf8');
+                    // Extraer el objeto de configuración del module.exports
+                    const exportMatch = originalContent.match(/module\.exports\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/);
+                    const originalConfigObj = exportMatch ? exportMatch[1] : '{}';
 
-    // Llamar al webpack config original si existia
-    if (typeof baseConfig.webpack === 'function') {
-      return baseConfig.webpack(config, options);
+                    newNextConfig = `const path = require('path');
+const swc05dir = path.dirname(require.resolve('@swc/helpers/package.json'));
+
+const originalConfig = ${originalConfigObj};
+
+/** @type {import('next').NextConfig} */
+module.exports = {
+  ...originalConfig,
+  webpack(config, options) {
+    const { webpack } = options;
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_init$/,
+        path.join(swc05dir, 'esm', '_class_private_field_init.js')
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_get$/,
+        path.join(swc05dir, 'esm', '_class_private_field_get.js')
+      ),
+      new webpack.NormalModuleReplacementPlugin(
+        /^@swc\\/helpers\\/_\\/_class_private_field_set$/,
+        path.join(swc05dir, 'esm', '_class_private_field_set.js')
+      )
+    );
+    if (typeof originalConfig.webpack === 'function') {
+      return originalConfig.webpack(config, options);
     }
     return config;
   },
 };
 `;
+                }
 
-            fs.writeFileSync(path.join(repoPath, 'next.config.js'), newNextConfig);
-            console.log('next.config.js generado con NormalModuleReplacementPlugin');
+                fs.writeFileSync(nextConfigPath, newNextConfig);
+                console.log('next.config.js generado con NormalModuleReplacementPlugin fix');
+
+            } else {
+                console.log(`Next.js ${nextMajor}.x — no necesita fix de @swc/helpers, usando config original`);
+            }
 
             let runnerStage;
             if (hasStandaloneOutput) {
