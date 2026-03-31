@@ -35,10 +35,9 @@ app.post('/deploy', async (req, res) => {
         // 2. DETECTAR TIPO DE PROYECTO
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
 
-        const hasNextConfig =
-            fs.existsSync(path.join(repoPath, 'next.config.js')) ||
-            fs.existsSync(path.join(repoPath, 'next.config.ts')) ||
-            fs.existsSync(path.join(repoPath, 'next.config.mjs'));
+        const nextConfigFiles = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
+        const existingNextConfig = nextConfigFiles.find(f => fs.existsSync(path.join(repoPath, f)));
+        const hasNextConfig = !!existingNextConfig;
 
         const packageJsonPath = path.join(repoPath, 'package.json');
         let isNextJs = hasNextConfig;
@@ -48,7 +47,7 @@ app.post('/deploy', async (req, res) => {
                 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
                 isNextJs = !!(pkg.dependencies?.next || pkg.devDependencies?.next);
             } catch (e) {
-                console.warn('No se pudo leer package.json para detectar Next.js:', e.message);
+                console.warn('No se pudo leer package.json:', e.message);
             }
         }
 
@@ -68,17 +67,14 @@ app.post('/deploy', async (req, res) => {
         const runDockerBuild = (stream) => new Promise((resolve, reject) => {
             docker.modem.followProgress(stream, (err, outputRes) => {
                 if (err) return reject(err);
-
                 outputRes.forEach(line => {
                     if (line.stream) process.stdout.write(line.stream);
                     if (line.error) process.stderr.write(line.error);
                 });
-
                 const errorLine = outputRes.find(l => l.error);
                 if (errorLine) {
                     return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
                 }
-
                 resolve(outputRes);
             });
         });
@@ -87,12 +83,7 @@ app.post('/deploy', async (req, res) => {
         if (hasDockerfile) {
             // --- ESTRATEGIA A: Dockerfile existente ---
             console.log(`Dockerfile detectado. Usando build tradicional...`);
-
-            const stream = await docker.buildImage({
-                context: repoPath,
-                src: ['.']
-            }, { t: imageName });
-
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
         } else if (isNextJs) {
@@ -102,16 +93,63 @@ app.post('/deploy', async (req, res) => {
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
-            // Verificar si el proyecto tiene "output: standalone" en next.config
+            // Inyectar webpack alias en next.config.js para redirigir @swc/helpers/_/ 
+            // a la versión 0.5 instalada en la raíz, sin romper la versión que usa Next internamente
+            const nextConfigPath = path.join(repoPath, existingNextConfig || 'next.config.js');
+            let nextConfigContent = '';
+
+            if (existingNextConfig) {
+                nextConfigContent = fs.readFileSync(nextConfigPath, 'utf8');
+                console.log(`next.config.js existente encontrado, inyectando webpack alias...`);
+            }
+
+            // Si ya tiene webpack config, la envolvemos; si no, creamos una nueva
+            const hasWebpackConfig = nextConfigContent.includes('webpack');
+
+            if (!hasWebpackConfig) {
+                // Crear o reemplazar con configuración que incluye webpack alias
+                const newConfig = `
+/** @type {import('next').NextConfig} */
+const originalConfig = (() => {
+  try {
+    ${nextConfigContent ? `
+    // Configuración original del proyecto
+    ${nextConfigContent
+        .replace(/module\.exports\s*=\s*/, 'return ')
+        .replace(/export default\s*/, 'return ')
+    }
+    ` : 'return {};'}
+  } catch(e) { return {}; }
+})() || {};
+
+module.exports = {
+  ...originalConfig,
+  webpack: (config, options) => {
+    // Alias para redirigir @swc/helpers/_/ a la versión compatible (0.5.x)
+    config.resolve = config.resolve || {};
+    config.resolve.alias = config.resolve.alias || {};
+    
+    const swcHelpersNew = require('path').resolve('./node_modules/@swc/helpers-new');
+    
+    // Redirigir las importaciones problemáticas de /_/ al nuevo @swc/helpers
+    config.resolve.alias['@swc/helpers/_'] = swcHelpersNew + '/_';
+    
+    if (originalConfig.webpack) {
+      return originalConfig.webpack(config, options);
+    }
+    return config;
+  },
+};
+`;
+                fs.writeFileSync(nextConfigPath, newConfig);
+                console.log('next.config.js generado con webpack alias');
+            }
+
+            // Verificar si el proyecto tiene "output: standalone"
             let hasStandaloneOutput = false;
-            const nextConfigFiles = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
-            for (const configFile of nextConfigFiles) {
-                const configPath = path.join(repoPath, configFile);
-                if (fs.existsSync(configPath)) {
-                    const content = fs.readFileSync(configPath, 'utf8');
-                    if (content.includes('standalone')) hasStandaloneOutput = true;
-                    break;
-                }
+            if (existingNextConfig) {
+                const content = fs.readFileSync(nextConfigPath, 'utf8');
+                if (content.includes('standalone')) hasStandaloneOutput = true;
             }
 
             let runnerStage;
@@ -140,27 +178,20 @@ ENV PORT=3000
 CMD ["npm", "start"]`;
             }
 
-            // Parche quirúrgico: instalar @swc/helpers@0.5 directamente
-            // en cada paquete que lo necesita (los que usan la API /_/)
-            // Esto NO afecta al @swc/helpers que usa Next.js internamente
-            const swcPatch = `
-mkdir -p /app/node_modules/@internationalized/date/node_modules/@swc/helpers && \\
-  npm pack @swc/helpers@0.5 --pack-destination /tmp 2>/dev/null && \\
-  tar -xzf /tmp/swc-helpers-*.tgz -C /tmp && \\
-  cp -r /tmp/package/. /app/node_modules/@internationalized/date/node_modules/@swc/helpers/ && \\
-  for pkg in $(find /app/node_modules -mindepth 2 -maxdepth 6 -name "package.json" | xargs grep -l '"@swc/helpers"' 2>/dev/null); do \\
-    dir=$(dirname $pkg); \\
-    if [ ! -d "$dir/node_modules/@swc/helpers" ]; then \\
-      mkdir -p "$dir/node_modules/@swc/helpers" && \\
-      cp -r /tmp/package/. "$dir/node_modules/@swc/helpers/"; \\
-    fi; \\
-  done`;
-
+            // El Dockerfile instala @swc/helpers@0.5 con un alias de nombre
+            // para que Next.js siga usando su propio @swc/helpers@0.4 internamente
             const dockerfile = `FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
-RUN ${swcPatch.trim()}
+# Instalar @swc/helpers 0.5 con nombre alternativo para no colisionar con el de Next.js
+RUN cp -r /app/node_modules/@swc/helpers /app/node_modules/@swc/helpers-new-backup 2>/dev/null || true && \\
+    npm install @swc/helpers@0.5 --legacy-peer-deps --no-save && \\
+    cp -r /app/node_modules/@swc/helpers /app/node_modules/@swc/helpers-new && \\
+    # Restaurar la versión original de @swc/helpers para Next.js
+    rm -rf /app/node_modules/@swc/helpers && \\
+    mv /app/node_modules/@swc/helpers-new-backup /app/node_modules/@swc/helpers 2>/dev/null || \\
+    npm install @swc/helpers@0.4 --legacy-peer-deps --no-save
 
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -212,7 +243,6 @@ ${runnerStage}
                     }
                     resolve();
                 });
-
                 packProcess.stdout.pipe(process.stdout);
                 packProcess.stderr.pipe(process.stderr);
             });
