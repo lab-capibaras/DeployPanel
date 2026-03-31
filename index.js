@@ -55,7 +55,7 @@ app.post('/deploy', async (req, res) => {
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "${absoluteRepoPath}":/workspace \
   -w /workspace \
-  buildpacksio/pack:0.29.0 \
+  buildpacksio/pack:latest \
   build "${imageName}" --builder gcr.io/buildpacks/builder:v1`;
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
