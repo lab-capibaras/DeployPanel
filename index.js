@@ -60,7 +60,7 @@ app.post('/deploy', async (req, res) => {
               --volumes-from ${containerId} \
               -w "${absoluteRepoPath}" \
               buildpacksio/pack:latest \
-              build "${imageName}" --builder gcr.io/buildpacks/builder:v1`;
+              build "${imageName}" --builder paketobuildpacks/builder-jammy-base`;
 
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
