@@ -49,7 +49,7 @@ app.post('/deploy', async (req, res) => {
         } else {
             console.log(`✨ No hay Dockerfile. Usando Buildpacks para detectar el lenguaje...`);
             // Usamos el builder de Google (v1) que soporta Node, Python, Go, Java, etc.
-            const packCommand = `DOCKER_API_VERSION=1.44 pack build ${imageName} --path ${repoPath} --builder gcr.io/buildpacks/builder:v1`;
+            const packCommand = `DOCKER_API_VERSION=1.38 pack build ${imageName} --path ${repoPath} --builder gcr.io/buildpacks/builder:v1`;
             
             await new Promise((resolve, reject) => {
                 exec(packCommand, (error, stdout, stderr) => {
