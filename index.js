@@ -40,7 +40,7 @@ app.post('/deploy', async (req, res) => {
 
         const packageJsonPath = path.join(repoPath, 'package.json');
         let isNextJs = !!existingNextConfig;
-        let isVite = false; // <-- Nueva variable para detectar Vite
+        let isVite = false; // Detección de Vite/React Puro
 
         if (!isNextJs && fs.existsSync(packageJsonPath)) {
             try {
@@ -207,7 +207,8 @@ ${runnerStage}
             const dockerfile = `FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+# Instalamos dependencias y forzamos la instalación de react-is por si el repo lo olvidó
+RUN npm install --legacy-peer-deps && npm install react-is --legacy-peer-deps
 COPY . .
 RUN npm run build
 
