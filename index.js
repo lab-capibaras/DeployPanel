@@ -94,7 +94,7 @@ app.post('/deploy', async (req, res) => {
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
                 [`traefik.http.routers.${subdomain}.entrypoints`]: "web",
                 // NOTA: Buildpacks suele exponer las apps en el puerto 8080 por defecto
-                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: hasDockerfile ? "3000" : "8080"
+                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000"
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network", 
