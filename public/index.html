@@ -50,7 +50,6 @@
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-2xl">
-        <!-- Header -->
         <div class="text-center mb-8 slide-up">
             <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">
                 DeployPanel
@@ -60,12 +59,9 @@
             </p>
         </div>
 
-        <!-- Main Card -->
         <div class="bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 overflow-hidden slide-up">
-            <!-- Form Section -->
             <div class="p-6 md:p-8" id="formSection">
                 <div class="space-y-5">
-                    <!-- Repository URL -->
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">
                             URL del Repositorio
@@ -78,7 +74,18 @@
                         >
                     </div>
 
-                    <!-- Subdomain -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Rama (Opcional)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="branch" 
+                            placeholder="Ej: main, develop, qa (Dejar vacío para default)"
+                            class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                        >
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">
                             Subdominio
@@ -96,7 +103,6 @@
                         </div>
                     </div>
 
-                    <!-- Deploy Button -->
                     <button 
                         onclick="deploy()"
                         id="deployBtn"
@@ -107,12 +113,9 @@
                 </div>
             </div>
 
-            <!-- Progress Section -->
             <div id="progressSection" class="hidden p-6 md:p-8 bg-gray-800 bg-opacity-50">
                 <div class="space-y-4">
-                    <!-- Progress Steps -->
                     <div class="space-y-3">
-                        <!-- Step 1: Clone -->
                         <div class="flex items-center space-x-4" id="step1">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center step-pending transition-all duration-500">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +136,6 @@
                             </div>
                         </div>
 
-                        <!-- Step 2: Build -->
                         <div class="flex items-center space-x-4" id="step2">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center step-pending transition-all duration-500">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,7 +156,6 @@
                             </div>
                         </div>
 
-                        <!-- Step 3: Deploy -->
                         <div class="flex items-center space-x-4" id="step3">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center step-pending transition-all duration-500">
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,21 +177,18 @@
                         </div>
                     </div>
 
-                    <!-- Progress Bar -->
                     <div class="mt-6">
                         <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
                             <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-blue-600 h-full transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>
 
-                    <!-- Status Message -->
                     <div id="statusMessage" class="text-center text-gray-400 text-sm mt-4">
                         Iniciando despliegue...
                     </div>
                 </div>
             </div>
 
-            <!-- Success Section -->
             <div id="successSection" class="hidden p-6 md:p-8">
                 <div class="text-center space-y-4">
                     <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto pulse-glow">
@@ -219,7 +217,6 @@
                 </div>
             </div>
 
-            <!-- Error Section -->
             <div id="errorSection" class="hidden p-6 md:p-8">
                 <div class="text-center space-y-4">
                     <div class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto">
@@ -239,7 +236,6 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="text-center mt-8 text-gray-500 text-sm">
             <p>Powered by Docker + Traefik + Buildpacks</p>
         </div>
@@ -249,19 +245,21 @@
         async function deploy() {
             const repoUrl = document.getElementById('repo').value.trim();
             const subdomain = document.getElementById('sub').value.trim();
+            const branch = document.getElementById('branch').value.trim(); // NUEVO: Capturar rama
             
             if (!repoUrl || !subdomain) {
-                alert('Por favor completa todos los campos');
+                alert('Por favor completa los campos obligatorios (URL y Subdominio)');
                 return;
             }
 
             //Validaciones básicas
             const githubPattern = /^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+(\.git)?$/;
 
-                if (!githubPattern.test(repoUrl)) {
+            if (!githubPattern.test(repoUrl)) {
                 alert('Por favor ingresa una URL de GitHub válida');
                 return;
-                }
+            }
+            
             // Show progress section
             document.getElementById('formSection').classList.add('hidden');
             document.getElementById('progressSection').classList.remove('hidden');
@@ -276,7 +274,8 @@
                 const res = await fetch('/deploy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ repoUrl, subdomain })
+                    // NUEVO: Enviar la rama en la petición
+                    body: JSON.stringify({ repoUrl, subdomain, branch }) 
                 });
                 
                 const data = await res.json();
@@ -340,6 +339,7 @@
         function resetForm() {
             document.getElementById('repo').value = '';
             document.getElementById('sub').value = '';
+            document.getElementById('branch').value = ''; // NUEVO: Limpiar el campo de rama
             document.getElementById('formSection').classList.remove('hidden');
             document.getElementById('progressSection').classList.add('hidden');
             document.getElementById('successSection').classList.add('hidden');
@@ -365,6 +365,10 @@
             if (e.key === 'Enter') deploy();
         });
         document.getElementById('sub').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') deploy();
+        });
+        // NUEVO: Escuchar el Enter también en el input de la rama
+        document.getElementById('branch').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') deploy();
         });
     </script>
