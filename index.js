@@ -39,8 +39,19 @@ app.post('/deploy', async (req, res) => {
         const existingNextConfig = nextConfigFileNames.find(f => fs.existsSync(path.join(repoPath, f)));
 
         const packageJsonPath = path.join(repoPath, 'package.json');
+        
+        // --- MEJORA: Buscar requirements.txt en la raíz y subcarpetas comunes ---
+        const possibleReqPaths = [
+            path.join(repoPath, 'requirements.txt'),
+            path.join(repoPath, 'app', 'requirements.txt'),
+            path.join(repoPath, 'backend', 'requirements.txt'),
+            path.join(repoPath, 'api', 'requirements.txt')
+        ];
+        const requirementsPath = possibleReqPaths.find(p => fs.existsSync(p));
+
         let isNextJs = !!existingNextConfig;
-        let isVite = false; // Detección de Vite/React Puro
+        let isVite = false;
+        let isPython = !!requirementsPath; // Será true si encontró el archivo en alguna ruta
 
         if (!isNextJs && fs.existsSync(packageJsonPath)) {
             try {
@@ -224,9 +235,32 @@ EXPOSE 3000
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
+        } else if (isPython) {
+            // --- ESTRATEGIA D: Proyecto Python / FastAPI ---
+            console.log(`Proyecto Python detectado. Generando Dockerfile...`);
+
+            // Obtenemos la ruta relativa del requirements.txt (ej. 'app/requirements.txt' o 'requirements.txt')
+            const reqRelativePath = path.relative(repoPath, requirementsPath);
+
+            const dockerfile = `FROM python:3.11-slim
+WORKDIR /app
+COPY ${reqRelativePath} ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 3000
+# Intentamos adivinar dónde está main.py basándonos en dónde estaba requirements.txt
+# Si estaba en la raíz, usamos main:app. Si estaba en 'app/', usamos app.main:app
+CMD ["sh", "-c", "if [ -f main.py ]; then uvicorn main:app --host 0.0.0.0 --port 3000; else uvicorn ${path.dirname(reqRelativePath).replace(/\\/g, '/')}.main:app --host 0.0.0.0 --port 3000; fi"]
+`;
+            fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
+            console.log('Dockerfile de Python/FastAPI generado exitosamente.');
+
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+            await runDockerBuild(stream);
+
         } else {
-            // --- ESTRATEGIA D: Buildpacks para otros lenguajes ---
-            console.log(`No hay Dockerfile, Next.js ni Vite. Usando Buildpacks...`);
+            // --- ESTRATEGIA E: Buildpacks para otros lenguajes (Fallback) ---
+            console.log(`No hay Dockerfile, Next.js, Vite ni Python. Usando Buildpacks...`);
 
             const absoluteRepoPath = path.resolve(repoPath);
             const containerId = os.hostname();
@@ -300,6 +334,34 @@ EXPOSE 3000
             status: 'error',
             details: error.message
         });
+    }
+});
+
+// --- RUTA PARA BORRAR CONTENEDORES ---
+app.delete('/deploy/:subdomain', async (req, res) => {
+    const { subdomain } = req.params;
+
+    if (!subdomain) {
+        return res.status(400).json({ status: 'error', message: "Falta el subdominio" });
+    }
+
+    try {
+        console.log(`Solicitud para eliminar el proyecto: ${subdomain}`);
+        
+        const containers = await docker.listContainers({ all: true });
+        const existing = containers.find(c => c.Names.includes(`/container-${subdomain}`));
+        
+        if (existing) {
+            const container = docker.getContainer(existing.Id);
+            await container.remove({ force: true });
+            console.log(`Contenedor container-${subdomain} eliminado.`);
+            res.json({ status: 'success', message: `El proyecto ${subdomain} ha sido eliminado correctamente.` });
+        } else {
+            res.status(404).json({ status: 'warning', message: `No se encontró ningún proyecto corriendo en ${subdomain}.` });
+        }
+    } catch (error) {
+        console.error("Error al eliminar:", error.message);
+        res.status(500).json({ status: 'error', details: error.message });
     }
 });
 
