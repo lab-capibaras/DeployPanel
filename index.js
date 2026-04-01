@@ -240,13 +240,27 @@ EXPOSE 3000
             console.log(`Proyecto Python detectado. Generando Dockerfile...`);
 
             const reqRelativePath = path.relative(repoPath, requirementsPath);
+            const absoluteReqDir = path.dirname(requirementsPath);
             const reqDir = path.dirname(reqRelativePath).replace(/\\/g, '/');
             
-            // Si requirements.txt está en la raíz, usamos main:app. 
-            // Si está en /app o /backend, usamos nombre_carpeta.main:app
-            let uvicornModule = "main:app";
+            // --- NUEVA INTELIGENCIA: Buscar el nombre real del archivo principal ---
+            const posiblesNombres = ['main.py', 'app.py', 'api.py', 'server.py', 'run.py'];
+            let archivoPrincipal = 'main.py'; // Por defecto
+
+            for (const archivo of posiblesNombres) {
+                if (fs.existsSync(path.join(absoluteReqDir, archivo))) {
+                    archivoPrincipal = archivo;
+                    console.log(`Archivo principal de Python detectado: ${archivoPrincipal}`);
+                    break;
+                }
+            }
+
+            const moduloPython = archivoPrincipal.replace('.py', ''); // Le quita el .py (ej: 'app.py' -> 'app')
+
+            // Construir la ruta para Uvicorn (ej: 'app:app' o 'backend.api:app')
+            let uvicornModule = `${moduloPython}:app`;
             if (reqDir !== '.') {
-                uvicornModule = `${reqDir}.main:app`;
+                uvicornModule = `${reqDir}.${moduloPython}:app`;
             }
 
             const dockerfile = `FROM python:3.11-slim
@@ -255,7 +269,7 @@ COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 3000
-# Comando de arranque simplificado y seguro
+# Arrancando Uvicorn con el archivo detectado automáticamente
 CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
