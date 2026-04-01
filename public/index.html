@@ -46,6 +46,20 @@
         .step-pending {
             background: #1f2937;
         }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+        .toast-enter {
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast-exit {
+            animation: slideOut 0.3s ease-in;
+        }
     </style>
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
@@ -251,14 +265,53 @@
         </div>
     </div>
 
+    <!-- Contenedor de Notificaciones Toast -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
     <script>
         let branchesCache = [];
+
+        // Sistema de notificaciones tipo toast
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const colors = {
+                success: 'bg-green-600',
+                error: 'bg-red-600',
+                warning: 'bg-yellow-600',
+                info: 'bg-blue-600'
+            };
+            
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            toast.className = `${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg toast-enter flex items-center space-x-3 min-w-[300px] max-w-md`;
+            toast.innerHTML = `
+                <span class="text-2xl">${icons[type]}</span>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="text-white hover:text-gray-200 text-xl font-bold">×</button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto-remover después de 4 segundos
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
 
         async function loadBranches() {
             const repoUrl = document.getElementById('repo').value.trim();
             
             if (!repoUrl) {
-                alert('Por favor ingresa primero la URL del repositorio');
+                showToast('Por favor ingresa primero la URL del repositorio', 'warning');
                 return;
             }
 
@@ -266,7 +319,7 @@
             const match = repoUrl.match(githubPattern);
             
             if (!match) {
-                alert('Por favor ingresa una URL de GitHub válida');
+                showToast('Por favor ingresa una URL de GitHub válida', 'error');
                 return;
             }
 
@@ -300,9 +353,9 @@
                 document.getElementById('branchSection').classList.remove('hidden');
                 loadText.textContent = '✓ Ramas Cargadas';
                 
-                alert(`✓ Se cargaron ${branchesCache.length} ramas exitosamente`);
+                showToast(`Se cargaron ${branchesCache.length} ramas exitosamente`, 'success');
             } catch (error) {
-                alert(error.message);
+                showToast(error.message, 'error');
                 loadText.textContent = '🔍 Cargar Ramas';
             } finally {
                 loadBtn.disabled = false;
@@ -315,7 +368,7 @@
             const branch = document.getElementById('branch').value.trim();
             
             if (!repoUrl || !subdomain || !branch) {
-                alert('Por favor completa todos los campos. Primero carga las ramas del repositorio.');
+                showToast('Por favor completa todos los campos. Primero carga las ramas del repositorio.', 'warning');
                 return;
             }
 
@@ -323,7 +376,7 @@
             const githubPattern = /^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+(\.git)?$/;
 
             if (!githubPattern.test(repoUrl)) {
-                alert('Por favor ingresa una URL de GitHub válida');
+                showToast('Por favor ingresa una URL de GitHub válida', 'error');
                 return;
             }
             
@@ -437,10 +490,10 @@
                 loadBranches();
             }
         });
-    </script>
-</body>
-</html>
         
         document.getElementById('sub').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') deploy();
         });
+    </script>
+</body>
+</html>
