@@ -237,7 +237,29 @@ EXPOSE 3000
 
         } else if (isPython) {
             // --- ESTRATEGIA D: Proyecto Python / FastAPI INTELIGENTE ---
-            console.log(`Proyecto Python detectado. Escaneando código para encontrar la app FastAPI...`);
+            console.log(`Proyecto Python detectado. Escaneando código y dependencias...`);
+
+            // --- INTELIGENCIA DE DEPENDENCIAS LINUX (NUEVO) ---
+            const reqContent = fs.readFileSync(requirementsPath, 'utf8').toLowerCase();
+            let linuxDeps = [];
+            
+            // Detectar base de datos y agregar drivers de sistema
+            if (reqContent.includes('pyodbc')) {
+                linuxDeps.push('unixodbc', 'unixodbc-dev', 'g++');
+            }
+            if (reqContent.includes('psycopg2')) {
+                linuxDeps.push('libpq-dev', 'gcc');
+            }
+            if (reqContent.includes('mysqlclient')) {
+                linuxDeps.push('default-libmysqlclient-dev', 'gcc');
+            }
+
+            let aptGetCommand = "";
+            if (linuxDeps.length > 0) {
+                const uniqueDeps = [...new Set(linuxDeps)].join(' ');
+                aptGetCommand = `RUN apt-get update && apt-get install -y ${uniqueDeps} && rm -rf /var/lib/apt/lists/*\n`;
+                console.log(`Bases de datos detectadas. Se instalarán: ${uniqueDeps}`);
+            }
 
             // Función recursiva para buscar FastAPI() en todos los archivos .py
             function findFastAPIApp(dir) {
@@ -289,7 +311,7 @@ EXPOSE 3000
 
             const dockerfile = `FROM python:3.11-slim
 WORKDIR /app
-COPY ${reqRelativePath} ./requirements.txt
+${aptGetCommand}COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 3000
