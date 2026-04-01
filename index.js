@@ -14,7 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.post('/deploy', async (req, res) => {
-    const { repoUrl, subdomain } = req.body;
+    // AÑADIMOS 'branch' PARA PODER ELEGIR LA RAMA DEL REPOSITORIO
+    const { repoUrl, subdomain, branch } = req.body;
 
     if (!repoUrl || !subdomain) {
         return res.status(400).send("Faltan datos: repoUrl o subdomain");
@@ -30,7 +31,18 @@ app.post('/deploy', async (req, res) => {
         // 1. CLONAR
         console.log(`Clonando ${repoUrl}...`);
         if (fs.existsSync(repoPath)) fs.rmSync(repoPath, { recursive: true, force: true });
-        await git.clone(repoUrl, repoPath, ['--depth', '1']);
+        
+        // --- NUEVA LÓGICA: Selección de Rama ---
+        const cloneOptions = ['--depth', '1'];
+        if (branch) {
+            cloneOptions.push('--branch', branch);
+            console.log(`Descargando la rama específica: ${branch}`);
+        } else {
+            console.log(`Descargando la rama por defecto (main/master)`);
+        }
+
+        await git.clone(repoUrl, repoPath, cloneOptions);
+        // ----------------------------------------
 
         // 2. DETECTAR TIPO DE PROYECTO
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
@@ -239,7 +251,7 @@ EXPOSE 3000
             // --- ESTRATEGIA D: Proyecto Python / FastAPI INTELIGENTE ---
             console.log(`Proyecto Python detectado. Escaneando código y dependencias...`);
 
-            // --- INTELIGENCIA DE DEPENDENCIAS LINUX (NUEVO) ---
+            // --- INTELIGENCIA DE DEPENDENCIAS LINUX ---
             const reqContent = fs.readFileSync(requirementsPath, 'utf8').toLowerCase();
             let linuxDeps = [];
             
