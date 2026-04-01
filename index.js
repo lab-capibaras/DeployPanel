@@ -388,7 +388,11 @@ CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
                 "traefik.enable": "true",
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
                 [`traefik.http.routers.${subdomain}.entrypoints`]: "web",
-                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000"
+                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000",
+                // --- VINCULACIÓN DE RAMA AL CONTENEDOR ---
+                "deploy.branch": branch || "default",
+                "deploy.repo": repoUrl,
+                "deploy.timestamp": new Date().toISOString()
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network",
@@ -399,10 +403,14 @@ CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
 
         await container.start();
 
+        console.log(`✓ Despliegue exitoso: ${subdomain}.stardest.com (rama: ${branch || 'default'})`);
+
         res.json({
             status: 'success',
             url: `http://${subdomain}.stardest.com`,
-            message: 'Aplicación desplegada exitosamente'
+            message: 'Aplicación desplegada exitosamente',
+            branch: branch || 'default',
+            deployedAt: new Date().toISOString()
         });
 
     } catch (error) {
@@ -438,6 +446,28 @@ app.delete('/deploy/:subdomain', async (req, res) => {
         }
     } catch (error) {
         console.error("Error al eliminar:", error.message);
+        res.status(500).json({ status: 'error', details: error.message });
+    }
+});
+
+// --- RUTA PARA CONSULTAR DESPLIEGUES ACTIVOS ---
+app.get('/deploys', async (req, res) => {
+    try {
+        const containers = await docker.listContainers({ all: true });
+        const deploys = containers
+            .filter(c => c.Names.some(name => name.includes('container-')))
+            .map(c => ({
+                subdomain: c.Names[0].replace('/container-', ''),
+                status: c.State,
+                branch: c.Labels['deploy.branch'] || 'unknown',
+                repo: c.Labels['deploy.repo'] || 'unknown',
+                deployedAt: c.Labels['deploy.timestamp'] || 'unknown',
+                image: c.Image
+            }));
+
+        res.json({ status: 'success', deploys });
+    } catch (error) {
+        console.error("Error al listar despliegues:", error.message);
         res.status(500).json({ status: 'error', details: error.message });
     }
 });

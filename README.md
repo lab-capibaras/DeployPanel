@@ -14,10 +14,13 @@ DeployPanel es una herramienta similar a Vercel/Netlify que permite desplegar ap
 
 ## Características
 
+- **🌿 Despliegue por Ramas**: Selecciona ramas específicas del repositorio para desplegar
+- **🔍 Selector de Ramas Dinámico**: Carga las ramas disponibles directamente desde GitHub API
+- **🎨 Subdominios Personalizados**: Elige libremente el subdominio que prefieras (py, qa-py, mi-app, etc.)
+- **🔗 Vinculación Persistente**: Cada contenedor guarda información sobre la rama, repo y fecha de despliegue
 - **Auto-detección de lenguajes**: Soporta múltiples lenguajes sin configuración manual (Node.js, Python, Java, Go, etc.)
 - **Docker-in-Docker**: Ejecuta builds dentro de contenedores
 - **Integración con Traefik**: Configuración automática de routing HTTP
-- **Subdominios personalizados**: Cada deploy obtiene su propio subdominio
 - **Interfaz web moderna**: UI profesional con diseño responsive
 - **Reemplazo automático**: Las nuevas versiones reemplazan automáticamente las antiguas
 
@@ -81,22 +84,41 @@ docker run -d \
 
 ## Uso
 
+### Despliegue desde la Interfaz Web
+
 1. Abra su navegador en `http://localhost:4000`
 2. Ingrese la URL del repositorio de GitHub (ej: `https://github.com/usuario/mi-app`)
-3. Defina un subdominio único (ej: `mi-app`)
-4. Haga clic en "Desplegar Aplicación"
-5. Espere 1-2 minutos mientras se construye y despliega
-6. Acceda a su aplicación en `http://mi-app.stardest.com`
+3. Haga clic en **"🔍 Cargar Ramas"** para obtener las ramas disponibles
+4. Seleccione la **rama** que desea desplegar del dropdown
+5. Escriba el **subdominio** que prefiera (ej: `py`, `qa-py`, `mi-app`, etc.)
+6. Haga clic en "Desplegar Aplicación"
+7. Espere 1-2 minutos mientras se construye y despliega
+8. Acceda a su aplicación en `http://{subdominio}.stardest.com`
+
+**Ejemplos comunes:**
+- Rama `main` → Subdominio `py` → `py.stardest.com`
+- Rama `qa` → Subdominio `qa-py` → `qa-py.stardest.com`
+- Rama `dev` → Subdominio `dev-py` → `dev-py.stardest.com`
+
+Para más detalles sobre el sistema de ramas, consulte [GUIA-RAMAS.md](GUIA-RAMAS.md).
 
 ### Ejemplo con API
 
 ```bash
+# Desplegar rama específica
 curl -X POST http://localhost:4000/deploy \
   -H "Content-Type: application/json" \
   -d '{
     "repoUrl": "https://github.com/usuario/mi-app",
-    "subdomain": "mi-app"
+    "subdomain": "py",
+    "branch": "main"
   }'
+
+# Consultar despliegues activos
+curl http://localhost:4000/deploys
+
+# Eliminar un despliegue
+curl -X DELETE http://localhost:4000/deploy/qa-py
 ```
 
 ## Estructura del Proyecto
@@ -106,6 +128,8 @@ DeployPanel/
 ├── Dockerfile              # Imagen del panel de despliegue
 ├── index.js               # Servidor Express con lógica de deploy
 ├── package.json           # Dependencias del proyecto
+├── README.md              # Documentación principal
+├── GUIA-RAMAS.md          # Guía detallada del sistema de ramas
 ├── public/
 │   └── index.html        # Interfaz web del panel
 └── temp/                 # Directorio temporal para clones (generado)
@@ -115,14 +139,16 @@ DeployPanel/
 
 ### Flujo de Despliegue
 
-1. **Clonación**: Se clona el repositorio en `./temp/{subdomain}`
-2. **Detección**:
+1. **Carga de Ramas**: El UI obtiene las ramas disponibles desde la API de GitHub
+2. **Selección**: El usuario selecciona la rama y escribe manualmente el subdominio deseado
+3. **Clonación**: Se clona la rama específica del repositorio en `./temp/{subdomain}`
+4. **Detección**:
    - Si existe `Dockerfile` → Build tradicional de Docker
    - Si no existe → Se usa Buildpacks para auto-detección
-3. **Build**: Se construye la imagen con el tag `user-app-{subdomain}`
-4. **Limpieza**: Se elimina el contenedor anterior con el mismo subdominio
-5. **Deploy**: Se crea y arranca el nuevo contenedor con labels de Traefik
-6. **Routing**: Traefik configura automáticamente el routing HTTP
+5. **Build**: Se construye la imagen con el tag `user-app-{subdomain}`
+6. **Limpieza**: Se elimina el contenedor anterior con el mismo subdominio
+7. **Deploy**: Se crea y arranca el nuevo contenedor con labels de Traefik y metadata de la rama
+8. **Routing**: Traefik configura automáticamente el routing HTTP
 
 ### Buildpacks
 
@@ -146,6 +172,9 @@ traefik.enable: true
 traefik.http.routers.{subdomain}.rule: Host(`{subdomain}.stardest.com`)
 traefik.http.routers.{subdomain}.entrypoints: web
 traefik.http.services.{subdomain}.loadbalancer.server.port: 3000
+deploy.branch: {rama-desplegada}
+deploy.repo: {url-repositorio}
+deploy.timestamp: {fecha-ISO}
 ```
 
 **Nota**: Ajuste el dominio `stardest.com` según su configuración.
