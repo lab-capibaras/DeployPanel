@@ -40,7 +40,7 @@ app.post('/deploy', async (req, res) => {
 
         const packageJsonPath = path.join(repoPath, 'package.json');
         
-        // --- MEJORA: Buscar requirements.txt en la raíz y subcarpetas comunes ---
+        // --- Buscar requirements.txt en la raíz y subcarpetas comunes ---
         const possibleReqPaths = [
             path.join(repoPath, 'requirements.txt'),
             path.join(repoPath, 'app', 'requirements.txt'),
@@ -239,8 +239,15 @@ EXPOSE 3000
             // --- ESTRATEGIA D: Proyecto Python / FastAPI ---
             console.log(`Proyecto Python detectado. Generando Dockerfile...`);
 
-            // Obtenemos la ruta relativa del requirements.txt (ej. 'app/requirements.txt' o 'requirements.txt')
             const reqRelativePath = path.relative(repoPath, requirementsPath);
+            const reqDir = path.dirname(reqRelativePath).replace(/\\/g, '/');
+            
+            // Si requirements.txt está en la raíz, usamos main:app. 
+            // Si está en /app o /backend, usamos nombre_carpeta.main:app
+            let uvicornModule = "main:app";
+            if (reqDir !== '.') {
+                uvicornModule = `${reqDir}.main:app`;
+            }
 
             const dockerfile = `FROM python:3.11-slim
 WORKDIR /app
@@ -248,9 +255,8 @@ COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 3000
-# Intentamos adivinar dónde está main.py basándonos en dónde estaba requirements.txt
-# Si estaba en la raíz, usamos main:app. Si estaba en 'app/', usamos app.main:app
-CMD ["sh", "-c", "if [ -f main.py ]; then uvicorn main:app --host 0.0.0.0 --port 3000; else uvicorn ${path.dirname(reqRelativePath).replace(/\\/g, '/')}.main:app --host 0.0.0.0 --port 3000; fi"]
+# Comando de arranque simplificado y seguro
+CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Python/FastAPI generado exitosamente.');
