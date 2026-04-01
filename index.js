@@ -236,32 +236,56 @@ EXPOSE 3000
             await runDockerBuild(stream);
 
         } else if (isPython) {
-            // --- ESTRATEGIA D: Proyecto Python / FastAPI ---
-            console.log(`Proyecto Python detectado. Generando Dockerfile...`);
+            // --- ESTRATEGIA D: Proyecto Python / FastAPI INTELIGENTE ---
+            console.log(`Proyecto Python detectado. Escaneando código para encontrar la app FastAPI...`);
 
-            const reqRelativePath = path.relative(repoPath, requirementsPath);
-            const absoluteReqDir = path.dirname(requirementsPath);
-            const reqDir = path.dirname(reqRelativePath).replace(/\\/g, '/');
-            
-            // --- NUEVA INTELIGENCIA: Buscar el nombre real del archivo principal ---
-            const posiblesNombres = ['main.py', 'app.py', 'api.py', 'server.py', 'run.py'];
-            let archivoPrincipal = 'main.py'; // Por defecto
-
-            for (const archivo of posiblesNombres) {
-                if (fs.existsSync(path.join(absoluteReqDir, archivo))) {
-                    archivoPrincipal = archivo;
-                    console.log(`Archivo principal de Python detectado: ${archivoPrincipal}`);
-                    break;
+            // Función recursiva para buscar FastAPI() en todos los archivos .py
+            function findFastAPIApp(dir) {
+                let results = [];
+                const list = fs.readdirSync(dir);
+                for (const file of list) {
+                    const filePath = path.join(dir, file);
+                    const stat = fs.statSync(filePath);
+                    if (stat && stat.isDirectory()) {
+                        // Ignorar carpetas basura o virtuales
+                        if (!['node_modules', '.git', 'venv', '__pycache__'].includes(file)) {
+                            results = results.concat(findFastAPIApp(filePath));
+                        }
+                    } else if (file.endsWith('.py')) {
+                        const content = fs.readFileSync(filePath, 'utf8');
+                        // Busca algo como: app = FastAPI() o my_api = FastAPI(...)
+                        const match = content.match(/([a-zA-Z0-9_]+)\s*=\s*FastAPI\(/);
+                        if (match) {
+                            results.push({ filePath, appName: match[1] });
+                        }
+                    }
                 }
+                return results;
             }
 
-            const moduloPython = archivoPrincipal.replace('.py', ''); // Le quita el .py (ej: 'app.py' -> 'app')
+            const fastApiApps = findFastAPIApp(repoPath);
+            let uvicornModule = "main:app"; // Valor por defecto de emergencia
 
-            // Construir la ruta para Uvicorn (ej: 'app:app' o 'backend.api:app')
-            let uvicornModule = `${moduloPython}:app`;
-            if (reqDir !== '.') {
-                uvicornModule = `${reqDir}.${moduloPython}:app`;
+            if (fastApiApps.length > 0) {
+                const appDef = fastApiApps[0]; // Tomamos el primero que encuentre
+                const relPath = path.relative(repoPath, appDef.filePath);
+                const parsedPath = path.parse(relPath);
+                
+                // Convierte la ruta de carpetas en formato Python (ej: src/api -> src.api)
+                let modulePath = parsedPath.dir 
+                    ? `${parsedPath.dir.replace(/\\/g, '/').replace(/\//g, '.')}.${parsedPath.name}` 
+                    : parsedPath.name;
+                
+                uvicornModule = `${modulePath}:${appDef.appName}`;
+                
+                console.log(`¡EXITO! FastAPI encontrado en el archivo: ${relPath}`);
+                console.log(`Variable detectada: ${appDef.appName}`);
+                console.log(`Módulo Uvicorn configurado como: ${uvicornModule}`);
+            } else {
+                console.log(`⚠️ No se encontró la declaración 'FastAPI()' en el código. Usando fallback: main:app`);
             }
+
+            const reqRelativePath = path.relative(repoPath, requirementsPath).replace(/\\/g, '/');
 
             const dockerfile = `FROM python:3.11-slim
 WORKDIR /app
@@ -269,7 +293,6 @@ COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 3000
-# Arrancando Uvicorn con el archivo detectado automáticamente
 CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
