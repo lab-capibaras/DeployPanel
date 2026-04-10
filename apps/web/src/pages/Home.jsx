@@ -351,7 +351,7 @@ export default function Home() {
             <div className="border-t border-[#2F4A67]/20 pt-8 text-center">
               <p className="text-[#CBCDD3]">
                 © 2025 StarDest. Plataforma de despliegue automatizado.
-                by Angel Corona
+                by Angel Corona.
               </p>
             </div>
           </div>
