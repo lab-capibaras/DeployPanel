@@ -92,12 +92,6 @@ function App() {
             </div>
             <div className="flex gap-4 sm:gap-6 items-center">
               <Link
-                to="/"
-                className={`text-sm sm:text-base font-medium transition ${location.pathname === '/' ? 'text-[#CBCDD3]' : 'text-[#CBCDD3]/80 hover:text-white'}`}
-              >
-                Inicio
-              </Link>
-              <Link
                 to="/login"
                 className={`text-sm sm:text-base font-medium transition ${location.pathname === '/login' ? 'text-[#CBCDD3]' : 'text-[#CBCDD3]/80 hover:text-white'}`}
               >
