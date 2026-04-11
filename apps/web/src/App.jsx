@@ -39,9 +39,23 @@ const TOOLS = [
   },
 ];
 
+const NAV_SECTIONS = [
+  {
+    id: 'herramientas',
+    label: 'Herramientas',
+    icon: (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    ),
+    items: TOOLS,
+  },
+  // Agrega más secciones aquí en el futuro, ej:
+  // { id: 'recursos', label: 'Recursos', icon: (...), items: [...] },
+];
+
 function App() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openSection, setOpenSection] = useState('herramientas'); // open by default
   const drawerRef = useRef(null);
 
   // Close on route change
@@ -162,7 +176,7 @@ function App() {
 
           {/* Drawer header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#2F4A67]/30">
-            <span className="text-white font-bold text-base">Herramientas</span>
+            <span className="text-white font-bold text-base">Menú</span>
             <button
               onClick={() => setMobileOpen(false)}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 transition"
@@ -173,24 +187,59 @@ function App() {
             </button>
           </div>
 
-          {/* Tool items */}
-          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-            {TOOLS.map((tool) => (
-              <Link
-                key={tool.label}
-                to={tool.to}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30 transition group"
-              >
-                <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-[#2F4A67] bg-[#0F2C45]/50 text-white group-hover:border-white/30 transition">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
+          {/* Accordion sections */}
+          <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+            {NAV_SECTIONS.map((section) => {
+              const isOpen = openSection === section.id;
+              return (
+                <div key={section.id} className="rounded-xl overflow-hidden">
+                  {/* Section header / trigger */}
+                  <button
+                    onClick={() => setOpenSection(isOpen ? null : section.id)}
+                    className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25 transition group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67] transition flex-shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
+                      </div>
+                      <span className="text-sm font-semibold text-white">{section.label}</span>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-[#CBCDD3] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Sub-items (accordion body) */}
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
+                      {section.items.map((item) => (
+                        <Link
+                          key={item.label}
+                          to={item.to}
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30 transition group/item"
+                        >
+                          <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30 transition">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-white leading-tight">{item.label}</p>
+                            <p className="text-xs text-[#CBCDD3]/80 mt-0.5 leading-tight">{item.desc}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{tool.label}</p>
-                  <p className="text-xs text-[#CBCDD3] mt-0.5">{tool.desc}</p>
-                </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
 
           {/* Drawer footer */}
