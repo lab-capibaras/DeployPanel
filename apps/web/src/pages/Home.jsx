@@ -9,16 +9,16 @@ export default function Home() {
       <div className="relative z-10 font-sans">
 
         {/* ============ HERO ============ */}
-        <section className="relative pt-36 pb-24 px-6 flex flex-col items-center text-center">
+        <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24 px-5 sm:px-6 flex flex-col items-center text-center">
           {/* Glow background */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#1e3a5f]/25 blur-[130px] rounded-full pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[700px] h-[340px] sm:h-[700px] bg-[#1e3a5f]/25 blur-[80px] sm:blur-[130px] rounded-full pointer-events-none" />
 
-          <div className="inline-flex items-center gap-2 mb-10 px-5 py-2.5 bg-[#0F2C45]/40 border border-[#2F4A67]/60 rounded-full">
+          <div className="inline-flex items-center gap-2 mb-7 sm:mb-10 px-4 py-2 sm:px-5 sm:py-2.5 bg-[#0F2C45]/40 border border-[#2F4A67]/60 rounded-full">
             <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="text-[#CBCDD3] text-sm font-medium tracking-wide">Plataforma de Despliegue Avanzada</span>
+            <span className="text-[#CBCDD3] text-xs sm:text-sm font-medium tracking-wide">Plataforma de Despliegue Avanzada</span>
           </div>
 
-          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tight mb-8 leading-none">
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight mb-6 sm:mb-8 leading-none">
             <span className="text-white">Escala sin</span>
             <br />
             <span className="bg-gradient-to-r from-[#60A5FA] via-[#3B82F6] to-[#a5c8ff] bg-clip-text text-transparent">
@@ -26,14 +26,14 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="text-xl sm:text-2xl text-[#CBCDD3] max-w-2xl leading-relaxed mb-14 font-light">
+          <p className="text-base sm:text-xl md:text-2xl text-[#CBCDD3] max-w-2xl leading-relaxed mb-10 sm:mb-14 font-light">
             Arquitectura en la nube completamente automatizada. Integra tu repositorio, orquesta tus entornos y despliega infraestructura global con zero-downtime.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <Link
               to="/deploy"
-              className="px-9 py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] hover:border-[#60A5FA]/50 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_30px_rgba(15,44,69,0.6)] hover:shadow-[0_0_45px_rgba(47,74,103,0.7)] flex items-center gap-2 group"
+              className="w-full sm:w-auto px-7 sm:px-9 py-3.5 sm:py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] hover:border-[#60A5FA]/50 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_30px_rgba(15,44,69,0.6)] hover:shadow-[0_0_45px_rgba(47,74,103,0.7)] flex items-center justify-center gap-2 group"
             >
               Comenzar Despliegue
               <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,7 +42,7 @@ export default function Home() {
             </Link>
             <a
               href="#features"
-              className="px-9 py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition-all duration-300"
+              className="w-full sm:w-auto px-7 sm:px-9 py-3.5 sm:py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition-all duration-300 text-center"
             >
               Explorar Arquitectura
             </a>
@@ -50,35 +50,35 @@ export default function Home() {
         </section>
 
         {/* ============ METRICS STRIP ============ */}
-        <div className="border-y border-[#2F4A67]/25 bg-[#0F2C45]/15 py-10 px-6">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div className="border-y border-[#2F4A67]/25 bg-[#0F2C45]/15 py-8 sm:py-10 px-5 sm:px-6">
+          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
             {[
               { val: '99.99%', label: 'SLA Garantizado' },
               { val: '< 10ms', label: 'Latencia Global' },
               { val: '3M+',    label: 'Deployments' },
               { val: 'Zero',   label: 'Config Manual' },
             ].map(({ val, label }) => (
-              <div key={label} className="flex flex-col items-center gap-2">
-                <span className="text-3xl sm:text-4xl font-black text-white">{val}</span>
-                <span className="text-xs font-semibold tracking-widest text-[#2F4A67] uppercase">{label}</span>
+              <div key={label} className="flex flex-col items-center gap-1.5 sm:gap-2">
+                <span className="text-2xl sm:text-3xl md:text-4xl font-black text-white">{val}</span>
+                <span className="text-[10px] sm:text-xs font-semibold tracking-widest text-[#2F4A67] uppercase">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* ============ BENTO FEATURES ============ */}
-        <section id="features" className="py-28 px-6">
+        <section id="features" className="py-20 sm:py-28 px-4 sm:px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 tracking-tight">
+            <div className="text-center mb-12 sm:mb-20">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-5 tracking-tight">
                 Infraestructura como Experiencia
               </h2>
-              <p className="text-[#CBCDD3] text-lg max-w-xl mx-auto">
+              <p className="text-[#CBCDD3] text-base sm:text-lg max-w-xl mx-auto">
                 No lidies con servidores. Hemos abstraído la complejidad operativa para que te enfoques solo en enviar código.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
 
               {/* Big card — Pipeline */}
               <div className="md:col-span-2 rounded-2xl bg-[#0F2C45]/40 border border-[#2F4A67]/50 p-8 hover:border-[#2F4A67] transition-all duration-500 group">
@@ -165,13 +165,13 @@ export default function Home() {
         </section>
 
         {/* ============ TIMELINE ============ */}
-        <section className="py-28 px-6">
+        <section className="py-20 sm:py-28 px-5 sm:px-6">
           <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-5 tracking-tight">
+            <div className="text-center mb-14 sm:mb-20">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-5 tracking-tight">
                 Arquitectura de Cero a Cien
               </h2>
-              <p className="text-[#CBCDD3] text-lg">
+              <p className="text-[#CBCDD3] text-base sm:text-lg">
                 El ciclo de vida de tu aplicación, simplificado.
               </p>
             </div>
@@ -223,22 +223,22 @@ export default function Home() {
         </section>
 
         {/* ============ CTA ============ */}
-        <section className="py-28 px-6">
-          <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-b from-[#0F2C45]/60 to-[#0b0f19]/40 border border-[#2F4A67]/50 px-8 py-20">
-            <div className="w-16 h-16 rounded-2xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mx-auto mb-8">
+        <section className="py-20 sm:py-28 px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-b from-[#0F2C45]/60 to-[#0b0f19]/40 border border-[#2F4A67]/50 px-5 sm:px-8 py-14 sm:py-20">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mx-auto mb-6 sm:mb-8">
               <svg className="w-8 h-8 text-[#60A5FA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zm0 0l4.94-4.94m6.34-8.5a12.88 12.88 0 010 9.17m-2.83-6.34a8.5 8.5 0 010 3.5"/>
               </svg>
             </div>
-            <h2 className="text-4xl sm:text-5xl font-black text-white mb-6 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 sm:mb-6 tracking-tight">
               El Futuro de la Infraestructura
             </h2>
-            <p className="text-xl text-[#CBCDD3] mb-12 max-w-2xl mx-auto font-light leading-relaxed">
+            <p className="text-base sm:text-xl text-[#CBCDD3] mb-8 sm:mb-12 max-w-2xl mx-auto font-light leading-relaxed">
               Deja de operar servidores y manejar escalamiento complejo. Comienza a implementar experiencias sólidas desde hoy.
             </p>
             <Link
               to="/deploy"
-              className="inline-flex px-12 py-5 bg-white text-[#0b0f19] hover:bg-[#dbeafe] font-black rounded-xl transition-all duration-300 shadow-[0_8px_40px_rgba(255,255,255,0.12)] hover:shadow-[0_8px_50px_rgba(255,255,255,0.2)] text-base tracking-wide"
+              className="inline-flex px-8 sm:px-12 py-4 sm:py-5 bg-white text-[#0b0f19] hover:bg-[#dbeafe] font-black rounded-xl transition-all duration-300 shadow-[0_8px_40px_rgba(255,255,255,0.12)] hover:shadow-[0_8px_50px_rgba(255,255,255,0.2)] text-sm sm:text-base tracking-wide"
             >
               Inicia un Despliegue Configurado
             </Link>
