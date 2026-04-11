@@ -32,9 +32,8 @@ function App() {
                 <div className="absolute top-full left-0 mt-1 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
                   <glass-element auto-size="true" radius="8" no-border="true" depth="2" blur="2" strength="20" background-color="rgba(11, 15, 25, 0.95)" chromatic-aberration="1" style={{ "--glass-padding": "0" }}>
                     <div className="py-2 flex flex-col">
-                      <Link to="/deploy" className="px-4 py-2 text-sm text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/30 transition">Nuevo Proyecto</Link>
-                      <Link to="#" className="px-4 py-2 text-sm text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/30 transition">Bases de Datos</Link>
-                      <Link to="#" className="px-4 py-2 text-sm text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/30 transition">Dominios</Link>
+                      <Link to="/deploy" className="px-4 py-2 text-sm text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/30 transition">Despliegue</Link>
+                      <Link to="#" className="px-4 py-2 text-sm text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/30 transition">Pizarra</Link>
                     </div>
                   </glass-element>
                 </div>
@@ -53,14 +52,6 @@ function App() {
               >
                 Login
               </Link>
-              <glass-element auto-size="true" radius="8" no-border="true" depth="2" blur="1" strength="15" background-color={location.pathname === '/deploy' ? 'rgba(15, 44, 69, 0.9)' : 'rgba(47, 74, 103, 0.7)'} chromatic-aberration="1" style={{ "--glass-padding": "0" }}>
-                <Link
-                  to="/deploy"
-                  className="block px-4 py-2 font-medium text-white transition rounded-lg"
-                >
-                  Deploy
-                </Link>
-              </glass-element>
             </div>
           </div>
         </glass-element>
