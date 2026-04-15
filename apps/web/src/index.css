@@ -1,8 +1,407 @@
 @import "tailwindcss";
 
+/* ─── Suprimir TODA animación de clic en el navbar ───────────────── */
+nav,
+nav *,
+nav glass-element,
+nav glass-element * {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none;
+  outline: none;
+}
+
+/* Bloquear animaciones internas del glass-element en el navbar */
+nav glass-element canvas,
+nav glass-element::before,
+nav glass-element::after {
+  animation: none !important;
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+/* Evitar flash de selección de texto al hacer clic en espacio vacío */
+nav {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ─── Language label switching via [data-lang] on <html> ─────────── */
+/* Default (ES) */
+.nav-label-en  { display: none; }
+.nav-label-es  { display: inline; }
+.nav-tools-en  { display: none; }
+.nav-tools-es  { display: contents; }
+
+/* When EN */
+html[data-lang="en"] .nav-label-en { display: inline; }
+html[data-lang="en"] .nav-label-es { display: none; }
+html[data-lang="en"] .nav-tools-en { display: contents; }
+html[data-lang="en"] .nav-tools-es { display: none; }
+
+/* ─── Dark mode (default) ──────────────────────────────── */
+:root {
+  --bg-primary:   #0b0f19;
+  --bg-secondary: #0F2C45;
+  --border-color: rgba(47, 74, 103, 0.5);
+  --text-primary: #ffffff;
+  --text-muted:   rgba(203, 205, 211, 0.8);
+  --nav-bg:       rgba(11, 15, 25, 0.7);
+  --drawer-bg:    rgba(11, 15, 25, 0.95);
+}
+
+/* ─── Light mode ───────────────────────────────────────── */
+html.light-mode {
+  --bg-primary:   #eef3fc;
+  --bg-secondary: #dce8f8;
+  --border-color: rgba(100, 150, 200, 0.35);
+  --text-primary: #0d1b2a;
+  --text-muted:   #4a6a8a;
+  --nav-bg:       rgba(238, 243, 252, 0.85);
+  --drawer-bg:    rgba(238, 243, 252, 0.98);
+}
+
+/* ── Body & root backgrounds ── */
+html.light-mode body {
+  background-color: #eef3fc;
+  color: #0d1b2a;
+}
+
+/* ── Page wrapper backgrounds ── */
+html.light-mode .bg-\[\#0b0f19\] {
+  background-color: #eef3fc !important;
+}
+html.light-mode .bg-\[\#040812\] {
+  background-color: #d4e4f4 !important;
+}
+
+/* ── Texts ── */
+html.light-mode .text-white {
+  color: #0d1b2a !important;
+}
+html.light-mode .text-\[\#CBCDD3\] {
+  color: #4a6a8a !important;
+}
+html.light-mode .text-\[\#CBCDD3\]\/80,
+html.light-mode .text-\[\#CBCDD3\]\/70,
+html.light-mode .text-\[\#CBCDD3\]\/50 {
+  color: rgba(74,106,138,0.75) !important;
+}
+html.light-mode .text-\[\#2F4A67\] {
+  color: #2563eb !important;
+}
+html.light-mode .text-\[\#4a6a8a\] {
+  color: #64748b !important;
+}
+
+/* ── Gradient heading text ── */
+html.light-mode .from-\[\#60A5FA\].via-\[\#3B82F6\].to-\[\#a5c8ff\] {
+  background-image: linear-gradient(to right, #2563eb, #1d4ed8, #60a5fa) !important;
+}
+html.light-mode .from-\[\#60A5FA\].to-\[\#3B82F6\] {
+  background-image: linear-gradient(to right, #2563eb, #1d4ed8) !important;
+}
+
+/* ── Borders ── */
+html.light-mode .border-\[\#2F4A67\] {
+  border-color: rgba(100,150,200,0.5) !important;
+}
+html.light-mode .border-\[\#2F4A67\]\/60 {
+  border-color: rgba(100,150,200,0.45) !important;
+}
+html.light-mode .border-\[\#2F4A67\]\/50 {
+  border-color: rgba(100,150,200,0.4) !important;
+}
+html.light-mode .border-\[\#2F4A67\]\/40 {
+  border-color: rgba(100,150,200,0.3) !important;
+}
+html.light-mode .border-\[\#2F4A67\]\/30,
+html.light-mode .border-\[\#2F4A67\]\/25,
+html.light-mode .border-\[\#2F4A67\]\/20 {
+  border-color: rgba(100,150,200,0.2) !important;
+}
+html.light-mode .border-y.border-\[\#2F4A67\]\/25,
+html.light-mode .border-t.border-\[\#2F4A67\]\/30,
+html.light-mode .border-b.border-\[\#2F4A67\]\/30 {
+  border-color: rgba(100,150,200,0.2) !important;
+}
+
+/* ── Card & section backgrounds ── */
+html.light-mode .bg-\[\#0F2C45\]\/40 {
+  background-color: rgba(180,210,245,0.45) !important;
+}
+html.light-mode .bg-\[\#0F2C45\]\/25 {
+  background-color: rgba(180,210,245,0.3) !important;
+}
+html.light-mode .bg-\[\#0F2C45\]\/15 {
+  background-color: rgba(180,210,245,0.2) !important;
+}
+html.light-mode .bg-\[\#0F2C45\]\/30 {
+  background-color: rgba(180,210,245,0.35) !important;
+}
+html.light-mode .bg-\[\#0F2C45\]\/50 {
+  background-color: rgba(180,210,245,0.5) !important;
+}
+html.light-mode .bg-\[\#0F2C45\] {
+  background-color: #cce0f5 !important;
+}
+html.light-mode .bg-\[\#0b0f19\]\/90,
+html.light-mode .bg-\[\#0b0f19\]\/80,
+html.light-mode .bg-\[\#0b0f19\]\/70,
+html.light-mode .bg-\[\#0b0f19\]\/60,
+html.light-mode .bg-\[\#0b0f19\]\/50 {
+  background-color: rgba(220,232,248,0.8) !important;
+}
+
+/* ── Bento gradient backgrounds ── */
+html.light-mode .from-\[\#0F2C45\]\/60.to-\[\#0b0f19\]\/40 {
+  background-image: linear-gradient(to bottom, rgba(180,210,245,0.6), rgba(220,232,248,0.4)) !important;
+}
+
+/* ── Glow decorations: tone them down ── */
+html.light-mode .bg-\[\#1e3a5f\]\/25 {
+  background-color: rgba(37,99,235,0.08) !important;
+}
+
+/* ── Icon wrappers ── */
+html.light-mode .bg-\[\#0b0f19\].border-\[\#2F4A67\] {
+  background-color: #dce8f8 !important;
+  border-color: rgba(100,150,200,0.5) !important;
+}
+
+/* ── Buttons: primary ── */
+html.light-mode .bg-\[\#0F2C45\].hover\:bg-\[\#1a3f5e\] {
+  background-color: #1d4ed8 !important;
+  border-color: rgba(29,78,216,0.5) !important;
+  color: #fff !important;
+}
+html.light-mode .hover\:bg-\[\#1a3f5e\]:hover {
+  background-color: #1e40af !important;
+}
+
+/* ── Buttons: secondary/outline ── */
+html.light-mode .border-\[\#2F4A67\]\/50.text-\[\#CBCDD3\] {
+  color: #4a6a8a !important;
+  border-color: rgba(100,150,200,0.4) !important;
+}
+html.light-mode .hover\:bg-\[\#2F4A67\]\/20:hover {
+  background-color: rgba(100,150,200,0.15) !important;
+}
+html.light-mode .hover\:bg-\[\#2F4A67\]\/30:hover {
+  background-color: rgba(100,150,200,0.25) !important;
+}
+
+/* ── Progress bar track ── */
+html.light-mode .bg-\[\#2F4A67\]\/30 {
+  background-color: rgba(100,150,200,0.25) !important;
+}
+html.light-mode .bg-\[\#2F4A67\]\/70 {
+  background-color: rgba(100,150,200,0.5) !important;
+}
+html.light-mode .bg-\[\#2F4A67\] {
+  background-color: rgba(100,150,200,0.6) !important;
+}
+
+/* ── Mono log terminal ── */
+html.light-mode .font-mono.bg-\[\#0b0f19\]\/80 {
+  background-color: rgba(220,232,248,0.9) !important;
+}
+html.light-mode .text-\[\#4a6a8a\] {
+  color: #64748b !important;
+}
+
+/* ── Timeline gradient ── */
+html.light-mode .from-\[\#2F4A67\].via-\[\#3B82F6\] {
+  background-image: linear-gradient(to bottom, rgba(100,150,200,0.4), #3b82f6, transparent) !important;
+}
+
+/* ── CTA button (white bg) ── */
+html.light-mode .bg-white.text-\[\#0b0f19\] {
+  background-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+html.light-mode .hover\:bg-\[\#dbeafe\]:hover {
+  background-color: #1e40af !important;
+}
+
+/* ── Hover border accents ── */
+html.light-mode .hover\:border-\[\#2F4A67\]:hover {
+  border-color: rgba(37,99,235,0.5) !important;
+}
+html.light-mode .hover\:border-\[\#60A5FA\]\/50:hover {
+  border-color: rgba(37,99,235,0.5) !important;
+}
+
+/* ── Navbar overrides ── */
+html.light-mode nav {
+  border-bottom-color: rgba(100,150,200,0.25) !important;
+}
+html.light-mode nav .text-white,
+html.light-mode nav a.text-white {
+  color: #0d1b2a !important;
+}
+html.light-mode nav .text-\[\#CBCDD3\]\/80 {
+  color: rgba(74,106,138,0.8) !important;
+}
+
+/* ── Navbar liquid glass: light tint ── */
+html.light-mode nav > div {
+  background: rgba(238,243,252,0.6) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 4px 24px rgba(100,150,200,0.15) !important;
+}
+
+/* ── Mobile drawer light ── */
+html.light-mode .bg-\[\#0b0f19\]\/95 {
+  background-color: rgba(238,243,252,0.98) !important;
+}
+
+/* ── PreferencesPanel in light mode ── */
+html.light-mode .pref-trigger-btn {
+  border-color: rgba(100,150,200,0.45) !important;
+  background: rgba(180,210,245,0.3) !important;
+  color: #0d1b2a !important;
+}
+
+/* ── Deploy form inputs ── */
+html.light-mode input[type="text"],
+html.light-mode select {
+  background-color: rgba(220,232,248,0.8) !important;
+  border-color: rgba(100,150,200,0.4) !important;
+  color: #0d1b2a !important;
+}
+html.light-mode input::placeholder {
+  color: rgba(74,106,138,0.5) !important;
+}
+html.light-mode select option {
+  background-color: #dce8f8;
+  color: #0d1b2a;
+}
+
+/* ── Cargar Ramas button ── */
+html.light-mode .bg-\[\#2F4A67\]\/60 {
+  background-color: rgba(100,150,200,0.35) !important;
+}
+
+/* ── Footer text ── */
+html.light-mode footer .text-white {
+  color: #0d1b2a !important;
+}
+html.light-mode footer a {
+  color: rgba(74,106,138,0.75) !important;
+}
+html.light-mode footer a:hover {
+  color: #0d1b2a !important;
+}
+
+/* ─── Mega-menu panel (Herramientas) light mode ─────────── */
+html.light-mode .mega-menu-panel {
+  background: rgba(255,255,255,0.96) !important;
+  border-color: rgba(100,150,200,0.25) !important;
+  box-shadow: 0 8px 32px rgba(100,150,200,0.2) !important;
+}
+/* Tool titles & descriptions in light mode */
+html.light-mode .mega-menu-panel .text-white {
+  color: #0d1b2a !important;
+}
+html.light-mode .mega-menu-panel .text-\[\#CBCDD3\] {
+  color: #4a6a8a !important;
+}
+html.light-mode .mega-menu-panel .border-\[\#2F4A67\] {
+  border-color: rgba(100,150,200,0.45) !important;
+}
+html.light-mode .mega-menu-panel .bg-\[\#0F2C45\]\/50 {
+  background-color: rgba(180,210,245,0.5) !important;
+}
+html.light-mode .mega-menu-panel .hover\:bg-\[\#2F4A67\]\/20:hover {
+  background-color: rgba(100,150,200,0.12) !important;
+}
+html.light-mode .mega-menu-panel .group-hover\/item\:border-white\/40 {
+  border-color: rgba(100,150,200,0.5) !important;
+}
+
+/* ─── Login page light mode ─────────────────────────────── */
+/* Login card */
+html.light-mode .bg-\[\#0f172a\]\/60 {
+  background-color: rgba(255,255,255,0.92) !important;
+  border-color: rgba(100,150,200,0.2) !important;
+  box-shadow: 0 20px 60px rgba(100,150,200,0.18), 0 4px 16px rgba(100,150,200,0.1) !important;
+}
+/* Login card text */
+html.light-mode .bg-\[\#0f172a\]\/60 .text-white { color: #0d1b2a !important; }
+html.light-mode .bg-\[\#0f172a\]\/60 .text-\[\#CBCDD3\] { color: #4a6a8a !important; }
+html.light-mode .bg-\[\#0f172a\]\/60 .placeholder-\[\#CBCDD3\]\/50::placeholder { color: rgba(74,106,138,0.45) !important; }
+
+/* Login inputs */
+html.light-mode .bg-\[\#0f172a\]\/60 input[type="email"],
+html.light-mode .bg-\[\#0f172a\]\/60 input[type="password"] {
+  background-color: #f0f5ff !important;
+  border-color: rgba(100,150,200,0.35) !important;
+  color: #0d1b2a !important;
+}
+html.light-mode .bg-\[\#0f172a\]\/60 input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
+}
+
+/* Login "Olvidaste tu contraseña" & links */
+html.light-mode .text-\[\#0F2C45\] {
+  color: #2563eb !important;
+}
+html.light-mode .hover\:text-\[\#2F4A67\]:hover {
+  color: #1d4ed8 !important;
+}
+
+/* Login "O continúa con" divider pill */
+html.light-mode .px-2.bg-\[\#0b0f19\] {
+  background-color: #ffffff !important;
+  color: #4a6a8a !important;
+}
+
+/* Login social buttons */
+html.light-mode .bg-\[\#0f172a\]\/60 button[type="button"] {
+  background-color: #f0f5ff !important;
+  border-color: rgba(100,150,200,0.3) !important;
+  color: #0d1b2a !important;
+}
+html.light-mode .bg-\[\#0f172a\]\/60 button[type="button"]:hover {
+  background-color: #dce8f8 !important;
+  border-color: rgba(100,150,200,0.5) !important;
+}
+
+/* Login submit button */
+html.light-mode .from-\[\#0F2C45\].to-\[\#0E2C45\] {
+  background-image: linear-gradient(to right, #2563eb, #1d4ed8) !important;
+}
+html.light-mode .hover\:from-\[\#2F4A67\]:hover {
+  background-image: linear-gradient(to right, #1d4ed8, #1e40af) !important;
+}
+
+/* Login "Volver al inicio" link */
+html.light-mode .hover\:text-white:hover {
+  color: #0d1b2a !important;
+}
+
+/* Login glass-element logo badge */
+html.light-mode glass-element {
+  opacity: 0.9;
+}
+
+/* ─── Preferences panel light mode ────────────────────────── */
+html.light-mode .pref-dropdown-panel {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(100, 150, 200, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(100, 150, 200, 0.2) !important;
+}
+
+/* ─── Preferences trigger button ──────────────────────── */
+.pref-trigger-btn:hover {
+  border-color: rgba(203, 205, 211, 0.4) !important;
+  background: rgba(47, 74, 103, 0.4) !important;
+  color: #ffffff !important;
+}
+
+/* ─── Base html/body ───────────────────────────────────── */
 html {
   scroll-behavior: smooth;
-  /* Elimina el "tope" brusco al llegar al final del scroll */
   overscroll-behavior: none;
 }
 
@@ -13,7 +412,6 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Scroll fluido con inercia (como en móvil) */
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: none;
 }

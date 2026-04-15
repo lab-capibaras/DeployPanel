@@ -1,27 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Starfield from '../components/Starfield';
-
-const LOG_LINES = [
-  { delay: 300,  text: '> Iniciando pipeline de despliegue...', color: 'text-[#CBCDD3]' },
-  { delay: 700,  text: '> Conectando con repositorio remoto...', color: 'text-[#CBCDD3]' },
-  { delay: 1300, text: '✓ Repositorio autenticado correctamente', color: 'text-green-400' },
-  { delay: 1800, text: '> Clonando rama seleccionada...', color: 'text-[#CBCDD3]' },
-  { delay: 2500, text: '✓ Clonado completo — 142 archivos indexados', color: 'text-green-400' },
-  { delay: 3000, text: '> Detectando entorno de ejecución...', color: 'text-[#CBCDD3]' },
-  { delay: 3600, text: '✓ Entorno detectado y configurado', color: 'text-green-400' },
-  { delay: 4000, text: '> Construyendo imagen de contenedor...', color: 'text-[#CBCDD3]' },
-  { delay: 5000, text: '> Resolviendo dependencias del proyecto...', color: 'text-[#CBCDD3]' },
-  { delay: 6000, text: '✓ Imagen compilada [1.21s]', color: 'text-green-400' },
-  { delay: 6500, text: '> Provisionando red de distribución...', color: 'text-[#CBCDD3]' },
-  { delay: 7200, text: '> Registrando dominio en proxy inverso...', color: 'text-[#CBCDD3]' },
-  { delay: 8000, text: '✓ Certificado TLS provisionado automáticamente', color: 'text-green-400' },
-  { delay: 8500, text: '> Publicando contenedor en nodo activo...', color: 'text-[#CBCDD3]' },
-  { delay: 9200, text: '✓ Contenedor activo y respondiendo', color: 'text-green-400' },
-  { delay: 9800, text: '> Ejecutando health check...', color: 'text-[#CBCDD3]' },
-  { delay: 10500, text: '✓ HEALTH CHECK PASSED [200 OK]', color: 'text-green-400 font-bold' },
-];
+import { useTranslation } from '../i18n';
 
 export default function Deploy() {
+  const t = useTranslation();
+  const d = t.deploy;
+
   const [formData, setFormData] = useState({ repoUrl: '', branch: '', subdomain: '' });
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -45,7 +29,7 @@ export default function Deploy() {
   const showToast = (message, type = 'info') => {
     const id = toastIdRef.current++;
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4500);
+    setTimeout(() => setToasts(prev => prev.filter(toast => toast.id !== id)), 4500);
   };
 
   const parseGithubUrl = (url) => {
@@ -55,10 +39,9 @@ export default function Deploy() {
   };
 
   const validateSubdomain = (value) => {
-    if (!value) return 'El subdominio es obligatorio';
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value))
-      return 'Solo letras minúsculas, números y guiones. No puede empezar ni terminar con guión.';
-    if (value.length > 40) return 'Máximo 40 caracteres';
+    if (!value) return d.validation.required;
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value)) return d.validation.invalid;
+    if (value.length > 40) return d.validation.too_long;
     return '';
   };
 
@@ -69,15 +52,9 @@ export default function Deploy() {
   };
 
   const loadBranches = async () => {
-    if (!formData.repoUrl.trim()) {
-      showToast('Ingresa la URL del repositorio primero', 'warning');
-      return;
-    }
+    if (!formData.repoUrl.trim()) { showToast(d.validation.no_repo, 'warning'); return; }
     const parsed = parseGithubUrl(formData.repoUrl);
-    if (!parsed) {
-      showToast('URL de GitHub inválida. Usa: github.com/usuario/repo', 'error');
-      return;
-    }
+    if (!parsed) { showToast(d.validation.invalid_url, 'error'); return; }
     setLoadingBranches(true);
     try {
       const res = await fetch(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}/branches`);
@@ -86,7 +63,7 @@ export default function Deploy() {
       const names = data.map(b => b.name);
       setBranches(names);
       setFormData(f => ({ ...f, branch: names[0] || '' }));
-      showToast(`${names.length} ramas cargadas`, 'success');
+      showToast(d.toasts.branches_loaded(names.length), 'success');
     } catch (err) {
       showToast('Error: ' + err.message, 'error');
     } finally {
@@ -97,7 +74,7 @@ export default function Deploy() {
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formData.repoUrl.trim() || !formData.branch || !formData.subdomain.trim()) {
-      showToast('Completa todos los campos', 'warning');
+      showToast(d.validation.fill_all, 'warning');
       return;
     }
     const err = validateSubdomain(formData.subdomain);
@@ -112,16 +89,15 @@ export default function Deploy() {
     timerRefs.current.forEach(clearTimeout);
     timerRefs.current = [];
 
-    // Schedule log lines
-    LOG_LINES.forEach(({ delay, text, color }) => {
-      const t = setTimeout(() => {
+    // Use the logs from the current locale
+    d.logs.forEach(({ delay, text, color }) => {
+      const timer = setTimeout(() => {
         setLogLines(prev => [...prev, { text, color }]);
         setProgress(Math.min((delay / 10500) * 95, 95));
       }, delay);
-      timerRefs.current.push(t);
+      timerRefs.current.push(timer);
     });
 
-    // Final deploy call at end
     const finalTimer = setTimeout(async () => {
       try {
         const response = await fetch('/deploy', {
@@ -129,7 +105,7 @@ export default function Deploy() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
-        if (!response.ok) throw new Error('El servidor retornó un error al desplegar');
+        if (!response.ok) throw new Error(d.toasts.server_error);
         setProgress(100);
         setSuccessUrl(`https://${formData.subdomain}.stardest.com`);
         setPhase('success');
@@ -167,12 +143,12 @@ export default function Deploy() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 mb-5 px-5 py-2 bg-[#0F2C45]/40 border border-[#2F4A67]/60 rounded-full">
             <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="text-[#CBCDD3] text-sm font-medium tracking-wide">Panel de Despliegue</span>
+            <span className="text-[#CBCDD3] text-sm font-medium tracking-wide">{d.badge}</span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2">
-            Nuevo <span className="bg-gradient-to-r from-[#60A5FA] to-[#3B82F6] bg-clip-text text-transparent">Despliegue</span>
+            {d.title_1} <span className="bg-gradient-to-r from-[#60A5FA] to-[#3B82F6] bg-clip-text text-transparent">{d.title_2}</span>
           </h1>
-          <p className="text-[#CBCDD3] text-base font-light">Conecta tu repositorio y publica en segundos</p>
+          <p className="text-[#CBCDD3] text-base font-light">{d.subtitle}</p>
         </div>
 
         <div className="w-full max-w-2xl">
@@ -185,13 +161,11 @@ export default function Deploy() {
 
                   {/* Repo URL */}
                   <div>
-                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">
-                      URL del Repositorio GitHub
-                    </label>
+                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.repo_label}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="https://github.com/usuario/repositorio"
+                        placeholder={d.form.repo_placeholder}
                         value={formData.repoUrl}
                         onChange={e => setFormData(f => ({ ...f, repoUrl: e.target.value }))}
                         className="flex-1 px-4 py-3 bg-[#0b0f19]/70 border border-[#2F4A67]/50 rounded-xl text-white placeholder-[#CBCDD3]/40 focus:outline-none focus:border-[#60A5FA]/60 transition text-sm"
@@ -203,13 +177,13 @@ export default function Deploy() {
                         className="flex-shrink-0 px-4 py-3 bg-[#2F4A67]/60 hover:bg-[#2F4A67] disabled:opacity-50 text-white rounded-xl transition font-medium text-sm whitespace-nowrap border border-[#2F4A67]"
                       >
                         {loadingBranches
-                          ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Cargando</span>
-                          : 'Cargar Ramas'}
+                          ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{d.form.loading}</span>
+                          : d.form.load_branches}
                       </button>
                     </div>
                     {parsedRepo && (
                       <p className="text-xs text-[#60A5FA] mt-1.5 pl-1">
-                        Repositorio: <strong>{parsedRepo.owner}/{parsedRepo.repo}</strong>
+                        {d.form.repo_hint} <strong>{parsedRepo.owner}/{parsedRepo.repo}</strong>
                       </p>
                     )}
                   </div>
@@ -217,9 +191,7 @@ export default function Deploy() {
                   {/* Branch */}
                   {branches.length > 0 && (
                     <div>
-                      <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">
-                        Rama a Desplegar
-                      </label>
+                      <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.branch_label}</label>
                       <select
                         value={formData.branch}
                         onChange={e => setFormData(f => ({ ...f, branch: e.target.value }))}
@@ -232,26 +204,24 @@ export default function Deploy() {
 
                   {/* Subdomain */}
                   <div>
-                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">
-                      Subdominio
-                    </label>
+                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.subdomain_label}</label>
                     <div className="flex items-stretch">
                       <input
                         type="text"
-                        placeholder="mi-app"
+                        placeholder={d.form.subdomain_ph}
                         value={formData.subdomain}
                         onChange={handleSubdomainChange}
                         className={`flex-1 px-4 py-3 bg-[#0b0f19]/70 border rounded-l-xl text-white placeholder-[#CBCDD3]/40 focus:outline-none transition text-sm ${subdomainError ? 'border-red-500/60 focus:border-red-400' : 'border-[#2F4A67]/50 focus:border-[#60A5FA]/60'}`}
                       />
                       <span className="px-4 py-3 bg-[#0b0f19]/50 border border-l-0 border-[#2F4A67]/50 rounded-r-xl text-[#CBCDD3]/60 text-sm flex items-center">
-                        .stardest.com
+                        {d.form.subdomain_suffix}
                       </span>
                     </div>
                     {subdomainError
                       ? <p className="text-xs text-red-400 mt-1.5 pl-1">{subdomainError}</p>
                       : formData.subdomain && (
                         <p className="text-xs text-[#60A5FA] mt-1.5 pl-1">
-                          URL final: <strong>https://{formData.subdomain}.stardest.com</strong>
+                          {d.form.subdomain_url} <strong>https://{formData.subdomain}.stardest.com</strong>
                         </p>
                       )
                     }
@@ -261,7 +231,7 @@ export default function Deploy() {
                     type="submit"
                     className="w-full py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] hover:border-[#60A5FA]/50 text-white font-bold rounded-xl transition-all duration-300 shadow-[0_0_25px_rgba(15,44,69,0.5)] hover:shadow-[0_0_40px_rgba(47,74,103,0.6)] flex items-center justify-center gap-2 group"
                   >
-                    Revisar Despliegue
+                    {d.form.submit}
                     <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
@@ -274,15 +244,14 @@ export default function Deploy() {
             {phase === 'confirm' && (
               <div className="p-7 sm:p-10">
                 <div className="mb-8">
-                  <h2 className="text-xl font-bold text-white mb-1">Revisa el Despliegue</h2>
-                  <p className="text-[#CBCDD3] text-sm">Confirma los parámetros antes de iniciar</p>
+                  <h2 className="text-xl font-bold text-white mb-1">{d.confirm.title}</h2>
+                  <p className="text-[#CBCDD3] text-sm">{d.confirm.sub}</p>
                 </div>
-
                 <div className="space-y-3 mb-8">
                   {[
-                    { label: 'Repositorio', value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
-                    { label: 'Rama', value: formData.branch },
-                    { label: 'URL de producción', value: `https://${formData.subdomain}.stardest.com`, accent: true },
+                    { label: d.confirm.repo,   value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
+                    { label: d.confirm.branch, value: formData.branch },
+                    { label: d.confirm.url,    value: `https://${formData.subdomain}.stardest.com`, accent: true },
                   ].map(({ label, value, accent }) => (
                     <div key={label} className="flex items-center justify-between py-4 px-5 rounded-xl bg-[#0b0f19]/60 border border-[#2F4A67]/40">
                       <span className="text-[#CBCDD3] text-sm">{label}</span>
@@ -290,19 +259,12 @@ export default function Deploy() {
                     </div>
                   ))}
                 </div>
-
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setPhase('form')}
-                    className="flex-1 py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition font-medium text-sm"
-                  >
-                    Editar
+                  <button onClick={() => setPhase('form')} className="flex-1 py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition font-medium text-sm">
+                    {d.confirm.edit}
                   </button>
-                  <button
-                    onClick={startDeploy}
-                    className="flex-1 py-3 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white rounded-xl transition font-bold text-sm shadow-[0_0_20px_rgba(15,44,69,0.5)]"
-                  >
-                    Confirmar y Desplegar
+                  <button onClick={startDeploy} className="flex-1 py-3 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white rounded-xl transition font-bold text-sm shadow-[0_0_20px_rgba(15,44,69,0.5)]">
+                    {d.confirm.confirm}
                   </button>
                 </div>
               </div>
@@ -313,15 +275,12 @@ export default function Deploy() {
               <div className="p-7 sm:p-10">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-white">Desplegando...</h2>
+                    <h2 className="text-lg font-bold text-white">{d.progress.title}</h2>
                     <p className="text-[#CBCDD3] text-xs mt-0.5">{formData.subdomain}.stardest.com</p>
                   </div>
-                  <div className="text-right">
-                    <span className="text-2xl font-black text-white">{Math.round(progress)}%</span>
-                  </div>
+                  <span className="text-2xl font-black text-white">{Math.round(progress)}%</span>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="w-full h-1.5 bg-[#2F4A67]/30 rounded-full overflow-hidden mb-6">
                   <div
                     className="h-full bg-gradient-to-r from-[#1e3a5f] via-[#3B82F6] to-[#60A5FA] rounded-full transition-all duration-500"
@@ -329,14 +288,13 @@ export default function Deploy() {
                   />
                 </div>
 
-                {/* Steps */}
                 <div className="grid grid-cols-3 gap-3 mb-7">
                   {[
-                    { key: 'clone', label: 'Clonado', threshold: 35 },
-                    { key: 'build', label: 'Compilado', threshold: 65 },
-                    { key: 'deploy', label: 'Publicado', threshold: 95 },
+                    { key: 'clone',   label: d.progress.clone,   threshold: 35 },
+                    { key: 'build',   label: d.progress.build,   threshold: 65 },
+                    { key: 'publish', label: d.progress.publish,  threshold: 95 },
                   ].map(({ key, label, threshold }) => {
-                    const done = progress >= threshold;
+                    const done   = progress >= threshold;
                     const active = progress > threshold - 35 && progress < threshold;
                     return (
                       <div key={key} className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border transition-all duration-500 ${done ? 'border-green-500/40 bg-green-500/10' : active ? 'border-[#2F4A67] bg-[#0F2C45]/40 animate-pulse' : 'border-[#2F4A67]/20 bg-transparent'}`}>
@@ -354,11 +312,7 @@ export default function Deploy() {
                   })}
                 </div>
 
-                {/* Live log */}
-                <div
-                  ref={logRef}
-                  className="h-52 overflow-y-auto bg-[#0b0f19]/80 border border-[#2F4A67]/40 rounded-xl p-4 font-mono text-xs space-y-1.5 scroll-smooth"
-                >
+                <div ref={logRef} className="h-52 overflow-y-auto bg-[#0b0f19]/80 border border-[#2F4A67]/40 rounded-xl p-4 font-mono text-xs space-y-1.5 scroll-smooth">
                   {logLines.map((line, i) => (
                     <p key={i} className={`${line.color} leading-relaxed animate-fade-in`}>{line.text}</p>
                   ))}
@@ -375,14 +329,14 @@ export default function Deploy() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Despliegue Exitoso</h2>
-                <p className="text-[#CBCDD3] text-sm mb-8">Tu aplicación está activa y recibiendo tráfico</p>
+                <h2 className="text-2xl font-black text-white mb-2">{d.success.title}</h2>
+                <p className="text-[#CBCDD3] text-sm mb-8">{d.success.sub}</p>
 
                 <div className="space-y-3 mb-8 text-left">
                   {[
-                    { label: 'Repositorio', value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
-                    { label: 'Rama desplegada', value: formData.branch },
-                    { label: 'Estado', value: 'ACTIVO', green: true },
+                    { label: d.success.repo,   value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
+                    { label: d.success.branch, value: formData.branch },
+                    { label: d.success.status, value: d.success.status_val, green: true },
                   ].map(({ label, value, green }) => (
                     <div key={label} className="flex justify-between items-center py-3 px-5 bg-[#0b0f19]/60 rounded-xl border border-[#2F4A67]/30">
                       <span className="text-[#CBCDD3] text-sm">{label}</span>
@@ -392,20 +346,12 @@ export default function Deploy() {
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <a
-                    href={successUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-4 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 font-bold rounded-xl transition flex items-center justify-center gap-2"
-                  >
+                  <a href={successUrl} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 font-bold rounded-xl transition flex items-center justify-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    Abrir en Nueva Pestaña
+                    {d.success.open}
                   </a>
-                  <button
-                    onClick={reset}
-                    className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm"
-                  >
-                    Desplegar Otro Proyecto
+                  <button onClick={reset} className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm">
+                    {d.success.new_deploy}
                   </button>
                 </div>
               </div>
@@ -419,20 +365,14 @@ export default function Deploy() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">Error en el Despliegue</h2>
+                <h2 className="text-2xl font-black text-white mb-2">{d.error.title}</h2>
                 <p className="text-[#CBCDD3] text-sm mb-8">{errorMessage}</p>
                 <div className="flex flex-col gap-3">
-                  <button
-                    onClick={startDeploy}
-                    className="w-full py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white font-bold rounded-xl transition"
-                  >
-                    Reintentar Despliegue
+                  <button onClick={startDeploy} className="w-full py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white font-bold rounded-xl transition">
+                    {d.error.retry}
                   </button>
-                  <button
-                    onClick={reset}
-                    className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm"
-                  >
-                    Modificar Configuración
+                  <button onClick={reset} className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm">
+                    {d.error.modify}
                   </button>
                 </div>
               </div>
@@ -464,10 +404,7 @@ export default function Deploy() {
       </div>
 
       <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
       `}</style>
     </div>
