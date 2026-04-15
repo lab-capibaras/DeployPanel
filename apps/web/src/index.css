@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+html {
+  scroll-behavior: smooth;
+  /* Elimina el "tope" brusco al llegar al final del scroll */
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -7,4 +13,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Scroll fluido con inercia (como en móvil) */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
 }
