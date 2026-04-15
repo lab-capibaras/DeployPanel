@@ -254,6 +254,18 @@ html.light-mode .bg-\[\#0b0f19\]\/95 {
   background-color: rgba(238,243,252,0.98) !important;
 }
 
+/* ── Navbar hamburger button light mode ── */
+html.light-mode nav button[aria-label="Abrir menú"] {
+  border-color: rgba(100,150,200,0.45) !important;
+  background-color: rgba(180,210,245,0.3) !important;
+}
+html.light-mode nav button[aria-label="Abrir menú"]:hover {
+  background-color: rgba(180,210,245,0.45) !important;
+}
+html.light-mode nav button[aria-label="Abrir menú"] span.bg-white {
+  background-color: #0d1b2a !important;
+}
+
 /* ── PreferencesPanel in light mode ── */
 html.light-mode .pref-trigger-btn {
   border-color: rgba(100,150,200,0.45) !important;
@@ -402,7 +414,6 @@ html.light-mode .pref-dropdown-panel {
 /* ─── Base html/body ───────────────────────────────────── */
 html {
   scroll-behavior: smooth;
-  overscroll-behavior: none;
 }
 
 body {
@@ -413,5 +424,4 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: none;
 }

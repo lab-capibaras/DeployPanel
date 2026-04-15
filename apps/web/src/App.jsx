@@ -92,7 +92,7 @@ function PreferencesPanel({ inline = false }) {
   };
   const pillOn = isDark
     ? { background: 'rgba(47,74,103,0.55)', borderColor: 'rgba(203,205,211,0.2)', color: '#fff' }
-    : { background: '#ffffff', borderColor: 'rgba(100,150,200,0.3)', color: '#0d1b2a', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
+    : { background: 'rgba(255, 255, 255, 0.9)', borderColor: 'rgba(100, 150, 200, 0.45)', color: '#0d1b2a', boxShadow: '0 2px 8px rgba(100,150,200,0.15)' };
   
   const pillOff = isDark
     ? { background: 'transparent', borderColor: 'rgba(203,205,211,0.05)', color: 'rgba(203,205,211,0.45)' }
@@ -106,7 +106,7 @@ function PreferencesPanel({ inline = false }) {
 
   const trackStyle = {
     display: 'flex', gap: '3px', borderRadius: '9px', padding: '3px',
-    background: isDark ? 'rgba(15,44,69,0.5)' : 'rgba(180, 210, 245, 0.4)',
+    background: isDark ? 'rgba(15,44,69,0.5)' : 'rgba(180, 210, 245, 0.25)',
   };
 
   return (
