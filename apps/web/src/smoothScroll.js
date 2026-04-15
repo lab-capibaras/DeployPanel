@@ -12,7 +12,7 @@ export function initSmoothScroll() {
   // ── Ajusta estos valores para cambiar la sensación ──────────────────────────
   const EASE             = 0.10;   // suavizado por frame  (0.06 muy suave, 0.14 rápido)
   const FRICTION         = 0.935;  // inercia / decel larga tipo macOS (más cerca de 1 = más cola)
-  const WHEEL_MULTIPLIER = 0.38;   // sensibilidad rueda   (menos = más lento por tick)
+  const WHEEL_MULTIPLIER = 0.27;   // sensibilidad rueda   (menos = más lento por tick)
   // ────────────────────────────────────────────────────────────────────────────
 
   let velocity = 0;
