@@ -100,7 +100,7 @@ function App() {
 
             {/* LEFT: Logo + Desktop Herramientas */}
             <div className="flex items-center gap-6">
-              <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-[#CBCDD3] flex items-center gap-2 sm:gap-3 group">
+              <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-[#CBCDD3] flex items-center gap-2 sm:gap-3 group" style={{ padding: '6px 4px', minHeight: '44px', alignItems: 'center', touchAction: 'manipulation' }}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 sm:w-8 sm:h-8 text-white transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
                   <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
@@ -112,13 +112,18 @@ function App() {
 
               {/* Desktop Herramientas mega-menu (hover) */}
               <div className="relative group hidden md:block">
-                <button className="flex items-center gap-1 text-sm font-medium text-[#CBCDD3]/80 hover:text-white transition py-4">
+                <button
+                  className="flex items-center gap-1 text-sm font-medium text-[#CBCDD3]/80 hover:text-white transition"
+                  style={{ padding: '14px 12px', minHeight: '44px', cursor: 'pointer', touchAction: 'manipulation' }}
+                >
                   Herramientas
                   <svg className="w-4 h-4 transition-transform group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <div className="absolute top-14 left-0 mt-2 w-[420px] lg:w-[500px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
+                {/* Invisible bridge to prevent gap between button and dropdown */}
+                <div className="absolute top-full left-0 w-full h-3" />
+                <div className="absolute top-[calc(100%+4px)] left-0 w-[420px] lg:w-[500px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
                   <glass-element auto-size="true" radius="16" no-border="true" depth="2" blur="8" strength="15" background-color="rgba(11, 15, 25, 0.95)" chromatic-aberration="1" style={{ '--glass-padding': '0' }}>
                     <div className="p-4 grid grid-cols-2 gap-2">
                       {TOOLS.map((tool) => (
@@ -143,6 +148,7 @@ function App() {
               <Link
                 to="/login"
                 className={`text-sm font-medium transition ${location.pathname === '/login' ? 'text-[#CBCDD3]' : 'text-[#CBCDD3]/80 hover:text-white'}`}
+                style={{ padding: '10px 12px', minHeight: '44px', display: 'flex', alignItems: 'center', touchAction: 'manipulation', cursor: 'pointer' }}
               >
                 Login
               </Link>
@@ -151,7 +157,8 @@ function App() {
               <button
                 onClick={() => setMobileOpen(o => !o)}
                 aria-label="Abrir menú"
-                className="md:hidden flex flex-col justify-center items-center w-9 h-9 rounded-lg border border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30 transition gap-1.5 p-2"
+                className="md:hidden flex flex-col justify-center items-center rounded-lg border border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30 transition gap-1.5 p-2"
+                style={{ minWidth: '44px', minHeight: '44px', touchAction: 'manipulation', cursor: 'pointer' }}
               >
                 <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
                 <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'opacity-0' : ''}`} />
@@ -179,7 +186,8 @@ function App() {
             <span className="text-white font-bold text-base">Menú</span>
             <button
               onClick={() => setMobileOpen(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 transition"
+              className="flex items-center justify-center rounded-lg border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 transition"
+              style={{ minWidth: '44px', minHeight: '44px', touchAction: 'manipulation', cursor: 'pointer' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -196,7 +204,8 @@ function App() {
                   {/* Section header / trigger */}
                   <button
                     onClick={() => setOpenSection(isOpen ? null : section.id)}
-                    className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25 transition group"
+                    className="w-full flex items-center justify-between px-4 rounded-xl hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25 transition group"
+                    style={{ minHeight: '52px', touchAction: 'manipulation', cursor: 'pointer' }}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67] transition flex-shrink-0">
