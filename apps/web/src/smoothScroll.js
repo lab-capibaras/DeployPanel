@@ -10,9 +10,9 @@ export function initSmoothScroll() {
   let lastSetY  = window.scrollY;
 
   // ── Ajusta estos valores para cambiar la sensación ──────────────────────────
-  const EASE             = 0.07;   // suavizado por frame  (0.06 muy suave, 0.12 rápido)
-  const FRICTION         = 0.85;   // inercia del wheel    (0.90 mucha, 0.75 poca)
-  const WHEEL_MULTIPLIER = 0.6;    // sensibilidad rueda   (menos = más lento)
+  const EASE             = 0.10;   // suavizado por frame  (0.06 muy suave, 0.14 rápido)
+  const FRICTION         = 0.935;  // inercia / decel larga tipo macOS (más cerca de 1 = más cola)
+  const WHEEL_MULTIPLIER = 0.38;   // sensibilidad rueda   (menos = más lento por tick)
   // ────────────────────────────────────────────────────────────────────────────
 
   let velocity = 0;
@@ -74,7 +74,7 @@ export function initSmoothScroll() {
     if (e.deltaMode === 2) delta *= window.innerHeight;  // PAGE → px
 
     // Limitar la velocidad máxima acumulada para evitar saltos bruscos
-    const MAX_VELOCITY = window.innerHeight * 0.8;
+    const MAX_VELOCITY = window.innerHeight * 0.5;
     velocity = clamp(velocity + delta * WHEEL_MULTIPLIER, -MAX_VELOCITY, MAX_VELOCITY);
 
     // Proyectar destino basado en velocidad actual
