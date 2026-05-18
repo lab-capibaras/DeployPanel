@@ -3,6 +3,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
+import PixelRocket from './components/PixelRocket';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
 import { useTranslation } from './i18n';
@@ -297,45 +298,39 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
    Language labels toggle via CSS [data-lang] attribute on <html>
 ═══════════════════════════════════════════════════════════ */
 const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location }) {
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
+  const textMain   = isDark ? '#e8eeff'                  : '#0d1433';
+  const textMuted  = isDark ? 'rgba(200,216,255,0.75)'   : '#3a4a7a';
+  const textCyan   = isDark ? '#00d4ff'                  : '#1a3aff';
+  const borderLogin= isDark ? 'rgba(0,212,255,0.4)'      : 'rgba(26,58,255,0.5)';
+  const bgLogin    = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
   // Static tools for the desktop mega-menu — rendered once per open
   // The mega-menu content updates via CSS [data-lang] class toggling
   return (
-    <nav className="fixed top-0 left-0 right-0 w-full z-50 border-b border-[#2F4A67]/40 shadow-lg">
-      <div style={{
-        width: '100%',
-        background: 'rgba(11, 18, 35, 0.35)',
-        backdropFilter: 'blur(24px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(47,74,103,0.15), 0 4px 24px rgba(0,0,0,0.25)',
-        display: 'block',
-        pointerEvents: 'none',
-      }}>
+    <nav className="fixed top-0 left-0 right-0 w-full z-50" style={{
+      background: 'transparent',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+    }}>
+      <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
 
           {/* LEFT: Logo + Herramientas */}
           <div className="flex items-center gap-6">
-            <Link to="/" className="text-xl sm:text-2xl font-bold text-white hover:text-[#CBCDD3] flex items-center gap-2 sm:gap-3 group"
-              style={{ padding: '6px 4px', minHeight: '44px', alignItems: 'center', touchAction: 'manipulation' }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 sm:w-8 sm:h-8 text-white transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-                <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-                <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-                <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-              </svg>
-              StarDest
+            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 4px', touchAction: 'manipulation' }}>
+              <PixelRocket scale={0.8} />
+              <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: textMain, textShadow: isDark ? '0 0 10px rgba(0,212,255,0.5)' : 'none', letterSpacing: '0.04em' }}>StarDest</span>
             </Link>
 
             {/* Desktop mega-menu — label switches via CSS [data-lang] */}
             <div className="relative group hidden md:block">
               <button
-                className="flex items-center gap-1 text-sm font-medium text-[#CBCDD3]/80 hover:text-white transition"
-                style={{ padding: '14px 12px', minHeight: '44px', minWidth: '130px', cursor: 'pointer', touchAction: 'manipulation' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', minHeight: 44, minWidth: 'auto', cursor: 'pointer', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textMuted, background: 'transparent', border: 'none', letterSpacing: '0.02em' }}
               >
-                {/* Both labels — CSS hides the inactive one */}
                 <span className="nav-label-es">Herramientas</span>
                 <span className="nav-label-en">Tools</span>
-                <svg className="w-4 h-4 transition-transform group-hover:rotate-180 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg style={{ width:14, height:14, transition:'transform 0.2s' }} className="group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -374,10 +369,10 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             </div>
             <Link
               to="/login"
-              className={`text-sm font-medium transition hidden md:flex ${location.pathname === '/login' ? 'text-[#CBCDD3]' : 'text-[#CBCDD3]/80 hover:text-white'}`}
-              style={{ padding: '10px 12px', minHeight: '44px', alignItems: 'center', touchAction: 'manipulation' }}
+              className="hidden md:flex"
+              style={{ textDecoration: 'none', padding: '8px 20px', minHeight: 44, alignItems: 'center', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textCyan, border: `2px solid ${borderLogin}`, boxShadow: '2px 2px 0 rgba(0,0,0,0.3)', background: bgLogin, letterSpacing: '0.04em' }}
             >
-              Login
+              LOGIN
             </Link>
             <button
               onClick={onHamburger}
@@ -398,13 +393,16 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
 
 function ToolLink({ tool }) {
   return (
-    <Link to={tool.to} className="flex items-start gap-3 p-3 rounded-xl hover:bg-[#2F4A67]/20 transition group/item">
-      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg border border-[#2F4A67] bg-[#0F2C45]/50 text-white group-hover/item:border-white/40 group-hover/item:shadow-[0_0_15px_rgba(47,74,103,0.5)] transition">
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
+    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, border: '1px solid var(--px-border)', background: 'rgba(13,13,43,0.5)', transition: 'border-color 0.1s, background 0.1s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-blue-mid)'; e.currentTarget.style.background = 'rgba(26,58,255,0.1)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = 'rgba(13,13,43,0.5)'; }}
+    >
+      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--px-border)', background: '#080818' }}>
+        <svg style={{ width: 16, height: 16, color: '#00d4ff' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
       </div>
-      <div className="flex flex-col">
-        <span className="text-sm font-bold text-white mb-0.5">{tool.label}</span>
-        <span className="text-xs text-[#CBCDD3] leading-tight">{tool.desc}</span>
+      <div>
+        <div style={{ fontFamily: "'Jersey 10',monospace", fontSize: 17, color: '#e8eeff', marginBottom: 4 }}>{tool.label}</div>
+        <div style={{ fontFamily: "'Jersey 10',monospace", fontSize: 15, color: 'var(--px-muted)', lineHeight: 1.4 }}>{tool.desc}</div>
       </div>
     </Link>
   );
@@ -452,7 +450,7 @@ function App() {
         />
       </div>
 
-      <div className="pt-14 min-h-screen">
+      <div className="pt-14 min-h-screen px-scanlines">
         <Routes>
           <Route path="/"       element={<Home />} />
           <Route path="/login"  element={<Login />} />

@@ -1,231 +1,434 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Starfield from '../components/Starfield';
 import { useTranslation } from '../i18n';
+import { getPrefs, subscribePrefs } from '../store/prefs';
+import { PixelRocket, PixelSatellite, PixelUFO, PixelGlobe, PixelShield, PixelMonitor } from '../components/PixelIcons';
 
+/** Lightweight hook: re-renders when theme/lang changes */
+function useTheme() {
+  const [prefs, setPrefs] = useState(getPrefs);
+  useEffect(() => subscribePrefs(setPrefs), []);
+  return prefs.theme === 'dark';
+}
+
+/* ─── Starfield Canvas ─── */
+function PixelStarfield({ dark = true }) {
+  const canvasRef = useRef(null);
+  const darkRef = useRef(dark);
+  darkRef.current = dark;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Star colors per mode
+    const darkColors  = ['#00d4ff','#9b59ff','#2d5fff','#e8eeff','#e8eeff'];
+    const lightColors = ['#2d5fff','#1a3aaa','#4a7fff','#9b59ff','#0d1f6e'];
+
+      const stars = Array.from({ length: 220 }, () => ({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        size: Math.random() < 0.08 ? 3 : Math.random() < 0.3 ? 2 : 1,
+        speed: Math.random() * 0.25 + 0.03,
+        twinkle: Math.random() * Math.PI * 2,
+      }));
+      const shoots = Array.from({ length: 2 }, () => ({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.4,
+        vx: 5, vy: 3, life: 0, maxLife: 70, delay: Math.random() * 400 + 100,
+      }));
+
+      const draw = () => {
+        const isDark = darkRef.current;
+        const colors = isDark ? darkColors : lightColors;
+
+        // Background trail
+        ctx.fillStyle = isDark ? 'rgba(8,8,24,0.22)' : 'rgba(240,244,255,0.25)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        stars.forEach((s, i) => {
+          s.twinkle += 0.035;
+          const alpha = 0.35 + 0.65 * Math.abs(Math.sin(s.twinkle));
+          ctx.globalAlpha = isDark ? alpha : Math.min(1, alpha * 1.4);
+          ctx.fillStyle = colors[i % colors.length];
+          ctx.fillRect(Math.floor(s.x), Math.floor(s.y), s.size, s.size);
+          if (s.size === 3) {
+            ctx.globalAlpha *= 0.35;
+            ctx.fillRect(Math.floor(s.x)-2, Math.floor(s.y)+1, 2, 1);
+            ctx.fillRect(Math.floor(s.x)+3, Math.floor(s.y)+1, 2, 1);
+            ctx.fillRect(Math.floor(s.x)+1, Math.floor(s.y)-2, 1, 2);
+            ctx.fillRect(Math.floor(s.x)+1, Math.floor(s.y)+3, 1, 2);
+          }
+          s.y += s.speed;
+          if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+        });
+
+      // Shooting stars
+      shoots.forEach(sh => {
+        sh.delay--;
+        if (sh.delay > 0) return;
+        sh.life++;
+        if (sh.life > sh.maxLife) {
+          sh.x = Math.random()*canvas.width; sh.y = Math.random()*canvas.height*0.3;
+          sh.life = 0; sh.delay = Math.random()*300+150; return;
+        }
+        const isDark2 = darkRef.current;
+        const p = sh.life / sh.maxLife;
+        const trailColor = isDark2 ? '#00d4ff' : '#2d5fff';
+        const headColor  = isDark2 ? '#ffffff' : '#1a3aaa';
+        for (let i = 0; i < 18; i++) {
+          ctx.globalAlpha = (i/18) * (p < 0.8 ? p/0.8 : (1-p)/0.2) * 0.9;
+          ctx.fillStyle = trailColor;
+          ctx.fillRect(Math.floor(sh.x - sh.vx*(i*0.5)), Math.floor(sh.y - sh.vy*(i*0.5)), 2, 1);
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = headColor;
+        ctx.fillRect(Math.floor(sh.x), Math.floor(sh.y), 3, 2);
+        sh.x += sh.vx; sh.y += sh.vy;
+      });
+
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(draw);
+    };
+
+    // Fill once immediately so no flash
+    ctx.fillStyle = darkRef.current ? '#080818' : '#f0f4ff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+  }, []); // runs once; reads darkRef.current per frame
+
+  return <canvas ref={canvasRef} style={{ position:'fixed', inset:0, zIndex:0, imageRendering:'pixelated' }} />;
+}
+
+
+/* ─── Mission step card ─── */
+function MissionStep({ num, icon, title, desc, color='#2d5fff', active }) {
+  return (
+    <div style={{
+      display:'flex', gap:20, alignItems:'flex-start',
+      padding:'24px 28px',
+      background: 'rgba(13,13,43,0.6)',
+      border:`2px solid ${active ? color : 'var(--px-border)'}`,
+      boxShadow: active ? `4px 4px 0 rgba(0,0,0,0.7), 0 0 20px ${color}44` : '3px 3px 0 rgba(0,0,0,0.6)',
+      transition:'all 0.2s',
+    }}>
+      <div style={{
+        flexShrink:0, width:48, height:48, display:'flex', alignItems:'center', justifyContent:'center',
+        border:`2px solid ${color}`, background:'#080818',
+        boxShadow:`0 0 12px ${color}55`,
+      }}>{icon}</div>
+      <div>
+        <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'var(--px-muted)', marginBottom:4, letterSpacing:'0.1em' }}>PASO {num}</div>
+        <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', margin:'0 0 8px' }}>{title}</h3>
+        <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:17, color:'var(--px-muted)', margin:0, lineHeight:1.5 }}>{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Feature orbit card ─── */
+function FeatureCard({ icon, title, desc, tag, glowColor='#2d5fff' }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{
+        padding:'28px 24px',
+        background: hov ? 'rgba(13,13,43,0.95)' : 'rgba(10,10,34,0.7)',
+        border:`2px solid ${hov ? glowColor : 'var(--px-border)'}`,
+        boxShadow: hov ? `5px 5px 0 rgba(0,0,0,0.7), 0 0 24px ${glowColor}44` : '3px 3px 0 rgba(0,0,0,0.6)',
+        transform: hov ? 'translate(-2px,-2px)' : 'none',
+        transition:'all 0.15s steps(2)',
+        cursor:'default',
+      }}
+    >
+      <div style={{ marginBottom:16, filter:`drop-shadow(0 0 8px ${glowColor})` }}>{icon}</div>
+      <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:10, color:glowColor, marginBottom:8, letterSpacing:'0.12em' }}>{tag}</div>
+      <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', margin:'0 0 10px' }}>{title}</h3>
+      <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:17, color:'var(--px-muted)', margin:0, lineHeight:1.5 }}>{desc}</p>
+    </div>
+  );
+}
+
+/* ─── Live terminal ─── */
+function LiveTerminal() {
+  const lines = [
+    { t:0,    c:'#6a7ab5', txt:'> stardest deploy main' },
+    { t:800,  c:'#6a7ab5', txt:'  » Analizando repositorio...' },
+    { t:1600, c:'#00ff88', txt:'  ✓ Repositorio autenticado' },
+    { t:2400, c:'#6a7ab5', txt:'  » Construyendo contenedor...' },
+    { t:3400, c:'#00ff88', txt:'  ✓ Imagen compilada [1.2s]' },
+    { t:4200, c:'#6a7ab5', txt:'  » Provisionando red global...' },
+    { t:5000, c:'#00ff88', txt:'  ✓ TLS aprovisionado' },
+    { t:5800, c:'#00d4ff', txt:'  >> LIVE → prod-x4.stardest.com' },
+  ];
+  const [visible, setVisible] = useState([]);
+  useEffect(() => {
+    setVisible([]);
+    lines.forEach((l, i) => {
+      setTimeout(() => setVisible(v => [...v, i]), l.t);
+    });
+    const loop = setInterval(() => {
+      setVisible([]);
+      lines.forEach((l, i) => setTimeout(() => setVisible(v => [...v, i]), l.t));
+    }, 8000);
+    return () => clearInterval(loop);
+  }, []);
+  return (
+    <div style={{
+      background:'#020210', border:'2px solid var(--px-border)',
+      boxShadow:'inset 0 0 30px rgba(0,0,20,0.9), 4px 4px 0 rgba(0,0,0,0.7)',
+      padding:'20px 24px', fontFamily:"'Share Tech Mono',monospace",
+      minHeight:220,
+    }}>
+      <div style={{ display:'flex', gap:8, marginBottom:16, borderBottom:'1px solid var(--px-border)', paddingBottom:12 }}>
+        {['#ff5f57','#febc2e','#28c840'].map(c=><div key={c} style={{width:10,height:10,background:c}}/>)}
+        <span style={{ marginLeft:8, color:'var(--px-muted)', fontSize:12 }}>mission-control — deploy</span>
+      </div>
+      {lines.map((l, i) => (
+        <div key={i} style={{
+          color: l.c, fontSize:13, lineHeight:1.8, marginBottom:2,
+          opacity: visible.includes(i) ? 1 : 0,
+          transform: visible.includes(i) ? 'none' : 'translateX(-8px)',
+          transition:'opacity 0.3s, transform 0.3s',
+        }}>{l.txt}</div>
+      ))}
+      {visible.length === lines.length && (
+        <span style={{ color:'#00d4ff', animation:'px-blink 1s steps(1) infinite' }}>█</span>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main ─── */
 export default function Home() {
   const t = useTranslation();
   const h = t.home;
+  const isDark = useTheme();
+
+  const features = [
+    { icon: <PixelRocket scale={1.2} />,    tag:'DESPLIEGUE', title:'Pipeline Inmutable', desc:'Cada commit genera un build sellado. Revierte en segundos con cero downtime.', glowColor:'#2d5fff' },
+    { icon: <PixelShield scale={1.2} />,    tag:'SEGURIDAD',  title:'Red Blindada',       desc:'TLS automático, DDoS nativo y certificados renovados sin intervención.',     glowColor:'#9b59ff' },
+    { icon: <PixelGlobe scale={1.2} />,     tag:'RED GLOBAL', title:'DNS Distribuido',    desc:'Borde distribuido que acerca el cómputo a tus usuarios finales.',            glowColor:'#00d4ff' },
+    { icon: <PixelMonitor scale={1.2} />,   tag:'MONITOREO',  title:'Telemetría en Vivo', desc:'CPU, memoria y red en tiempo real. Sin configurar nada extra.',              glowColor:'#00ff88' },
+  ];
 
   return (
-    <div className="relative min-h-screen bg-[#0b0f19] overflow-x-hidden">
-      <Starfield />
-      <div className="relative z-10 font-sans">
+    <div style={{ position:'relative', minHeight:'100vh', background:'transparent', overflowX:'hidden' }}>
+      <PixelStarfield dark={isDark} />
 
-        {/* ============ HERO ============ */}
-        <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24 px-5 sm:px-6 flex flex-col items-center text-center">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[700px] h-[340px] sm:h-[700px] bg-[#1e3a5f]/25 blur-[80px] sm:blur-[130px] rounded-full pointer-events-none" />
+      {/* Scanlines */}
+      <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none',
+        background:'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)' }} />
 
-          <div className="inline-flex items-center gap-2 mb-7 sm:mb-10 px-4 py-2 sm:px-5 sm:py-2.5 bg-[#0F2C45]/40 border border-[#2F4A67]/60 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="text-[#CBCDD3] text-xs sm:text-sm font-medium tracking-wide">{h.badge}</span>
+      {/* Pixel grid */}
+      <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none',
+        backgroundImage:'linear-gradient(rgba(30,45,122,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(30,45,122,0.05) 1px,transparent 1px)',
+        backgroundSize:'32px 32px' }} />
+
+      <div style={{ position:'relative', zIndex:2 }}>
+
+        {/* ══ HERO ══ */}
+        <section style={{ padding:'120px 24px 80px', textAlign:'center', position:'relative' }}>
+          {/* Central glow */}
+          <div style={{ position:'absolute', top:'40%', left:'50%', transform:'translate(-50%,-50%)',
+            width:700, height:500, pointerEvents:'none',
+            background:'radial-gradient(ellipse,rgba(45,95,255,0.15) 0%,transparent 70%)' }} />
+
+          {/* Floating rocket — decorative */}
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:32, animation:'px-float 4s ease-in-out infinite' }}>
+            <PixelRocket scale={3} />
           </div>
 
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight mb-6 sm:mb-8 leading-none">
-            <span className="text-white">{h.h1_1}</span>
-            <br />
-            <span className="bg-gradient-to-r from-[#60A5FA] via-[#3B82F6] to-[#a5c8ff] bg-clip-text text-transparent">
+          {/* Status badge removed */}
+
+          {/* Main heading */}
+          <h1 style={{ margin:'0 0 24px', lineHeight:1.1 }}>
+            <span style={{
+              display:'block', fontFamily:"'Jersey 10',monospace",
+              fontSize:'clamp(48px, 8vw, 96px)',
+              color:'var(--px-white)',
+              textShadow: isDark ? '0 0 40px rgba(232,238,255,0.2)' : 'none',
+              marginBottom:8,
+            }}>
+              {h.h1_1}
+            </span>
+            <span style={{
+              display:'block', fontFamily:"'Jersey 10',monospace",
+              fontSize:'clamp(48px, 8vw, 96px)',
+              background:'linear-gradient(90deg,#00d4ff,#2d5fff,#9b59ff)',
+              WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text',
+              filter:'drop-shadow(0 0 20px rgba(0,212,255,0.4))',
+            }}>
               {h.h1_2}
             </span>
           </h1>
 
-          <p className="text-base sm:text-xl md:text-2xl text-[#CBCDD3] max-w-2xl leading-relaxed mb-10 sm:mb-14 font-light">
+          <p style={{
+            fontFamily:"'Jersey 10',monospace", fontSize:22, color:'var(--px-muted)',
+            maxWidth:580, margin:'0 auto 48px', lineHeight:1.55,
+          }}>
             {h.subtitle}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Link
-              to="/deploy"
-              className="w-full sm:w-auto px-7 sm:px-9 py-3.5 sm:py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] hover:border-[#60A5FA]/50 text-white font-semibold rounded-xl transition-all duration-300 shadow-[0_0_30px_rgba(15,44,69,0.6)] hover:shadow-[0_0_45px_rgba(47,74,103,0.7)] flex items-center justify-center gap-2 group"
-            >
+          {/* CTA buttons */}
+          <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap', marginBottom:80 }}>
+            <Link to="/deploy" style={{
+              textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
+              fontFamily:"'Jersey 10',monospace", fontSize:18,
+              padding:'14px 32px', color:'#e8eeff',
+              background:'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+              border:'2px solid #2d5fff',
+              boxShadow:'5px 5px 0 rgba(0,0,0,0.6), 0 0 20px rgba(45,95,255,0.4)',
+            }}>
               {h.cta_start}
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
             </Link>
-            <a
-              href="#features"
-              className="w-full sm:w-auto px-7 sm:px-9 py-3.5 sm:py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition-all duration-300 text-center"
-            >
-              {h.cta_explore}
+            <a href="#como-funciona" style={{
+              textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
+              fontFamily:"'Jersey 10',monospace", fontSize:18,
+              padding:'14px 32px', color:'#00d4ff',
+              background:'transparent',
+              border:'2px solid rgba(0,212,255,0.5)',
+              boxShadow:'5px 5px 0 rgba(0,0,0,0.6)',
+            }}>
+              ◉ {h.cta_explore}
             </a>
           </div>
-        </section>
 
-        {/* ============ METRICS STRIP ============ */}
-        <div className="border-y border-[#2F4A67]/25 bg-[#0F2C45]/15 py-8 sm:py-10 px-5 sm:px-6">
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
-            {h.metrics.map(({ val, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1.5 sm:gap-2">
-                <span className="text-2xl sm:text-3xl md:text-4xl font-black text-white">{val}</span>
-                <span className="text-[10px] sm:text-xs font-semibold tracking-widest text-[#2F4A67] uppercase">{label}</span>
+          {/* Metrics row */}
+          <div style={{
+            display:'inline-grid', gridTemplateColumns:'repeat(4,1fr)',
+            gap:0, border:'2px solid var(--px-border)',
+            boxShadow:'4px 4px 0 rgba(0,0,0,0.6)',
+            background:'rgba(13,13,43,0.7)', maxWidth:700, width:'100%',
+          }}>
+            {h.metrics.map(({ val, label }, i) => (
+              <div key={label} style={{
+                padding:'20px 16px', textAlign:'center',
+                borderRight: i < 3 ? '1px solid var(--px-border)' : 'none',
+              }}>
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:26, color:'#00d4ff', marginBottom:6,
+                  textShadow:'0 0 12px rgba(0,212,255,0.5)' }}>{val}</div>
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'var(--px-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* ============ BENTO FEATURES ============ */}
-        <section id="features" className="py-20 sm:py-28 px-4 sm:px-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12 sm:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-5 tracking-tight">
-                {h.features_title}
-              </h2>
-              <p className="text-[#CBCDD3] text-base sm:text-lg max-w-xl mx-auto">{h.features_sub}</p>
+        {/* ══ CÓMO FUNCIONA — Mission Control ══ */}
+        <section id="como-funciona" style={{ padding:'80px 24px', background: isDark ? 'rgba(8,8,20,0.6)' : 'rgba(200,215,255,0.5)' }}>
+          <div style={{ maxWidth:900, margin:'0 auto' }}>
+            {/* Section header */}
+            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
+              <div style={{ flex:1, height:2, background:'linear-gradient(90deg,transparent,var(--px-border))' }} />
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'#9b59ff', letterSpacing:'0.15em', marginBottom:8 }}>MISIÓN DE CONTROL</div>
+                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color:'#e8eeff', margin:0 }}>{h.timeline_title}</h2>
+              </div>
+              <div style={{ flex:1, height:2, background:'linear-gradient(90deg,var(--px-border),transparent)' }} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-
-              {/* Big card — Pipeline */}
-              <div className="md:col-span-2 rounded-2xl bg-[#0F2C45]/40 border border-[#2F4A67]/50 p-8 hover:border-[#2F4A67] transition-all duration-500 group">
-                <div className="w-12 h-12 rounded-xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-[#60A5FA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-3">{h.cards[0].title}</h3>
-                <p className="text-[#CBCDD3] leading-relaxed mb-8">{h.cards[0].desc}</p>
-                <div className="bg-[#0b0f19]/90 border border-[#2F4A67]/50 rounded-xl p-5 font-mono text-sm">
-                  <div className="flex gap-2 mb-4 border-b border-[#2F4A67]/30 pb-3">
-                    <div className="w-3 h-3 rounded-full bg-[#2F4A67]" />
-                    <div className="w-3 h-3 rounded-full bg-[#2F4A67]" />
-                    <div className="w-3 h-3 rounded-full bg-[#2F4A67]" />
-                  </div>
-                  <div className="space-y-2.5 text-[13px]">
-                    <p><span className="text-[#60A5FA]">~</span> <span className="text-white">$ stardest deploy main</span></p>
-                    <p className="text-[#4a6a8a] pl-2">» Analyzing repository structure</p>
-                    <p className="text-[#4a6a8a] pl-2">» Provisioning isolated container</p>
-                    <p className="text-white pl-2">✓ Build compiled successfully in 1.2s</p>
-                    <p className="text-[#60A5FA] font-semibold pl-2">✓ Live at prod-489x.stardest.app</p>
-                  </div>
-                </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, alignItems:'center' }}>
+              {/* Steps */}
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                <MissionStep num={1} icon={<PixelSatellite scale={1} />} title={h.timeline_steps[0].title} desc={h.timeline_steps[0].desc} color="#2d5fff" active />
+                <MissionStep num={2} icon={<PixelUFO scale={1} />}       title={h.timeline_steps[1].title} desc={h.timeline_steps[1].desc} color="#9b59ff" />
+                <MissionStep num={3} icon={<PixelGlobe scale={1} />}     title={h.timeline_steps[2].title} desc={h.timeline_steps[2].desc} color="#00d4ff" />
               </div>
 
-              {/* Small card — Security */}
-              <div className="rounded-2xl bg-[#0F2C45]/40 border border-[#2F4A67]/50 p-8 hover:border-[#2F4A67] transition-all duration-500">
-                <div className="w-12 h-12 rounded-xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
+              {/* Live terminal */}
+              <div>
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'#00d4ff', marginBottom:12, letterSpacing:'0.1em' }}>
+                  ● SIMULACIÓN EN VIVO
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">{h.cards[1].title}</h3>
-                <p className="text-[#CBCDD3] leading-relaxed">{h.cards[1].desc}</p>
+                <LiveTerminal />
               </div>
-
-              {/* Small card — DNS */}
-              <div className="rounded-2xl bg-[#0F2C45]/40 border border-[#2F4A67]/50 p-8 hover:border-[#2F4A67] transition-all duration-500">
-                <div className="w-12 h-12 rounded-xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mb-6">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white mb-3">{h.cards[2].title}</h3>
-                <p className="text-[#CBCDD3] leading-relaxed">{h.cards[2].desc}</p>
-              </div>
-
-              {/* Big card — Observability */}
-              <div className="md:col-span-2 rounded-2xl bg-[#0F2C45]/40 border border-[#2F4A67]/50 p-8 hover:border-[#2F4A67] transition-all duration-500 group">
-                <div className="flex flex-col sm:flex-row gap-8 items-start">
-                  <div className="flex-1">
-                    <div className="w-12 h-12 rounded-xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mb-6">
-                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3">{h.cards[3].title}</h3>
-                    <p className="text-[#CBCDD3] leading-relaxed">{h.cards[3].desc}</p>
-                  </div>
-                  <div className="flex-shrink-0 flex items-end gap-2 h-28 mt-auto border-b-2 border-[#2F4A67]/50 pb-0">
-                    {[35, 60, 45, 85, 55, 70, 40].map((h, i) => (
-                      <div
-                        key={i}
-                        className={`w-6 rounded-t-md transition-all duration-700 ${i === 3 ? 'bg-[#3B82F6] shadow-[0_0_12px_#3B82F6]' : 'bg-[#2F4A67]/70'}`}
-                        style={{ height: `${h}%` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </section>
 
-        {/* ============ TIMELINE ============ */}
-        <section className="py-20 sm:py-28 px-5 sm:px-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-14 sm:mb-20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 sm:mb-5 tracking-tight">
-                {h.timeline_title}
-              </h2>
-              <p className="text-[#CBCDD3] text-base sm:text-lg">{h.timeline_sub}</p>
+        {/* ══ FEATURES — Orbit Grid ══ */}
+        <section id="features" style={{ padding:'80px 24px' }}>
+          <div style={{ maxWidth:1000, margin:'0 auto' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
+              <div style={{ flex:1, height:2, background:'linear-gradient(90deg,transparent,var(--px-border))' }} />
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'#00d4ff', letterSpacing:'0.15em', marginBottom:8 }}>SISTEMAS DE LA NAVE</div>
+                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color:'#e8eeff', margin:0 }}>{h.features_title}</h2>
+              </div>
+              <div style={{ flex:1, height:2, background:'linear-gradient(90deg,var(--px-border),transparent)' }} />
             </div>
 
-            <div className="relative pl-16">
-              <div className="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-[#2F4A67] via-[#3B82F6] to-transparent" />
-              {h.timeline_steps.map(({ title, desc }, i) => {
-                const accent = i === h.timeline_steps.length - 1;
-                return (
-                  <div key={i} className="relative flex items-start gap-6 mb-16 last:mb-0">
-                    <div className={`absolute -left-[52px] w-12 h-12 rounded-full flex items-center justify-center text-lg font-black flex-shrink-0 z-10
-                      ${accent
-                        ? 'bg-[#0F2C45] border-2 border-[#60A5FA] text-white shadow-[0_0_25px_rgba(59,130,246,0.5)]'
-                        : 'bg-[#0b0f19] border-2 border-[#2F4A67] text-white'}`}
-                    >
-                      {i + 1}
-                    </div>
-                    <div className="pt-1">
-                      <h4 className="text-xl font-bold text-white mb-2">{title}</h4>
-                      <p className="text-[#CBCDD3] leading-relaxed">{desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:16 }}>
+              {features.map(f => <FeatureCard key={f.title} {...f} />)}
             </div>
           </div>
         </section>
 
-        {/* ============ CTA ============ */}
-        <section className="py-20 sm:py-28 px-4 sm:px-6">
-          <div className="max-w-4xl mx-auto text-center rounded-3xl bg-gradient-to-b from-[#0F2C45]/60 to-[#0b0f19]/40 border border-[#2F4A67]/50 px-5 sm:px-8 py-14 sm:py-20">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#0b0f19] border border-[#2F4A67] flex items-center justify-center mx-auto mb-6 sm:mb-8">
-              <svg className="w-8 h-8 text-[#60A5FA]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zm0 0l4.94-4.94m6.34-8.5a12.88 12.88 0 010 9.17m-2.83-6.34a8.5 8.5 0 010 3.5"/>
-              </svg>
+        {/* ══ CTA FINAL ══ */}
+        <section style={{ padding:'80px 24px 100px' }}>
+          <div style={{
+            maxWidth:760, margin:'0 auto', textAlign:'center',
+            padding:'60px 40px',
+            background:'rgba(13,13,43,0.8)',
+            border:'2px solid var(--px-border-glow)',
+            boxShadow:'8px 8px 0 rgba(0,0,0,0.6), 0 0 40px rgba(45,95,255,0.25)',
+          }}>
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:20, filter:'drop-shadow(0 0 20px #2d5fff)' }}>
+              <PixelRocket scale={4} />
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 sm:mb-6 tracking-tight">{h.cta_title}</h2>
-            <p className="text-base sm:text-xl text-[#CBCDD3] mb-8 sm:mb-12 max-w-2xl mx-auto font-light leading-relaxed">{h.cta_sub}</p>
-            <Link
-              to="/deploy"
-              className="inline-flex px-8 sm:px-12 py-4 sm:py-5 bg-white text-[#0b0f19] hover:bg-[#dbeafe] font-black rounded-xl transition-all duration-300 shadow-[0_8px_40px_rgba(255,255,255,0.12)] hover:shadow-[0_8px_50px_rgba(255,255,255,0.2)] text-sm sm:text-base tracking-wide"
-            >
+            <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:34, color:'#e8eeff', margin:'0 0 16px' }}>{h.cta_title}</h2>
+            <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'var(--px-muted)', margin:'0 0 36px', lineHeight:1.5 }}>{h.cta_sub}</p>
+            <Link to="/deploy" style={{
+              textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
+              fontFamily:"'Jersey 10',monospace", fontSize:18, color:'#080818',
+              padding:'16px 40px', background:'#00d4ff',
+              border:'2px solid #00d4ff',
+              boxShadow:'5px 5px 0 rgba(0,0,0,0.6)',
+            }}>
               {h.cta_btn}
             </Link>
           </div>
         </section>
 
-        {/* ============ FOOTER ============ */}
-        <footer className="border-t border-[#2F4A67]/30 pt-16 pb-10 px-6 bg-[#040812]">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-16">
+        {/* ══ FOOTER ══ */}
+        <footer style={{ borderTop:'1px solid var(--px-border)', background: isDark ? '#040812' : '#dde6ff', padding:'48px 24px 28px' }}>
+          <div style={{ maxWidth:1000, margin:'0 auto' }}>
+            {/* Logo */}
+            <div style={{ marginBottom:40, display:'flex', alignItems:'center', gap:16 }}>
+              <PixelRocket scale={1.2} />
+              <span style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', textShadow:'0 0 10px rgba(0,212,255,0.5)' }}>StarDest</span>
+              <span style={{ fontFamily:"'Jersey 10',monospace", fontSize:12, color:'var(--px-muted)', marginLeft:4 }}>// Cloud PaaS</span>
+            </div>
+
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:36, marginBottom:40 }}>
               {h.footer.columns.map(({ title, links }) => (
                 <div key={title}>
-                  <h4 className="text-white font-bold mb-5 tracking-widest uppercase text-xs">{title}</h4>
-                  <ul className="space-y-3">
-                    {links.map((l) => (
+                  <h4 style={{ fontFamily:"'Jersey 10',monospace", fontSize:12, color:'#9b59ff', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.1em' }}>{title}</h4>
+                  <ul style={{ listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:10 }}>
+                    {links.map(l => (
                       <li key={l}>
-                        <a href="#" className="text-[#CBCDD3]/70 hover:text-white transition text-sm">{l}</a>
+                        <a href="#" style={{ fontFamily:"'Jersey 10',monospace", fontSize:16, color:'var(--px-muted)', textDecoration:'none' }}
+                          onMouseEnter={e => e.target.style.color='#00d4ff'}
+                          onMouseLeave={e => e.target.style.color='var(--px-muted)'}
+                        >{l}</a>
                       </li>
                     ))}
                   </ul>
                 </div>
               ))}
             </div>
-            <div className="border-t border-[#2F4A67]/30 pt-8 flex flex-col sm:flex-row justify-between items-center text-[#CBCDD3]/50 text-sm gap-4">
-              <p>{h.footer.copy}</p>
-              <div className="flex gap-6">
-                <a href="#" className="hover:text-white transition">{h.footer.status}</a>
-                <a href="#" className="hover:text-white transition">{h.footer.sla}</a>
+
+            <div style={{ borderTop:'1px solid var(--px-border)', paddingTop:24,
+              display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:12,
+              fontFamily:"'Jersey 10',monospace", fontSize:14, color:'var(--px-muted)' }}>
+              <p style={{ margin:0 }}>{h.footer.copy}</p>
+              <div style={{ display:'flex', gap:24 }}>
+                <a href="#" style={{ color:'var(--px-muted)', textDecoration:'none' }}>{h.footer.status}</a>
+                <a href="#" style={{ color:'var(--px-muted)', textDecoration:'none' }}>{h.footer.sla}</a>
               </div>
             </div>
           </div>
