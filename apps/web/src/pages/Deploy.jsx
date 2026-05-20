@@ -1,8 +1,108 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Starfield from '../components/Starfield';
 import { useTranslation } from '../i18n';
+import { getPrefs, subscribePrefs } from '../store/prefs';
+
+/** Lightweight hook: re-renders when theme/lang changes */
+function useTheme() {
+  const [prefs, setPrefs] = useState(getPrefs);
+  useEffect(() => subscribePrefs(setPrefs), []);
+  return prefs.theme === 'dark';
+}
+
+/* ─── Starfield Canvas ─── */
+function PixelStarfield({ dark = true }) {
+  const canvasRef = useRef(null);
+  const darkRef = useRef(dark);
+  darkRef.current = dark;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let animId;
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Star colors per mode
+    const darkColors  = ['#00d4ff','#9b59ff','#2d5fff','#e8eeff','#e8eeff'];
+    const lightColors = ['#2d5fff','#1a3aaa','#4a7fff','#9b59ff','#0d1f6e'];
+
+    const stars = Array.from({ length: 220 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      size: Math.random() < 0.08 ? 3 : Math.random() < 0.3 ? 2 : 1,
+      speed: Math.random() * 0.25 + 0.03,
+      twinkle: Math.random() * Math.PI * 2,
+    }));
+    const shoots = Array.from({ length: 2 }, () => ({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.4,
+      vx: 5, vy: 3, life: 0, maxLife: 70, delay: Math.random() * 400 + 100,
+    }));
+
+    const draw = () => {
+      const isDark = darkRef.current;
+      const colors = isDark ? darkColors : lightColors;
+
+      // Background trail
+      ctx.fillStyle = isDark ? 'rgba(8,8,24,0.22)' : 'rgba(240,244,255,0.25)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      stars.forEach((s, i) => {
+        s.twinkle += 0.035;
+        const alpha = 0.35 + 0.65 * Math.abs(Math.sin(s.twinkle));
+        ctx.globalAlpha = isDark ? alpha : Math.min(1, alpha * 1.4);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(Math.floor(s.x), Math.floor(s.y), s.size, s.size);
+        if (s.size === 3) {
+          ctx.globalAlpha *= 0.35;
+          ctx.fillRect(Math.floor(s.x)-2, Math.floor(s.y)+1, 2, 1);
+          ctx.fillRect(Math.floor(s.x)+3, Math.floor(s.y)+1, 2, 1);
+          ctx.fillRect(Math.floor(s.x)+1, Math.floor(s.y)-2, 1, 2);
+          ctx.fillRect(Math.floor(s.x)+1, Math.floor(s.y)+3, 1, 2);
+        }
+        s.y += s.speed;
+        if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+      });
+
+      // Shooting stars
+      shoots.forEach(sh => {
+        sh.delay--;
+        if (sh.delay > 0) return;
+        sh.life++;
+        if (sh.life > sh.maxLife) {
+          sh.x = Math.random()*canvas.width; sh.y = Math.random()*canvas.height*0.3;
+          sh.life = 0; sh.delay = Math.random()*300+150; return;
+        }
+        const isDark2 = darkRef.current;
+        const p = sh.life / sh.maxLife;
+        const trailColor = isDark2 ? '#00d4ff' : '#2d5fff';
+        const headColor  = isDark2 ? '#ffffff' : '#1a3aaa';
+        for (let i = 0; i < 18; i++) {
+          ctx.globalAlpha = (i/18) * (p < 0.8 ? p/0.8 : (1-p)/0.2) * 0.9;
+          ctx.fillStyle = trailColor;
+          ctx.fillRect(Math.floor(sh.x - sh.vx*(i*0.5)), Math.floor(sh.y - sh.vy*(i*0.5)), 2, 1);
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = headColor;
+        ctx.fillRect(Math.floor(sh.x), Math.floor(sh.y), 3, 2);
+        sh.x += sh.vx; sh.y += sh.vy;
+      });
+
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(draw);
+    };
+
+    // Fill once immediately so no flash
+    ctx.fillStyle = darkRef.current ? '#080818' : '#f0f4ff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    draw();
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+  }, []);
+
+  return <canvas ref={canvasRef} style={{ position:'fixed', inset:0, zIndex:0, imageRendering:'pixelated' }} />;
+}
 
 export default function Deploy() {
+  const isDark = useTheme();
   const t = useTranslation();
   const d = t.deploy;
 
@@ -135,7 +235,7 @@ export default function Deploy() {
   // ===== RENDER =====
   return (
     <div className="relative min-h-screen bg-[#0b0f19] overflow-x-hidden">
-      <Starfield />
+      <PixelStarfield dark={isDark} />
 
       {/* Scanlines */}
       <div style={{
