@@ -160,14 +160,10 @@ function PreferencesDropdown() {
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="Apariencia e idioma"
-        className="pref-trigger-btn"
+        className={`pref-trigger-btn ${open ? 'active' : ''}`}
         style={{
           minWidth: '40px', minHeight: '40px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: '10px',
-          border: '1px solid rgba(47,74,103,0.5)',
-          background: open ? 'rgba(47,74,103,0.35)' : 'rgba(15,44,69,0.3)',
-          color: open ? '#fff' : 'rgba(203,205,211,0.8)',
           cursor: 'pointer', outline: 'none',
         }}
       >
@@ -181,10 +177,6 @@ function PreferencesDropdown() {
         transform: open ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.97)',
         transformOrigin: 'top right',
         transition: 'opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease',
-        borderRadius: '16px', overflow: 'hidden',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
-        border: '1px solid rgba(47,74,103,0.4)',
-        background: 'rgba(11,15,25,0.97)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
       }}>

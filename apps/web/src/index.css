@@ -273,7 +273,8 @@ body {
   box-shadow: 2px 2px 0 rgba(0,0,0,0.5) !important;
   border-radius: 0 !important;
 }
-.pref-trigger-btn:hover {
+.pref-trigger-btn:hover,
+.pref-trigger-btn.active {
   border-color: var(--px-blue-mid) !important;
   background: rgba(26,58,255,0.2) !important;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.5), 0 0 12px var(--px-glow-blue) !important;
@@ -348,6 +349,18 @@ html.light-mode .mega-menu-panel {
 html.light-mode .pref-dropdown-panel {
   background: rgba(240,244,255,0.97) !important;
   border-color: rgba(45,95,255,0.2) !important;
+}
+
+html.light-mode .pref-trigger-btn {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(45, 95, 255, 0.25) !important;
+  color: var(--px-blue-mid) !important;
+  box-shadow: 2px 2px 0 rgba(45, 95, 255, 0.15) !important;
+}
+html.light-mode .pref-trigger-btn:hover {
+  background: rgba(45, 95, 255, 0.12) !important;
+  border-color: var(--px-blue-mid) !important;
+  box-shadow: 4px 4px 0 rgba(45, 95, 255, 0.15), 0 0 12px var(--px-glow-blue) !important;
 }
 
 html.light-mode input[type="text"],
