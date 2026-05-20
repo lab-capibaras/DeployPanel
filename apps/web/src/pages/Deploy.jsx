@@ -238,9 +238,37 @@ export default function Deploy() {
 
   const parsedRepo = parseGithubUrl(formData.repoUrl);
 
+  // ===== DESIGN CONSTANTS =====
+  const pageBg = isDark ? '#0b0f19' : '#f0f4ff';
+  const pageTextColor = isDark ? '#e8eeff' : '#0d1433';
+  const cardBg = isDark ? 'rgba(2,2,16,0.85)' : 'rgba(255, 255, 255, 0.85)';
+  const cardBorder = isDark ? '#1e2d7a' : 'rgba(45, 95, 255, 0.3)';
+  const cardShadow = isDark
+    ? '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)'
+    : '6px 6px 0 rgba(45, 95, 255, 0.12), 0 0 40px rgba(45, 95, 255, 0.06)';
+  
+  const textTitle = isDark ? '#e8eeff' : '#0d1433';
+  const textMuted = isDark ? '#6a7ab5' : '#3a4a7a';
+  const labelColor = isDark ? '#8ab0ff' : '#2d5fff';
+
+  // Input styles
+  const inputBg = isDark ? '#020210' : '#ffffff';
+  const inputColor = isDark ? '#e8eeff' : '#0d1433';
+  const inputBorder = isDark ? '#1e2d7a' : 'rgba(45, 95, 255, 0.25)';
+  const inputShadow = isDark ? 'inset 0 0 8px rgba(0,0,0,0.4)' : 'inset 0 0 6px rgba(45, 95, 255, 0.08)';
+
+  // Button styles
+  const btnGradient = isDark 
+    ? 'linear-gradient(135deg,#0f1f5c,#1a3aff)' 
+    : 'linear-gradient(135deg,#2d5fff,#1a3aff)';
+  const btnGradientHover = isDark 
+    ? 'linear-gradient(135deg,#1a3aff,#0f1f5c)' 
+    : 'linear-gradient(135deg,#1a3aff,#2d5fff)';
+  const btnShadow = isDark ? '3px 3px 0 rgba(0,0,0,0.6)' : '3px 3px 0 rgba(45, 95, 255, 0.2)';
+
   // ===== RENDER =====
   return (
-    <div className="relative min-h-screen bg-[#0b0f19] overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-hidden" style={{ backgroundColor: pageBg, color: pageTextColor }}>
       <PixelStarfield dark={isDark} />
 
       {/* Scanlines */}
@@ -281,7 +309,7 @@ export default function Deploy() {
           <h1 style={{
             fontFamily: "'Jersey 10',monospace",
             fontSize: 'clamp(32px, 5vw, 48px)',
-            color: '#e8eeff',
+            color: textTitle,
             margin: '0 0 8px',
             lineHeight: 1.1,
           }}>
@@ -294,30 +322,30 @@ export default function Deploy() {
           <p style={{
             fontFamily: "'Jersey 10',monospace",
             fontSize: 18,
-            color: '#6a7ab5',
+            color: textMuted,
             margin: 0,
           }}>{d.subtitle}</p>
         </div>
 
         <div className="w-full max-w-2xl" style={{ position: 'relative', zIndex: 2 }}>
           <div style={{
-            background: 'rgba(2,2,16,0.85)',
-            border: '2px solid #1e2d7a',
-            boxShadow: '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)',
+            background: cardBg,
+            border: `2px solid ${cardBorder}`,
+            boxShadow: cardShadow,
             padding: '36px 32px',
           }}>
 
             {/* Panel header bar */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              marginBottom: 28, borderBottom: '1px solid #1e2d7a', paddingBottom: 16,
+              marginBottom: 28, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
             }}>
               {['#ff5f57', '#febc2e', '#28c840'].map(c => (
                 <div key={c} style={{ width: 9, height: 9, background: c }} />
               ))}
               <span style={{
                 marginLeft: 8, fontFamily: "'Share Tech Mono',monospace",
-                fontSize: 12, color: '#4a6a9a', letterSpacing: '0.05em',
+                fontSize: 12, color: isDark ? '#4a6a9a' : '#5a7a9a', letterSpacing: '0.05em',
               }}>
                 stardest — mission-control
               </span>
@@ -333,7 +361,7 @@ export default function Deploy() {
                     display: 'block',
                     fontFamily: "'Jersey 10',monospace",
                     fontSize: 15,
-                    color: '#8ab0ff',
+                    color: labelColor,
                     marginBottom: 8,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
@@ -349,19 +377,19 @@ export default function Deploy() {
                         e.target.style.boxShadow = '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = '#1e2d7a';
-                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                        e.target.style.borderColor = inputBorder;
+                        e.target.style.boxShadow = inputShadow;
                       }}
                       style={{
                         flex: 1,
                         padding: '12px 16px',
-                        background: '#020210',
-                        border: '2px solid #1e2d7a',
-                        color: '#e8eeff',
+                        background: inputBg,
+                        border: `2px solid ${inputBorder}`,
+                        color: inputColor,
                         fontFamily: "'Share Tech Mono',monospace",
                         fontSize: 14,
                         outline: 'none',
-                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
                     />
@@ -371,26 +399,28 @@ export default function Deploy() {
                       disabled={loadingBranches}
                       onMouseEnter={(e) => {
                         if (!loadingBranches) {
-                          e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
-                          e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                          e.currentTarget.style.background = btnGradientHover;
+                          e.currentTarget.style.boxShadow = isDark 
+                            ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                            : '4px 4px 0 rgba(45,95,255,0.25), 0 0 12px rgba(45,95,255,0.2)';
                           e.currentTarget.style.transform = 'translate(-1px,-1px)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
-                        e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                        e.currentTarget.style.background = btnGradient;
+                        e.currentTarget.style.boxShadow = btnShadow;
                         e.currentTarget.style.transform = 'none';
                       }}
                       style={{
                         padding: '12px 20px',
-                        background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                        background: btnGradient,
                         border: '2px solid #2d5fff',
                         color: '#e8eeff',
                         fontFamily: "'Jersey 10',monospace",
                         fontSize: 16,
                         letterSpacing: '0.05em',
                         cursor: loadingBranches ? 'not-allowed' : 'pointer',
-                        boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                        boxShadow: btnShadow,
                         transition: 'all 0.1s steps(2)',
                         opacity: loadingBranches ? 0.6 : 1,
                       }}
@@ -404,7 +434,7 @@ export default function Deploy() {
                     </button>
                   </div>
                   {parsedRepo && (
-                    <p style={{ fontSize: 13, color: '#00d4ff', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
+                    <p style={{ fontSize: 13, color: isDark ? '#00d4ff' : '#0070cc', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
                       {d.form.repo_hint} <strong>{parsedRepo.owner}/{parsedRepo.repo}</strong>
                     </p>
                   )}
@@ -457,7 +487,7 @@ export default function Deploy() {
                     display: 'block',
                     fontFamily: "'Jersey 10',monospace",
                     fontSize: 15,
-                    color: '#8ab0ff',
+                    color: labelColor,
                     marginBottom: 8,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
@@ -473,28 +503,28 @@ export default function Deploy() {
                         e.target.style.boxShadow = subdomainError ? '0 0 0 1px #ef4444' : '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = subdomainError ? '#ef4444' : '#1e2d7a';
-                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                        e.target.style.borderColor = subdomainError ? '#ef4444' : inputBorder;
+                        e.target.style.boxShadow = inputShadow;
                       }}
                       style={{
                         flex: 1,
                         padding: '12px 16px',
-                        background: '#020210',
-                        border: `2px solid ${subdomainError ? '#ef4444' : '#1e2d7a'}`,
-                        color: '#e8eeff',
+                        background: inputBg,
+                        border: `2px solid ${subdomainError ? '#ef4444' : inputBorder}`,
+                        color: inputColor,
                         fontFamily: "'Share Tech Mono',monospace",
                         fontSize: 14,
                         outline: 'none',
-                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
                     />
                     <span style={{
                       padding: '12px 16px',
-                      background: '#131333',
-                      border: '2px solid #1e2d7a',
+                      background: isDark ? '#131333' : '#e8eeff',
+                      border: `2px solid ${inputBorder}`,
                       borderLeft: 'none',
-                      color: '#6a7ab5',
+                      color: textMuted,
                       fontFamily: "'Share Tech Mono',monospace",
                       fontSize: 14,
                       display: 'flex',
@@ -506,7 +536,7 @@ export default function Deploy() {
                   {subdomainError
                     ? <p style={{ fontSize: 13, color: '#fca5a5', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>{subdomainError}</p>
                     : formData.subdomain && (
-                      <p style={{ fontSize: 13, color: '#00d4ff', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
+                      <p style={{ fontSize: 13, color: isDark ? '#00d4ff' : '#0070cc', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
                         {d.form.subdomain_url} <strong>https://{formData.subdomain}.stardest.com</strong>
                       </p>
                     )
@@ -516,26 +546,28 @@ export default function Deploy() {
                 <button
                   type="submit"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
-                    e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                    e.currentTarget.style.background = btnGradientHover;
+                    e.currentTarget.style.boxShadow = isDark 
+                      ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)'
+                      : '4px 4px 0 rgba(45,95,255,0.25), 0 0 20px rgba(45,95,255,0.2)';
                     e.currentTarget.style.transform = 'translate(-1px,-1px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
-                    e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                    e.currentTarget.style.background = btnGradient;
+                    e.currentTarget.style.boxShadow = btnShadow;
                     e.currentTarget.style.transform = 'none';
                   }}
                   style={{
                     width: '100%',
                     padding: '14px 24px',
-                    background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                    background: btnGradient,
                     border: '2px solid #2d5fff',
                     color: '#e8eeff',
                     fontFamily: "'Jersey 10',monospace",
                     fontSize: 18,
                     letterSpacing: '0.08em',
                     cursor: 'pointer',
-                    boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                    boxShadow: btnShadow,
                     transition: 'all 0.1s steps(2)',
                     display: 'flex',
                     alignItems: 'center',
@@ -556,8 +588,8 @@ export default function Deploy() {
             {phase === 'confirm' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div>
-                  <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 24, color: '#e8eeff', margin: '0 0 6px' }}>{d.confirm.title}</h2>
-                  <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: '#6a7ab5', margin: 0 }}>{d.confirm.sub}</p>
+                  <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 24, color: textTitle, margin: '0 0 6px' }}>{d.confirm.title}</h2>
+                  <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: textMuted, margin: 0 }}>{d.confirm.sub}</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
@@ -570,13 +602,13 @@ export default function Deploy() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 16px',
-                      background: '#020210',
-                      border: '2px solid #1e2d7a',
+                      background: inputBg,
+                      border: `2px solid ${inputBorder}`,
                       fontFamily: "'Share Tech Mono',monospace",
                       fontSize: 14,
                     }}>
-                      <span style={{ color: '#6a7ab5' }}>{label}</span>
-                      <span style={{ color: accent ? '#00d4ff' : '#e8eeff', fontWeight: 'bold' }}>{value}</span>
+                      <span style={{ color: textMuted }}>{label}</span>
+                      <span style={{ color: accent ? (isDark ? '#00d4ff' : '#0070cc') : pageTextColor, fontWeight: 'bold' }}>{value}</span>
                     </div>
                   ))}
                 </div>
@@ -585,24 +617,26 @@ export default function Deploy() {
                     onClick={() => setPhase('form')}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = '#2d5fff';
-                      e.currentTarget.style.color = '#e8eeff';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                      e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc';
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                        : '4px 4px 0 rgba(45,95,255,0.25), 0 0 12px rgba(45,95,255,0.2)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#1e2d7a';
-                      e.currentTarget.style.color = '#6a7ab5';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.borderColor = inputBorder;
+                      e.currentTarget.style.color = textMuted;
+                      e.currentTarget.style.boxShadow = btnShadow;
                     }}
                     style={{
                       flex: 1,
                       padding: '12px 20px',
                       background: 'transparent',
-                      border: '2px solid #1e2d7a',
-                      color: '#6a7ab5',
+                      border: `2px solid ${inputBorder}`,
+                      color: textMuted,
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 16,
                       cursor: 'pointer',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: btnShadow,
                       transition: 'all 0.1s steps(2)',
                     }}
                   >
@@ -611,25 +645,27 @@ export default function Deploy() {
                   <button
                     onClick={startDeploy}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                      e.currentTarget.style.background = btnGradientHover;
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)'
+                        : '4px 4px 0 rgba(45,95,255,0.25), 0 0 20px rgba(45,95,255,0.2)';
                       e.currentTarget.style.transform = 'translate(-1px,-1px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.background = btnGradient;
+                      e.currentTarget.style.boxShadow = btnShadow;
                       e.currentTarget.style.transform = 'none';
                     }}
                     style={{
                       flex: 1,
                       padding: '12px 20px',
-                      background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                      background: btnGradient,
                       border: '2px solid #2d5fff',
                       color: '#e8eeff',
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 16,
                       cursor: 'pointer',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: btnShadow,
                       transition: 'all 0.1s steps(2)',
                       fontWeight: 'bold',
                     }}
@@ -643,19 +679,19 @@ export default function Deploy() {
             {/* ======= PROGRESS ======= */}
             {phase === 'progress' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyBetween: 'space-between', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: '#e8eeff', margin: 0 }}>{d.progress.title}</h2>
-                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 12, color: '#6a7ab5', margin: '4px 0 0' }}>{formData.subdomain}.stardest.com</p>
+                    <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: textTitle, margin: 0 }}>{d.progress.title}</h2>
+                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 12, color: textMuted, margin: '4px 0 0' }}>{formData.subdomain}.stardest.com</p>
                   </div>
-                  <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 28, color: '#e8eeff', fontWeight: 'bold' }}>{Math.round(progress)}%</span>
+                  <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 28, color: textTitle, fontWeight: 'bold' }}>{Math.round(progress)}%</span>
                 </div>
 
                 <div style={{
                   width: '100%',
                   height: 14,
-                  background: '#020210',
-                  border: '2px solid #1e2d7a',
+                  background: inputBg,
+                  border: `2px solid ${inputBorder}`,
                   padding: 2,
                   boxSizing: 'border-box',
                 }}>
@@ -684,7 +720,7 @@ export default function Deploy() {
                         alignItems: 'center',
                         gap: 8,
                         padding: '12px 8px',
-                        border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : '#1e2d7a'}`,
+                        border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : inputBorder}`,
                         background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(45,95,255,0.15)' : 'transparent',
                         fontFamily: "'Jersey 10',monospace",
                         fontSize: 13,
@@ -697,17 +733,17 @@ export default function Deploy() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: done ? '#10b981' : active ? '#2d5fff' : '#020210',
-                          border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : '#1e2d7a'}`,
+                          background: done ? '#10b981' : active ? '#2d5fff' : inputBg,
+                          border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : inputBorder}`,
                         }}>
                           {done
                             ? <svg style={{ width: 14, height: 14, color: '#fff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                             : active
                               ? <div style={{ width: 10, height: 10, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                              : <div style={{ width: 6, height: 6, background: '#1e2d7a' }} />
+                              : <div style={{ width: 6, height: 6, background: inputBorder }} />
                           }
                         </div>
-                        <span style={{ color: done ? '#10b981' : active ? '#e8eeff' : '#4a6a9a', fontWeight: 'bold' }}>{label}</span>
+                        <span style={{ color: done ? '#10b981' : active ? pageTextColor : textMuted, fontWeight: 'bold' }}>{label}</span>
                       </div>
                     );
                   })}
@@ -717,7 +753,7 @@ export default function Deploy() {
                   height: 200,
                   overflowY: 'auto',
                   background: '#020210',
-                  border: '2px solid #1e2d7a',
+                  border: `2px solid ${inputBorder}`,
                   padding: 16,
                   fontFamily: "'Share Tech Mono',monospace",
                   fontSize: 12,
@@ -749,8 +785,8 @@ export default function Deploy() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: '#e8eeff', margin: '0 0 8px' }}>{d.success.title}</h2>
-                <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: '#6a7ab5', margin: '0 0 28px' }}>{d.success.sub}</p>
+                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{d.success.title}</h2>
+                <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: textMuted, margin: '0 0 28px' }}>{d.success.sub}</p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28, textAlign: 'left' }}>
                   {[
@@ -763,13 +799,13 @@ export default function Deploy() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '12px 16px',
-                      background: '#020210',
-                      border: '2px solid #1e2d7a',
+                      background: inputBg,
+                      border: `2px solid ${inputBorder}`,
                       fontFamily: "'Share Tech Mono',monospace",
                       fontSize: 14,
                     }}>
-                      <span style={{ color: '#6a7ab5' }}>{label}</span>
-                      <span style={{ color: green ? '#10b981' : '#e8eeff', fontWeight: 'bold' }}>{value}</span>
+                      <span style={{ color: textMuted }}>{label}</span>
+                      <span style={{ color: green ? '#10b981' : pageTextColor, fontWeight: 'bold' }}>{value}</span>
                     </div>
                   ))}
                 </div>
@@ -781,11 +817,15 @@ export default function Deploy() {
                     rel="noopener noreferrer"
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'rgba(16,185,129,0.25)';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(16,185,129,0.3)';
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(16,185,129,0.3)'
+                        : '4px 4px 0 rgba(16,185,129,0.25), 0 0 12px rgba(16,185,129,0.2)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'rgba(16,185,129,0.15)';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '3px 3px 0 rgba(0,0,0,0.6)'
+                        : '3px 3px 0 rgba(16,185,129,0.2)';
                     }}
                     style={{
                       width: '100%',
@@ -797,7 +837,7 @@ export default function Deploy() {
                       fontSize: 18,
                       letterSpacing: '0.05em',
                       textDecoration: 'none',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: isDark ? '3px 3px 0 rgba(0,0,0,0.6)' : '3px 3px 0 rgba(16,185,129,0.2)',
                       transition: 'all 0.1s steps(2)',
                       display: 'flex',
                       alignItems: 'center',
@@ -814,24 +854,26 @@ export default function Deploy() {
                     onClick={reset}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = '#2d5fff';
-                      e.currentTarget.style.color = '#e8eeff';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                      e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc';
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                        : '4px 4px 0 rgba(45,95,255,0.25), 0 0 12px rgba(45,95,255,0.2)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#1e2d7a';
-                      e.currentTarget.style.color = '#6a7ab5';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.5)';
+                      e.currentTarget.style.borderColor = inputBorder;
+                      e.currentTarget.style.color = textMuted;
+                      e.currentTarget.style.boxShadow = btnShadow;
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 24px',
                       background: 'transparent',
-                      border: '2px solid #1e2d7a',
-                      color: '#6a7ab5',
+                      border: `2px solid ${inputBorder}`,
+                      color: textMuted,
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 16,
                       cursor: 'pointer',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: btnShadow,
                       transition: 'all 0.1s steps(2)',
                     }}
                   >
@@ -859,32 +901,34 @@ export default function Deploy() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: '#e8eeff', margin: '0 0 8px' }}>{d.error.title}</h2>
+                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{d.error.title}</h2>
                 <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: '#fca5a5', margin: '0 0 28px' }}>{errorMessage}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <button
                     onClick={startDeploy}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                      e.currentTarget.style.background = btnGradientHover;
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)'
+                        : '4px 4px 0 rgba(45,95,255,0.25), 0 0 20px rgba(45,95,255,0.2)';
                       e.currentTarget.style.transform = 'translate(-1px,-1px)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.background = btnGradient;
+                      e.currentTarget.style.boxShadow = btnShadow;
                       e.currentTarget.style.transform = 'none';
                     }}
                     style={{
                       width: '100%',
                       padding: '14px 24px',
-                      background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                      background: btnGradient,
                       border: '2px solid #2d5fff',
                       color: '#e8eeff',
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 18,
                       letterSpacing: '0.08em',
                       cursor: 'pointer',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: btnShadow,
                       transition: 'all 0.1s steps(2)',
                       fontWeight: 'bold',
                     }}
@@ -895,24 +939,26 @@ export default function Deploy() {
                     onClick={reset}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = '#2d5fff';
-                      e.currentTarget.style.color = '#e8eeff';
-                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                      e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc';
+                      e.currentTarget.style.boxShadow = isDark
+                        ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                        : '4px 4px 0 rgba(45,95,255,0.25), 0 0 12px rgba(45,95,255,0.2)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#1e2d7a';
-                      e.currentTarget.style.color = '#6a7ab5';
-                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.5)';
+                      e.currentTarget.style.borderColor = inputBorder;
+                      e.currentTarget.style.color = textMuted;
+                      e.currentTarget.style.boxShadow = btnShadow;
                     }}
                     style={{
                       width: '100%',
                       padding: '12px 24px',
                       background: 'transparent',
-                      border: '2px solid #1e2d7a',
-                      color: '#6a7ab5',
+                      border: `2px solid ${inputBorder}`,
+                      color: textMuted,
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 16,
                       cursor: 'pointer',
-                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      boxShadow: btnShadow,
                       transition: 'all 0.1s steps(2)',
                     }}
                   >
