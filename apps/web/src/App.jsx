@@ -299,11 +299,16 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
   const bgLogin    = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
   // Static tools for the desktop mega-menu — rendered once per open
   // The mega-menu content updates via CSS [data-lang] class toggling
+  const navBg = isDark ? 'rgba(8, 8, 24, 0.75)' : 'rgba(240, 244, 255, 0.75)';
+  const navBorder = isDark ? 'rgba(45, 95, 255, 0.15)' : 'rgba(45, 95, 255, 0.12)';
+
   return (
     <nav className="fixed top-0 left-0 right-0 w-full z-50" style={{
-      background: 'transparent',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+      background: navBg,
+      borderBottom: `1px solid ${navBorder}`,
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(45,95,255,0.04)',
     }}>
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
