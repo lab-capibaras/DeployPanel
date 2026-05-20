@@ -224,11 +224,6 @@ export default function Home() {
       <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none',
         background:'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)' }} />
 
-      {/* Pixel grid */}
-      <div style={{ position:'fixed', inset:0, zIndex:1, pointerEvents:'none',
-        backgroundImage:'linear-gradient(rgba(30,45,122,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(30,45,122,0.05) 1px,transparent 1px)',
-        backgroundSize:'32px 32px' }} />
-
       <div style={{ position:'relative', zIndex:2 }}>
 
         {/* ══ HERO ══ */}
