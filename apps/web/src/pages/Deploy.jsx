@@ -137,133 +137,404 @@ export default function Deploy() {
     <div className="relative min-h-screen bg-[#0b0f19] overflow-x-hidden">
       <Starfield />
 
+      {/* Scanlines */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
+        background: 'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)'
+      }} />
+
+      {/* Pixel grid */}
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
+        backgroundImage: 'linear-gradient(rgba(30,45,122,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(30,45,122,0.05) 1px,transparent 1px)',
+        backgroundSize: '32px 32px'
+      }} />
+
+      {/* Central glow */}
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        width: 600, height: 600, pointerEvents: 'none', zIndex: 1,
+        background: 'radial-gradient(ellipse,rgba(45,95,255,0.12) 0%,transparent 70%)',
+      }} />
+
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 pt-28 pb-20">
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 mb-5 px-5 py-2 bg-[#0F2C45]/40 border border-[#2F4A67]/60 rounded-full">
+        <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 2 }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 20,
+            padding: '4px 12px',
+            background: 'rgba(45,95,255,0.15)',
+            border: '2px solid #2d5fff',
+            boxShadow: '2px 2px 0 rgba(0,0,0,0.5)',
+            color: '#00d4ff',
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 12,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
             <span className="w-2 h-2 rounded-full bg-[#60A5FA] animate-pulse" />
-            <span className="text-[#CBCDD3] text-sm font-medium tracking-wide">{d.badge}</span>
+            <span>{d.badge}</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-2">
-            {d.title_1} <span className="bg-gradient-to-r from-[#60A5FA] to-[#3B82F6] bg-clip-text text-transparent">{d.title_2}</span>
+          <h1 style={{
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 'clamp(32px, 5vw, 48px)',
+            color: '#e8eeff',
+            margin: '0 0 8px',
+            lineHeight: 1.1,
+          }}>
+            {d.title_1} <span style={{
+              background: 'linear-gradient(90deg,#00d4ff,#2d5fff,#9b59ff)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 10px rgba(0,212,255,0.3))',
+            }}>{d.title_2}</span>
           </h1>
-          <p className="text-[#CBCDD3] text-base font-light">{d.subtitle}</p>
+          <p style={{
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 18,
+            color: '#6a7ab5',
+            margin: 0,
+          }}>{d.subtitle}</p>
         </div>
 
-        <div className="w-full max-w-2xl">
-          <div className="rounded-2xl bg-[#0F2C45]/25 border border-[#2F4A67]/50 overflow-hidden shadow-[0_20px_80px_rgba(0,0,0,0.5)]">
+        <div className="w-full max-w-2xl" style={{ position: 'relative', zIndex: 2 }}>
+          <div style={{
+            background: 'rgba(2,2,16,0.85)',
+            border: '2px solid #1e2d7a',
+            boxShadow: '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)',
+            padding: '36px 32px',
+          }}>
+
+            {/* Panel header bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginBottom: 28, borderBottom: '1px solid #1e2d7a', paddingBottom: 16,
+            }}>
+              {['#ff5f57', '#febc2e', '#28c840'].map(c => (
+                <div key={c} style={{ width: 9, height: 9, background: c }} />
+              ))}
+              <span style={{
+                marginLeft: 8, fontFamily: "'Share Tech Mono',monospace",
+                fontSize: 12, color: '#4a6a9a', letterSpacing: '0.05em',
+              }}>
+                stardest — mission-control
+              </span>
+            </div>
 
             {/* ======= FORM ======= */}
             {phase === 'form' && (
-              <div className="p-7 sm:p-10">
-                <form onSubmit={handleFormSubmit} className="space-y-6">
+              <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                  {/* Repo URL */}
-                  <div>
-                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.repo_label}</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={d.form.repo_placeholder}
-                        value={formData.repoUrl}
-                        onChange={e => setFormData(f => ({ ...f, repoUrl: e.target.value }))}
-                        className="flex-1 px-4 py-3 bg-[#0b0f19]/70 border border-[#2F4A67]/50 rounded-xl text-white placeholder-[#CBCDD3]/40 focus:outline-none focus:border-[#60A5FA]/60 transition text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={loadBranches}
-                        disabled={loadingBranches}
-                        className="flex-shrink-0 px-4 py-3 bg-[#2F4A67]/60 hover:bg-[#2F4A67] disabled:opacity-50 text-white rounded-xl transition font-medium text-sm whitespace-nowrap border border-[#2F4A67]"
-                      >
-                        {loadingBranches
-                          ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />{d.form.loading}</span>
-                          : d.form.load_branches}
-                      </button>
-                    </div>
-                    {parsedRepo && (
-                      <p className="text-xs text-[#60A5FA] mt-1.5 pl-1">
-                        {d.form.repo_hint} <strong>{parsedRepo.owner}/{parsedRepo.repo}</strong>
-                      </p>
-                    )}
+                {/* Repo URL */}
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontFamily: "'Jersey 10',monospace",
+                    fontSize: 15,
+                    color: '#8ab0ff',
+                    marginBottom: 8,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>{d.form.repo_label}</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder={d.form.repo_placeholder}
+                      value={formData.repoUrl}
+                      onChange={e => setFormData(f => ({ ...f, repoUrl: e.target.value }))}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#2d5fff';
+                        e.target.style.boxShadow = '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#1e2d7a';
+                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        background: '#020210',
+                        border: '2px solid #1e2d7a',
+                        color: '#e8eeff',
+                        fontFamily: "'Share Tech Mono',monospace",
+                        fontSize: 14,
+                        outline: 'none',
+                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={loadBranches}
+                      disabled={loadingBranches}
+                      onMouseEnter={(e) => {
+                        if (!loadingBranches) {
+                          e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
+                          e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                          e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
+                        e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                        e.currentTarget.style.transform = 'none';
+                      }}
+                      style={{
+                        padding: '12px 20px',
+                        background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                        border: '2px solid #2d5fff',
+                        color: '#e8eeff',
+                        fontFamily: "'Jersey 10',monospace",
+                        fontSize: 16,
+                        letterSpacing: '0.05em',
+                        cursor: loadingBranches ? 'not-allowed' : 'pointer',
+                        boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                        transition: 'all 0.1s steps(2)',
+                        opacity: loadingBranches ? 0.6 : 1,
+                      }}
+                    >
+                      {loadingBranches ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                          {d.form.loading}
+                        </span>
+                      ) : d.form.load_branches}
+                    </button>
                   </div>
-
-                  {/* Branch */}
-                  {branches.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.branch_label}</label>
-                      <select
-                        value={formData.branch}
-                        onChange={e => setFormData(f => ({ ...f, branch: e.target.value }))}
-                        className="w-full px-4 py-3 bg-[#0b0f19]/70 border border-[#2F4A67]/50 rounded-xl text-white focus:outline-none focus:border-[#60A5FA]/60 transition text-sm"
-                      >
-                        {branches.map(b => <option key={b} value={b}>{b}</option>)}
-                      </select>
-                    </div>
+                  {parsedRepo && (
+                    <p style={{ fontSize: 13, color: '#00d4ff', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
+                      {d.form.repo_hint} <strong>{parsedRepo.owner}/{parsedRepo.repo}</strong>
+                    </p>
                   )}
+                </div>
 
-                  {/* Subdomain */}
+                {/* Branch */}
+                {branches.length > 0 && (
                   <div>
-                    <label className="block text-sm font-semibold text-[#CBCDD3] mb-2">{d.form.subdomain_label}</label>
-                    <div className="flex items-stretch">
-                      <input
-                        type="text"
-                        placeholder={d.form.subdomain_ph}
-                        value={formData.subdomain}
-                        onChange={handleSubdomainChange}
-                        className={`flex-1 px-4 py-3 bg-[#0b0f19]/70 border rounded-l-xl text-white placeholder-[#CBCDD3]/40 focus:outline-none transition text-sm ${subdomainError ? 'border-red-500/60 focus:border-red-400' : 'border-[#2F4A67]/50 focus:border-[#60A5FA]/60'}`}
-                      />
-                      <span className="px-4 py-3 bg-[#0b0f19]/50 border border-l-0 border-[#2F4A67]/50 rounded-r-xl text-[#CBCDD3]/60 text-sm flex items-center">
-                        {d.form.subdomain_suffix}
-                      </span>
-                    </div>
-                    {subdomainError
-                      ? <p className="text-xs text-red-400 mt-1.5 pl-1">{subdomainError}</p>
-                      : formData.subdomain && (
-                        <p className="text-xs text-[#60A5FA] mt-1.5 pl-1">
-                          {d.form.subdomain_url} <strong>https://{formData.subdomain}.stardest.com</strong>
-                        </p>
-                      )
-                    }
+                    <label style={{
+                      display: 'block',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 15,
+                      color: '#8ab0ff',
+                      marginBottom: 8,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                    }}>{d.form.branch_label}</label>
+                    <select
+                      value={formData.branch}
+                      onChange={e => setFormData(f => ({ ...f, branch: e.target.value }))}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#2d5fff';
+                        e.target.style.boxShadow = '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#1e2d7a';
+                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: '#020210',
+                        border: '2px solid #1e2d7a',
+                        color: '#e8eeff',
+                        fontFamily: "'Share Tech Mono',monospace",
+                        fontSize: 14,
+                        outline: 'none',
+                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                      }}
+                    >
+                      {branches.map(b => <option key={b} value={b} style={{ background: '#020210', color: '#e8eeff' }}>{b}</option>)}
+                    </select>
                   </div>
+                )}
 
-                  <button
-                    type="submit"
-                    className="w-full py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] hover:border-[#60A5FA]/50 text-white font-bold rounded-xl transition-all duration-300 shadow-[0_0_25px_rgba(15,44,69,0.5)] hover:shadow-[0_0_40px_rgba(47,74,103,0.6)] flex items-center justify-center gap-2 group"
-                  >
-                    {d.form.submit}
-                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </form>
-              </div>
+                {/* Subdomain */}
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontFamily: "'Jersey 10',monospace",
+                    fontSize: 15,
+                    color: '#8ab0ff',
+                    marginBottom: 8,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>{d.form.subdomain_label}</label>
+                  <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                    <input
+                      type="text"
+                      placeholder={d.form.subdomain_ph}
+                      value={formData.subdomain}
+                      onChange={handleSubdomainChange}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = subdomainError ? '#ef4444' : '#2d5fff';
+                        e.target.style.boxShadow = subdomainError ? '0 0 0 1px #ef4444' : '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = subdomainError ? '#ef4444' : '#1e2d7a';
+                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        background: '#020210',
+                        border: `2px solid ${subdomainError ? '#ef4444' : '#1e2d7a'}`,
+                        color: '#e8eeff',
+                        fontFamily: "'Share Tech Mono',monospace",
+                        fontSize: 14,
+                        outline: 'none',
+                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        transition: 'border-color 0.15s, box-shadow 0.15s',
+                      }}
+                    />
+                    <span style={{
+                      padding: '12px 16px',
+                      background: '#131333',
+                      border: '2px solid #1e2d7a',
+                      borderLeft: 'none',
+                      color: '#6a7ab5',
+                      fontFamily: "'Share Tech Mono',monospace",
+                      fontSize: 14,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}>
+                      {d.form.subdomain_suffix}
+                    </span>
+                  </div>
+                  {subdomainError
+                    ? <p style={{ fontSize: 13, color: '#fca5a5', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>{subdomainError}</p>
+                    : formData.subdomain && (
+                      <p style={{ fontSize: 13, color: '#00d4ff', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
+                        {d.form.subdomain_url} <strong>https://{formData.subdomain}.stardest.com</strong>
+                      </p>
+                    )
+                  }
+                </div>
+
+                <button
+                  type="submit"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
+                    e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                    e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
+                    e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '14px 24px',
+                    background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                    border: '2px solid #2d5fff',
+                    color: '#e8eeff',
+                    fontFamily: "'Jersey 10',monospace",
+                    fontSize: 18,
+                    letterSpacing: '0.08em',
+                    cursor: 'pointer',
+                    boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                    transition: 'all 0.1s steps(2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {d.form.submit}
+                  <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </form>
             )}
 
             {/* ======= CONFIRM ======= */}
             {phase === 'confirm' && (
-              <div className="p-7 sm:p-10">
-                <div className="mb-8">
-                  <h2 className="text-xl font-bold text-white mb-1">{d.confirm.title}</h2>
-                  <p className="text-[#CBCDD3] text-sm">{d.confirm.sub}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 24, color: '#e8eeff', margin: '0 0 6px' }}>{d.confirm.title}</h2>
+                  <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: '#6a7ab5', margin: 0 }}>{d.confirm.sub}</p>
                 </div>
-                <div className="space-y-3 mb-8">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
                     { label: d.confirm.repo,   value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
                     { label: d.confirm.branch, value: formData.branch },
                     { label: d.confirm.url,    value: `https://${formData.subdomain}.stardest.com`, accent: true },
                   ].map(({ label, value, accent }) => (
-                    <div key={label} className="flex items-center justify-between py-4 px-5 rounded-xl bg-[#0b0f19]/60 border border-[#2F4A67]/40">
-                      <span className="text-[#CBCDD3] text-sm">{label}</span>
-                      <span className={`text-sm font-semibold ${accent ? 'text-[#60A5FA]' : 'text-white'}`}>{value}</span>
+                    <div key={label} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: '#020210',
+                      border: '2px solid #1e2d7a',
+                      fontFamily: "'Share Tech Mono',monospace",
+                      fontSize: 14,
+                    }}>
+                      <span style={{ color: '#6a7ab5' }}>{label}</span>
+                      <span style={{ color: accent ? '#00d4ff' : '#e8eeff', fontWeight: 'bold' }}>{value}</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setPhase('form')} className="flex-1 py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition font-medium text-sm">
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    onClick={() => setPhase('form')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2d5fff';
+                      e.currentTarget.style.color = '#e8eeff';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#1e2d7a';
+                      e.currentTarget.style.color = '#6a7ab5';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 20px',
+                      background: 'transparent',
+                      border: '2px solid #1e2d7a',
+                      color: '#6a7ab5',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 16,
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                    }}
+                  >
                     {d.confirm.edit}
                   </button>
-                  <button onClick={startDeploy} className="flex-1 py-3 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white rounded-xl transition font-bold text-sm shadow-[0_0_20px_rgba(15,44,69,0.5)]">
+                  <button
+                    onClick={startDeploy}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                      e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px 20px',
+                      background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                      border: '2px solid #2d5fff',
+                      color: '#e8eeff',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 16,
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     {d.confirm.confirm}
                   </button>
                 </div>
@@ -272,23 +543,34 @@ export default function Deploy() {
 
             {/* ======= PROGRESS ======= */}
             {phase === 'progress' && (
-              <div className="p-7 sm:p-10">
-                <div className="mb-6 flex items-center justify-between">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyBetween: 'space-between', justifyContent: 'space-between' }}>
                   <div>
-                    <h2 className="text-lg font-bold text-white">{d.progress.title}</h2>
-                    <p className="text-[#CBCDD3] text-xs mt-0.5">{formData.subdomain}.stardest.com</p>
+                    <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: '#e8eeff', margin: 0 }}>{d.progress.title}</h2>
+                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 12, color: '#6a7ab5', margin: '4px 0 0' }}>{formData.subdomain}.stardest.com</p>
                   </div>
-                  <span className="text-2xl font-black text-white">{Math.round(progress)}%</span>
+                  <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 28, color: '#e8eeff', fontWeight: 'bold' }}>{Math.round(progress)}%</span>
                 </div>
 
-                <div className="w-full h-1.5 bg-[#2F4A67]/30 rounded-full overflow-hidden mb-6">
+                <div style={{
+                  width: '100%',
+                  height: 14,
+                  background: '#020210',
+                  border: '2px solid #1e2d7a',
+                  padding: 2,
+                  boxSizing: 'border-box',
+                }}>
                   <div
-                    className="h-full bg-gradient-to-r from-[#1e3a5f] via-[#3B82F6] to-[#60A5FA] rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%` }}
+                    style={{
+                      height: '100%',
+                      width: `${progress}%`,
+                      background: 'repeating-linear-gradient(90deg, #2d5fff 0px, #2d5fff 6px, #00d4ff 6px, #00d4ff 8px)',
+                      transition: 'width 0.4s ease-out',
+                    }}
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 mb-7">
+                <div style={{ display: 'flex', gap: 12 }}>
                   {[
                     { key: 'clone',   label: d.progress.clone,   threshold: 35 },
                     { key: 'build',   label: d.progress.build,   threshold: 65 },
@@ -297,60 +579,163 @@ export default function Deploy() {
                     const done   = progress >= threshold;
                     const active = progress > threshold - 35 && progress < threshold;
                     return (
-                      <div key={key} className={`flex flex-col items-center gap-2 py-3 px-2 rounded-xl border transition-all duration-500 ${done ? 'border-green-500/40 bg-green-500/10' : active ? 'border-[#2F4A67] bg-[#0F2C45]/40 animate-pulse' : 'border-[#2F4A67]/20 bg-transparent'}`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-500 ${done ? 'bg-green-500' : active ? 'bg-[#2F4A67]' : 'bg-[#0F2C45]/30 border border-[#2F4A67]/30'}`}>
+                      <div key={key} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '12px 8px',
+                        border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : '#1e2d7a'}`,
+                        background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(45,95,255,0.15)' : 'transparent',
+                        fontFamily: "'Jersey 10',monospace",
+                        fontSize: 13,
+                        flex: 1,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{
+                          width: 24,
+                          height: 24,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: done ? '#10b981' : active ? '#2d5fff' : '#020210',
+                          border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : '#1e2d7a'}`,
+                        }}>
                           {done
-                            ? <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                            ? <svg style={{ width: 14, height: 14, color: '#fff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                             : active
-                              ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              : <div className="w-2 h-2 rounded-full bg-[#2F4A67]/50" />
+                              ? <div style={{ width: 10, height: 10, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                              : <div style={{ width: 6, height: 6, background: '#1e2d7a' }} />
                           }
                         </div>
-                        <span className={`text-xs font-medium ${done ? 'text-green-400' : active ? 'text-white' : 'text-[#CBCDD3]/50'}`}>{label}</span>
+                        <span style={{ color: done ? '#10b981' : active ? '#e8eeff' : '#4a6a9a', fontWeight: 'bold' }}>{label}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                <div ref={logRef} className="h-52 overflow-y-auto bg-[#0b0f19]/80 border border-[#2F4A67]/40 rounded-xl p-4 font-mono text-xs space-y-1.5 scroll-smooth">
+                <div ref={logRef} style={{
+                  height: 200,
+                  overflowY: 'auto',
+                  background: '#020210',
+                  border: '2px solid #1e2d7a',
+                  padding: 16,
+                  fontFamily: "'Share Tech Mono',monospace",
+                  fontSize: 12,
+                  boxSizing: 'border-box',
+                }}>
                   {logLines.map((line, i) => (
-                    <p key={i} className={`${line.color} leading-relaxed animate-fade-in`}>{line.text}</p>
+                    <p key={i} className={line.color} style={{ margin: '0 0 6px', lineHeight: 1.4 }}>{line.text}</p>
                   ))}
-                  <p className="text-[#2F4A67] animate-pulse">_</p>
+                  <p style={{ margin: 0, color: '#2d5fff', animation: 'px-blink 1s steps(1) infinite' }}>█</p>
                 </div>
               </div>
             )}
 
             {/* ======= SUCCESS ======= */}
             {phase === 'success' && (
-              <div className="p-7 sm:p-10 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-green-500/20 border border-green-500/40 flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  background: 'rgba(16,185,129,0.15)',
+                  border: '2px solid #10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                  boxShadow: '0 0 16px rgba(16,185,129,0.3)',
+                }}>
+                  <svg style={{ width: 28, height: 28, color: '#10b981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">{d.success.title}</h2>
-                <p className="text-[#CBCDD3] text-sm mb-8">{d.success.sub}</p>
+                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: '#e8eeff', margin: '0 0 8px' }}>{d.success.title}</h2>
+                <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: '#6a7ab5', margin: '0 0 28px' }}>{d.success.sub}</p>
 
-                <div className="space-y-3 mb-8 text-left">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28, textAlign: 'left' }}>
                   {[
                     { label: d.success.repo,   value: `${parsedRepo?.owner}/${parsedRepo?.repo}` },
                     { label: d.success.branch, value: formData.branch },
                     { label: d.success.status, value: d.success.status_val, green: true },
                   ].map(({ label, value, green }) => (
-                    <div key={label} className="flex justify-between items-center py-3 px-5 bg-[#0b0f19]/60 rounded-xl border border-[#2F4A67]/30">
-                      <span className="text-[#CBCDD3] text-sm">{label}</span>
-                      <span className={`text-sm font-semibold ${green ? 'text-green-400' : 'text-white'}`}>{value}</span>
+                    <div key={label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 16px',
+                      background: '#020210',
+                      border: '2px solid #1e2d7a',
+                      fontFamily: "'Share Tech Mono',monospace",
+                      fontSize: 14,
+                    }}>
+                      <span style={{ color: '#6a7ab5' }}>{label}</span>
+                      <span style={{ color: green ? '#10b981' : '#e8eeff', fontWeight: 'bold' }}>{value}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <a href={successUrl} target="_blank" rel="noopener noreferrer" className="w-full py-4 bg-green-500/20 hover:bg-green-500/30 border border-green-500/50 text-green-300 font-bold rounded-xl transition flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <a
+                    href={successUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(16,185,129,0.25)';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(16,185,129,0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(16,185,129,0.15)';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 24px',
+                      background: 'rgba(16,185,129,0.15)',
+                      border: '2px solid #10b981',
+                      color: '#a7f3d0',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 18,
+                      letterSpacing: '0.05em',
+                      textDecoration: 'none',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      fontWeight: 'bold',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                     {d.success.open}
                   </a>
-                  <button onClick={reset} className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm">
+                  <button
+                    onClick={reset}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2d5fff';
+                      e.currentTarget.style.color = '#e8eeff';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#1e2d7a';
+                      e.currentTarget.style.color = '#6a7ab5';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.5)';
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 24px',
+                      background: 'transparent',
+                      border: '2px solid #1e2d7a',
+                      color: '#6a7ab5',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 16,
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                    }}
+                  >
                     {d.success.new_deploy}
                   </button>
                 </div>
@@ -359,19 +744,79 @@ export default function Deploy() {
 
             {/* ======= ERROR ======= */}
             {phase === 'error' && (
-              <div className="p-7 sm:p-10 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center mx-auto mb-6">
-                  <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  background: 'rgba(239,68,68,0.15)',
+                  border: '2px solid #ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px',
+                  boxShadow: '0 0 16px rgba(239,68,68,0.3)',
+                }}>
+                  <svg style={{ width: 28, height: 28, color: '#ef4444' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-black text-white mb-2">{d.error.title}</h2>
-                <p className="text-[#CBCDD3] text-sm mb-8">{errorMessage}</p>
-                <div className="flex flex-col gap-3">
-                  <button onClick={startDeploy} className="w-full py-4 bg-[#0F2C45] hover:bg-[#1a3f5e] border border-[#2F4A67] text-white font-bold rounded-xl transition">
+                <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: '#e8eeff', margin: '0 0 8px' }}>{d.error.title}</h2>
+                <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: '#fca5a5', margin: '0 0 28px' }}>{errorMessage}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <button
+                    onClick={startDeploy}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg,#1a3aff,#0f1f5c)';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)';
+                      e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg,#0f1f5c,#1a3aff)';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.6)';
+                      e.currentTarget.style.transform = 'none';
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 24px',
+                      background: 'linear-gradient(135deg,#0f1f5c,#1a3aff)',
+                      border: '2px solid #2d5fff',
+                      color: '#e8eeff',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 18,
+                      letterSpacing: '0.08em',
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                      fontWeight: 'bold',
+                    }}
+                  >
                     {d.error.retry}
                   </button>
-                  <button onClick={reset} className="w-full py-4 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 font-medium rounded-xl transition text-sm">
+                  <button
+                    onClick={reset}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2d5fff';
+                      e.currentTarget.style.color = '#e8eeff';
+                      e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#1e2d7a';
+                      e.currentTarget.style.color = '#6a7ab5';
+                      e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.5)';
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px 24px',
+                      background: 'transparent',
+                      border: '2px solid #1e2d7a',
+                      color: '#6a7ab5',
+                      fontFamily: "'Jersey 10',monospace",
+                      fontSize: 16,
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 rgba(0,0,0,0.6)',
+                      transition: 'all 0.1s steps(2)',
+                    }}
+                  >
                     {d.error.modify}
                   </button>
                 </div>
@@ -383,20 +828,31 @@ export default function Deploy() {
       </div>
 
       {/* ======= TOASTS ======= */}
-      <div className="fixed bottom-5 right-5 z-50 space-y-2">
+      <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {toasts.map(toast => {
           const cfg = {
-            success: { bg: 'bg-green-500/20 border-green-500/50',  text: 'text-green-300',  icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /> },
-            error:   { bg: 'bg-red-500/20 border-red-500/50',      text: 'text-red-300',    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /> },
-            warning: { bg: 'bg-yellow-500/20 border-yellow-500/50', text: 'text-yellow-300', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /> },
-            info:    { bg: 'bg-[#0F2C45]/80 border-[#2F4A67]',     text: 'text-[#CBCDD3]', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+            success: { bg: 'rgba(16,185,129,0.15)', border: '#10b981', text: '#a7f3d0', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /> },
+            error:   { bg: 'rgba(239,68,68,0.15)',  border: '#ef4444', text: '#fca5a5', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /> },
+            warning: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#fde68a', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /> },
+            info:    { bg: 'rgba(13,13,43,0.85)',   border: '#1e2d7a', text: '#e8eeff', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
           }[toast.type] || {};
           return (
-            <div key={toast.id} className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border backdrop-blur-md shadow-xl ${cfg.bg} min-w-[280px] max-w-sm animate-fade-in`}>
-              <svg className={`w-5 h-5 flex-shrink-0 ${cfg.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">{cfg.icon}</svg>
-              <span className={`flex-1 text-sm font-medium ${cfg.text}`}>{toast.message}</span>
-              <button onClick={() => setToasts(p => p.filter(t => t.id !== toast.id))} className={`${cfg.text} opacity-60 hover:opacity-100 transition`}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            <div key={toast.id} className="animate-fade-in" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '12px 16px',
+              background: cfg.bg,
+              border: `2px solid ${cfg.border}`,
+              boxShadow: '4px 4px 0 rgba(0,0,0,0.6)',
+              minWidth: 280,
+              maxWidth: 380,
+              fontFamily: "'Share Tech Mono',monospace",
+            }}>
+              <svg style={{ width: 20, height: 20, flexShrink: 0, color: cfg.border }} fill="none" stroke="currentColor" viewBox="0 0 24 24">{cfg.icon}</svg>
+              <span style={{ flex: 1, fontSize: 13, color: cfg.text }}>{toast.message}</span>
+              <button onClick={() => setToasts(p => p.filter(t => t.id !== toast.id))} style={{ color: cfg.text, opacity: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
           );
@@ -406,6 +862,7 @@ export default function Deploy() {
       <style>{`
         @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
