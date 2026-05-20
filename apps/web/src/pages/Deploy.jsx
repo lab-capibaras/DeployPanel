@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
+import PixelRocket from '../components/PixelRocket';
 
 /** Lightweight hook: re-renders when theme/lang changes */
 function useTheme() {
@@ -117,6 +118,7 @@ export default function Deploy() {
   const [progress, setProgress] = useState(0);
   const [logLines, setLogLines] = useState([]);
   const [subdomainError, setSubdomainError] = useState('');
+  const [showRocketLaunch, setShowRocketLaunch] = useState(false);
   const logRef = useRef(null);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
@@ -208,7 +210,11 @@ export default function Deploy() {
         if (!response.ok) throw new Error(d.toasts.server_error);
         setProgress(100);
         setSuccessUrl(`https://${formData.subdomain}.stardest.com`);
-        setPhase('success');
+        setShowRocketLaunch(true);
+        setTimeout(() => {
+          setShowRocketLaunch(false);
+          setPhase('success');
+        }, 3200);
       } catch (err) {
         setErrorMessage(err.message);
         setPhase('error');
@@ -952,10 +958,91 @@ export default function Deploy() {
         })}
       </div>
 
+      {/* ======= LAUNCH ANIMATION OVERLAY ======= */}
+      {showRocketLaunch && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: '#020210',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}>
+          {/* Fast falling space stars */}
+          <div className="launch-stars" />
+
+          {/* Title */}
+          <div style={{
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 32,
+            color: '#00d4ff',
+            textShadow: '0 0 12px rgba(0,212,255,0.6)',
+            marginBottom: 60,
+            textAlign: 'center',
+            animation: 'pulse 1s infinite alternate',
+            zIndex: 10,
+          }}>
+            LAUNCHING SATELLITE...
+          </div>
+
+          {/* Animated PixelRocket */}
+          <div style={{
+            animation: 'rocket-sequence 3.2s cubic-bezier(0.85, 0, 0.15, 1) forwards',
+            zIndex: 5,
+          }}>
+            <div style={{
+              animation: 'rocket-vibrate 0.1s infinite',
+            }}>
+              <PixelRocket scale={3.5} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Rocket launch sequence keyframes */
+        @keyframes rocket-sequence {
+          0% { transform: translateY(100vh) scale(0.8); }
+          25% { transform: translateY(12vh) scale(1); }
+          65% { transform: translateY(12vh) scale(1); }
+          100% { transform: translateY(-130vh) scale(1.3); }
+        }
+        @keyframes rocket-vibrate {
+          0% { transform: translate(1px, 0); }
+          50% { transform: translate(-1px, 1px); }
+          100% { transform: translate(0, -1px); }
+        }
+        @keyframes pulse {
+          from { opacity: 0.6; }
+          to { opacity: 1; }
+        }
+
+        /* Falling stars effect */
+        .launch-stars {
+          position: absolute;
+          inset: 0;
+          background-image: 
+            radial-gradient(1.5px 1.5px at 30px 40px, #ffffff, transparent),
+            radial-gradient(2px 2px at 80px 110px, #00d4ff, transparent),
+            radial-gradient(1.5px 2px at 140px 220px, #9b59ff, transparent),
+            radial-gradient(2px 1.5px at 190px 70px, #ffffff, transparent),
+            radial-gradient(1.5px 1.5px at 240px 290px, #00d4ff, transparent),
+            radial-gradient(2px 2.5px at 280px 160px, #ffffff, transparent);
+          background-size: 320px 320px;
+          animation: stars-fall 0.4s linear infinite;
+          opacity: 0.85;
+        }
+        @keyframes stars-fall {
+          from { background-position: 0 0; }
+          to { background-position: 0 320px; }
+        }
       `}</style>
     </div>
   );
