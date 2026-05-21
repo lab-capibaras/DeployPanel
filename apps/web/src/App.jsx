@@ -192,6 +192,8 @@ function PreferencesDropdown() {
    (only re-renders when mobileOpen changes)
 ═══════════════════════════════════════════════════════════ */
 function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
   // Read lang directly from DOM attribute — no subscription needed here
   // since the drawer re-renders on open anyway
   const lang = document.documentElement.getAttribute('data-lang') || 'es';
@@ -208,14 +210,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
   return (
     <div className={`fixed top-0 right-0 h-full w-72 max-w-[85vw] z-50 md:hidden transform transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="h-full bg-[#0b0f19]/95 backdrop-blur-xl border-l border-[#2F4A67]/40 flex flex-col">
+      <div className={`h-full backdrop-blur-xl border-l flex flex-col ${isDark ? 'bg-[#0b0f19]/95 border-[#2F4A67]/40' : 'bg-[#f0f4ff]/95 border-blue-200'}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2F4A67]/30">
-          <span className="text-white font-bold text-base">{labelMenu}</span>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
+          <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-blue-900'}`}>{labelMenu}</span>
           <button
             onClick={onClose}
-            className="flex items-center justify-center rounded-lg border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 transition"
+            className={`flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-200 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
             style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,7 +227,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Preferences inline */}
-        <div className="px-4 py-2 border-b border-[#2F4A67]/20">
+        <div className={`px-4 py-2 border-b ${isDark ? 'border-[#2F4A67]/20' : 'border-blue-200/30'}`}>
           <PreferencesPanel inline />
         </div>
 
@@ -237,16 +239,16 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
               <div key={section.id} className="rounded-xl overflow-hidden">
                 <button
                   onClick={() => setOpenSection(isOpen ? null : section.id)}
-                  className="w-full flex items-center justify-between px-4 rounded-xl hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25 transition group"
+                  className={`w-full flex items-center justify-between px-4 rounded-xl transition group ${isDark ? 'hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25' : 'hover:bg-blue-100/30 active:bg-blue-200/30'}`}
                   style={{ minHeight: '52px', cursor: 'pointer' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67] transition flex-shrink-0">
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-lg border transition flex-shrink-0 ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67]' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover:border-blue-300'}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
                     </div>
-                    <span className="text-sm font-semibold text-white">{section.label}</span>
+                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-blue-900'}`}>{section.label}</span>
                   </div>
-                  <svg className={`w-4 h-4 text-[#CBCDD3] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 transition-transform duration-300 ${isDark ? 'text-[#CBCDD3]' : 'text-blue-700'} ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -255,14 +257,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
                   <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
                     {section.items.map((item) => (
                       <Link key={item.label} to={item.to} onClick={onClose}
-                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30 transition group/item"
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition group/item ${isDark ? 'hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30' : 'hover:bg-blue-100/40 active:bg-blue-200/40'}`}
                       >
-                        <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30 transition">
+                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover/item:border-blue-300'}`}>
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-white leading-tight">{item.label}</p>
-                          <p className="text-xs text-[#CBCDD3]/80 mt-0.5 leading-tight">{item.desc}</p>
+                          <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-blue-900'}`}>{item.label}</p>
+                          <p className={`text-xs mt-0.5 leading-tight ${isDark ? 'text-[#CBCDD3]/80' : 'text-blue-700/80'}`}>{item.desc}</p>
                         </div>
                       </Link>
                     ))}
@@ -274,7 +276,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-5 border-t border-[#2F4A67]/30">
+        <div className={`px-5 py-5 border-t ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
           <UserMobileMenu onClose={onClose} />
         </div>
       </div>
@@ -284,12 +286,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
 function UserMobileMenu({ onClose }) {
   const { user, loading, logout } = useAuth();
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
   if (loading) return null;
 
   if (!user) {
     return (
       <Link to="/login" onClick={onClose}
-        className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium cursor-pointer"
+        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-300 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
         style={{ textDecoration: 'none' }}
       >
         Login
@@ -299,17 +303,17 @@ function UserMobileMenu({ onClose }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3 px-3 py-2 border border-[#2F4A67]/30 bg-[#0F2C45]/20 rounded-xl">
+      <div className={`flex items-center gap-3 px-3 py-2 border rounded-xl ${isDark ? 'border-[#2F4A67]/30 bg-[#0F2C45]/20' : 'border-blue-200 bg-blue-100/30'}`}>
         {user.avatar ? (
-          <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-[#00d4ff]" />
+          <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-[#00d4ff]' : 'border-blue-500'}`} />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-[#00d4ff] text-white flex items-center justify-center text-xs font-bold">
+          <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold ${isDark ? 'bg-[#00d4ff]' : 'bg-blue-500'}`}>
             {user.name?.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="overflow-hidden">
-          <p className="text-sm font-bold text-white leading-tight truncate">{user.name}</p>
-          <p className="text-xs text-[#CBCDD3]/60 leading-tight truncate">{user.email || user.provider}</p>
+          <p className={`text-sm font-bold leading-tight truncate ${isDark ? 'text-white' : 'text-blue-900'}`}>{user.name}</p>
+          <p className={`text-xs leading-tight truncate ${isDark ? 'text-[#CBCDD3]/60' : 'text-blue-700/70'}`}>{user.email || user.provider}</p>
         </div>
       </div>
       <button
@@ -531,12 +535,16 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <button
               onClick={onHamburger}
               aria-label="Abrir menú"
-              className="md:hidden flex flex-col justify-center items-center rounded-lg border border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30 transition gap-1.5 p-2"
+              className={`md:hidden flex flex-col justify-center items-center rounded-lg border transition gap-1.5 p-2 ${
+                isDark 
+                  ? 'border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30' 
+                  : 'border-blue-200 bg-blue-50/50 hover:bg-blue-100/50'
+              }`}
               style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
             >
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'opacity-0' : ''}`} />
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'opacity-0' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
             </button>
           </div>
         </div>
