@@ -152,6 +152,11 @@ export default function Deploy() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logLines]);
 
+  // Auto-scroll upload log
+  useEffect(() => {
+    if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
+  }, [uploadLogLines]);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login');
@@ -449,11 +454,6 @@ export default function Deploy() {
     setUploadSuccessUrl('');
     setUploadErrorMsg('');
   };
-
-  // Auto-scroll upload log
-  useEffect(() => {
-    if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
-  }, [uploadLogLines]);
 
   const parsedRepo = parseGithubUrl(formData.repoUrl);
   const u = t.deploy.upload;
