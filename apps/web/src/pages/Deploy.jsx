@@ -381,17 +381,18 @@ export default function Deploy() {
     const finalTimer = setTimeout(async () => {
       try {
         const formPayload = new FormData();
-        formPayload.append('zip', uploadFile);
-        formPayload.append('site', uploadSubdomain);
+        formPayload.append('file', uploadFile, `${uploadSubdomain}.zip`);
+        formPayload.append('subdomain', uploadSubdomain);
 
-        const response = await fetch('/api/upload-static', {
+        const response = await fetch('/api/deploy/upload', {
           method: 'POST',
           body: formPayload,
         });
 
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || data.details || data.message || 'Error del servidor');
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.status !== 'success') {
+          throw new Error(data.message || data.details || data.error || 'Error del servidor');
         }
 
         setUploadProgress(100);
