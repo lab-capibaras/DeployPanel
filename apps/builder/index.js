@@ -28,7 +28,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-const uploadStatic = require('./upload-static');
 app.use(uploadStatic);
 
 
