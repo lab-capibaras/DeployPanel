@@ -109,8 +109,6 @@ function PixelStarfield({ dark = true }) {
 
 export default function Deploy() {
   const isDark = useTheme();
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const t = useTranslation();
   const d = t.deploy;
 
@@ -159,27 +157,17 @@ export default function Deploy() {
     if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
   }, [uploadLogLines]);
 
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login');
-    }
+      if (!loading && !user) {
+          navigate('/login');
+      }
   }, [user, loading, navigate]);
 
-  if (loading) {
-    return (
-      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <PixelStarfield dark={isDark} />
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Jersey 10',monospace", fontSize: 24, color: isDark ? '#e8eeff' : '#0d1433' }}>
-          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '4px solid rgba(45,95,255,0.3)', borderTopColor: '#2d5fff', borderRadius: '50%', margin: '0 auto 16px' }} />
-          Cargando...
-        </div>
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
-      </div>
-    );
-  }
-
+  // CRÍTICO: no renderizar nada mientras carga
+  if (loading) return null;
   if (!user) return null;
 
   const showToast = (message, type = 'info') => {
@@ -1625,6 +1613,7 @@ export default function Deploy() {
             </div>
           </div>
         </div>
+      )}
       {/* ======= WEBHOOK INSTRUCTIONS MODAL ======= */}
       {webhookInfo && (
         <WebhookInstructions
