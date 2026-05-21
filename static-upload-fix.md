@@ -289,3 +289,6 @@ El servidor ya está funcionando. Solo hay que corregir el frontend. Los únicos
 4. Check de éxito: `data.status === "success"`
 
 No tocar nada del servidor ni del backend.
+
+ASD
+

@@ -28,9 +28,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-app.use(uploadStatic);
-
-
 // ==========================================
 // --- SISTEMA DE MEMORIA PARA WEBHOOKS ---
 // ==========================================
@@ -79,7 +76,6 @@ async function deployApp(repoUrl, subdomain, branch) {
     const imageName = `user-app-${subdomain.toLowerCase()}`;
 
     try {
-        // 1. CLONAR
         console.log(`-------------------------------------------`);
         console.log(`Iniciando despliegue para: ${subdomain}`);
         console.log(`Repositorio: ${repoUrl}`);
@@ -102,15 +98,11 @@ async function deployApp(repoUrl, subdomain, branch) {
 
         await git.clone(repoUrl, repoPath, cloneOptions);
 
-        // 2. DETECTAR TIPO DE PROYECTO
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
-
         const nextConfigFileNames = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
         const existingNextConfig = nextConfigFileNames.find(f => fs.existsSync(path.join(repoPath, f)));
-
         const packageJsonPath = path.join(repoPath, 'package.json');
 
-        // --- Buscar requirements.txt en la raíz y subcarpetas comunes ---
         const possibleReqPaths = [
             path.join(repoPath, 'requirements.txt'),
             path.join(repoPath, 'app', 'requirements.txt'),
@@ -122,7 +114,7 @@ async function deployApp(repoUrl, subdomain, branch) {
         let isNextJs = !!existingNextConfig;
         let isVite = false;
         let isPython = !!requirementsPath;
-        let isNode = fs.existsSync(packageJsonPath); // <--- NUEVA DETECCIÓN
+        let isNode = fs.existsSync(packageJsonPath);
 
         if (!isNextJs && isNode) {
             try {
@@ -160,7 +152,6 @@ async function deployApp(repoUrl, subdomain, branch) {
             });
         });
 
-        // 3. ESTRATEGIA DE BUILD
         if (hasDockerfile) {
             console.log(`Dockerfile detectado. Usando build tradicional...`);
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
@@ -168,7 +159,6 @@ async function deployApp(repoUrl, subdomain, branch) {
 
         } else if (isNextJs) {
             console.log(`Proyecto Next.js detectado. Generando Dockerfile optimizado...`);
-
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
@@ -274,13 +264,11 @@ ${runnerStage}
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
-
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
         } else if (isVite) {
             console.log(`Proyecto Vite/React detectado. Generando Dockerfile con Nginx...`);
-
             const dockerfile = `FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -295,13 +283,11 @@ EXPOSE 3000
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Nginx generado exitosamente.');
-
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
         } else if (isPython) {
             console.log(`Proyecto Python detectado. Escaneando código y dependencias...`);
-
             const reqContent = fs.readFileSync(requirementsPath, 'utf8').toLowerCase();
             let linuxDeps = [];
             if (reqContent.includes('pyodbc')) linuxDeps.push('unixodbc', 'unixodbc-dev', 'g++');
@@ -347,7 +333,6 @@ EXPOSE 3000
             }
 
             const reqRelativePath = path.relative(repoPath, requirementsPath).replace(/\\/g, '/');
-
             const dockerfile = `FROM python:3.11-slim
 WORKDIR /app
 ${aptGetCommand}COPY ${reqRelativePath} ./requirements.txt
@@ -358,13 +343,11 @@ CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Python/FastAPI generado exitosamente.');
-
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
-        } else if (isNode) { // <--- BLOQUE AGREGADO PARA NODE.JS ESTÁNDAR
+        } else if (isNode) {
             console.log(`Proyecto Node.js detectado. Generando Dockerfile estándar...`);
-
             const dockerfile = `FROM node:20-slim
 WORKDIR /app
 COPY package*.json ./
@@ -376,7 +359,6 @@ CMD ["npm", "start"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile para Node.js generado exitosamente.');
-
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
@@ -412,7 +394,6 @@ CMD ["npm", "start"]
             });
         }
 
-        // 4. LIMPIEZA
         console.log(`Limpiando versiones anteriores...`);
         const containers = await docker.listContainers({ all: true });
         const existing = containers.find(c => c.Names.includes(`/container-${subdomain}`));
@@ -420,9 +401,7 @@ CMD ["npm", "start"]
             await docker.getContainer(existing.Id).remove({ force: true });
         }
 
-        // 5. DEPLOY
         console.log(`Lanzando contenedor en la red de Traefik...`);
-
         const container = await docker.createContainer({
             Image: imageName,
             name: `container-${subdomain}`,
@@ -460,9 +439,7 @@ CMD ["npm", "start"]
 app.post('/deploy', async (req, res) => {
     const { repoUrl, subdomain, branch } = req.body;
     if (!repoUrl || !subdomain) return res.status(400).send("Faltan datos: repoUrl o subdomain");
-
     const actualBranch = branch || 'main';
-
     try {
         const url = await deployApp(repoUrl, subdomain, actualBranch);
         saveDeployment(repoUrl, actualBranch, subdomain);
@@ -486,7 +463,6 @@ app.post('/webhook', async (req, res) => {
     if (payload.zen) {
         return res.status(200).send('Ping recibido OK');
     }
-
     if (!payload.repository || !payload.ref) {
         return res.status(400).send('Payload incompleto');
     }
@@ -494,16 +470,11 @@ app.post('/webhook', async (req, res) => {
     const repoUrl = payload.repository.html_url;
     const pushBranch = payload.ref.replace('refs/heads/', '');
 
-    // --- AUTO-ACTUALIZACIÓN DEL PROPIO PANEL ---
     if (normalizeUrl(repoUrl) === normalizeUrl('https://github.com/lab-capibaras/DeployPanel')) {
-        // ACTUALIZADO: Ahora reconoce la rama 'test' además de 'master' o 'main'
         if (pushBranch === 'test' || pushBranch === 'master' || pushBranch === 'main') {
             console.log(`[Webhook] Actualizando DeployPanel automáticamente desde rama: ${pushBranch}`);
             res.status(200).send('Panel actualizando');
-
-            // AUTOMATIZACIÓN: Pull + Reconstrucción automática de Panel y Web Frontend
             const updateCommand = `git pull origin ${pushBranch} && npm install && docker compose up -d --build deploy_panel web_frontend`;
-
             exec(updateCommand, (error) => {
                 if (error) return console.error(`Error actualizando panel: ${error.message}`);
                 console.log(`Panel y Frontend actualizados con éxito. Reiniciando proceso...`);
@@ -515,9 +486,7 @@ app.post('/webhook', async (req, res) => {
         return;
     }
 
-    // --- AUTO-ACTUALIZACIÓN DE USUARIOS ---
     const subdomain = getSubdomain(repoUrl, pushBranch);
-
     if (!subdomain) {
         console.log(`[Webhook] Repo ${repoUrl} en rama ${pushBranch} no registrado en memoria.`);
         return res.status(200).send('No registrado');
@@ -525,7 +494,6 @@ app.post('/webhook', async (req, res) => {
 
     console.log(`[Webhook] Cambios detectados para ${subdomain}. Actualizando...`);
     res.status(200).send('Actualización iniciada');
-
     try {
         await deployApp(repoUrl, subdomain, pushBranch);
         console.log(`[Webhook] ${subdomain} actualizado con éxito.`);
@@ -538,12 +506,10 @@ app.post('/webhook', async (req, res) => {
 app.delete('/deploy/:subdomain', async (req, res) => {
     const { subdomain } = req.params;
     if (!subdomain) return res.status(400).json({ status: 'error', message: "Falta el subdominio" });
-
     try {
         console.log(`Solicitud para eliminar el proyecto: ${subdomain}`);
         const containers = await docker.listContainers({ all: true });
         const existing = containers.find(c => c.Names.includes(`/container-${subdomain}`));
-
         if (existing) {
             await docker.getContainer(existing.Id).remove({ force: true });
             console.log(`Contenedor container-${subdomain} eliminado.`);
@@ -576,10 +542,9 @@ app.get('/deploys', async (req, res) => {
 });
 
 // ==========================================
-// --- STATIC SITES (archivo spec: static-deploy-spec.md) ---
+// --- STATIC SITES ---
 // ==========================================
-// Rutas base de la infraestructura (dentro del contenedor deploy_panel)
-const DEPLOYS_DIR = process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..'); // /home/project/deploys en prod
+const DEPLOYS_DIR = process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..');
 const STATIC_SITES_DIR = path.join(DEPLOYS_DIR, 'static_sites');
 const NGINX_CONFIGS_DIR = path.join(DEPLOYS_DIR, 'nginx_configs');
 const STATIC_PROJECTS_FILE = path.join(DEPLOYS_DIR, 'static_projects.json');
@@ -595,16 +560,31 @@ function writeStaticProjects(data) {
     fs.writeFileSync(STATIC_PROJECTS_FILE, JSON.stringify(data, null, 2));
 }
 
-// 5a. GET /api/static-projects — Lista todos los sitios estáticos registrados
+// Recarga nginx usando dockerode (no requiere binario docker en el contenedor)
+async function reloadNginx() {
+    try {
+        const container = docker.getContainer('static_server');
+        const execInstance = await container.exec({
+            Cmd: ['nginx', '-s', 'reload'],
+            AttachStdout: true,
+            AttachStderr: true,
+        });
+        await execInstance.start();
+        console.log('[Nginx] Recargado OK');
+    } catch (err) {
+        console.warn('[Nginx] No se pudo recargar:', err.message);
+    }
+}
+
+// 5a. GET /api/static-projects
 app.get('/api/static-projects', (req, res) => {
     const projects = readStaticProjects();
     res.json({ status: 'success', projects });
 });
 
-// 5b. POST /api/static-projects — Registrar un sitio estático y disparar primer deploy
+// 5b. POST /api/static-projects
 app.post('/api/static-projects', async (req, res) => {
     const { site, repo, branch = 'main', build_cmd = '', output_dir = 'dist' } = req.body;
-
     if (!site || !repo) {
         return res.status(400).json({ status: 'error', message: 'Faltan campos: site y repo son obligatorios' });
     }
@@ -612,13 +592,11 @@ app.post('/api/static-projects', async (req, res) => {
     if (!siteRegex.test(site) || site.length > 40) {
         return res.status(400).json({ status: 'error', message: 'Nombre de sitio inválido' });
     }
-
     const projects = readStaticProjects();
     projects[site] = { repo, branch, build_cmd, output_dir };
     writeStaticProjects(projects);
     console.log(`[Static] Proyecto registrado: ${site} → ${repo}`);
 
-    // Disparar deploy via webhook (adnanh/webhook)
     try {
         const http = require('http');
         const body = JSON.stringify({ site });
@@ -637,7 +615,7 @@ app.post('/api/static-projects', async (req, res) => {
         });
         console.log(`[Static] Webhook disparado para: ${site}`);
     } catch (err) {
-        console.warn(`[Static] Webhook no disponible (local?): ${err.message}`);
+        console.warn(`[Static] Webhook no disponible: ${err.message}`);
     }
 
     res.json({
@@ -648,35 +626,28 @@ app.post('/api/static-projects', async (req, res) => {
     });
 });
 
-// 5c. DELETE /api/static-projects/:site — Eliminar sitio estático
-app.delete('/api/static-projects/:site', (req, res) => {
+// 5c. DELETE /api/static-projects/:site
+app.delete('/api/static-projects/:site', async (req, res) => {
     const { site } = req.params;
     const projects = readStaticProjects();
-
     if (!projects[site]) {
         return res.status(404).json({ status: 'error', message: `Sitio '${site}' no encontrado` });
     }
-
     delete projects[site];
     writeStaticProjects(projects);
 
-    // Borrar archivos del sitio
     const siteDir = path.join(STATIC_SITES_DIR, site);
     const confFile = path.join(NGINX_CONFIGS_DIR, `${site}.conf`);
     if (fs.existsSync(siteDir)) fs.rmSync(siteDir, { recursive: true, force: true });
     if (fs.existsSync(confFile)) fs.rmSync(confFile);
 
-    // Recargar nginx
-    exec('docker exec static_server nginx -s reload', (err) => {
-        if (err) console.warn(`[Static] nginx reload warning: ${err.message}`);
-    });
-
+    await reloadNginx();
     console.log(`[Static] Proyecto eliminado: ${site}`);
     res.json({ status: 'success', message: `Sitio '${site}' eliminado` });
 });
 
-// 5d. POST /deploy/upload — Subida de .zip → extrae directo al static_server (sin Docker por sitio)
-app.post('/deploy/upload', upload.single('file'), (req, res) => {
+// 5d. POST /deploy/upload — Subida de .zip (drag & drop)
+app.post('/deploy/upload', upload.single('file'), async (req, res) => {
     const { subdomain } = req.body;
 
     if (!subdomain) {
@@ -691,7 +662,6 @@ app.post('/deploy/upload', upload.single('file'), (req, res) => {
     }
 
     try {
-        // 1. Asegurar directorios
         if (!fs.existsSync(STATIC_SITES_DIR)) fs.mkdirSync(STATIC_SITES_DIR, { recursive: true });
         if (!fs.existsSync(NGINX_CONFIGS_DIR)) fs.mkdirSync(NGINX_CONFIGS_DIR, { recursive: true });
 
@@ -699,12 +669,10 @@ app.post('/deploy/upload', upload.single('file'), (req, res) => {
         if (fs.existsSync(siteDir)) fs.rmSync(siteDir, { recursive: true, force: true });
         fs.mkdirSync(siteDir, { recursive: true });
 
-        // 2. Extraer ZIP
         console.log(`[Upload] Extrayendo zip para: ${subdomain} (${req.file.size} bytes)`);
         const zip = new AdmZip(req.file.buffer);
         zip.extractAllTo(siteDir, true);
 
-        // Si el zip tiene una sola carpeta raíz, mover su contenido hacia arriba
         const entries = fs.readdirSync(siteDir);
         if (entries.length === 1) {
             const singleEntry = path.join(siteDir, entries[0]);
@@ -719,7 +687,6 @@ app.post('/deploy/upload', upload.single('file'), (req, res) => {
         }
         console.log(`[Upload] Archivos extraídos en: ${siteDir}`);
 
-        // 3. Generar config nginx (solo si no existe)
         const confFile = path.join(NGINX_CONFIGS_DIR, `${subdomain}.conf`);
         if (!fs.existsSync(confFile)) {
             const nginxConf = `server {
@@ -742,22 +709,16 @@ app.post('/deploy/upload', upload.single('file'), (req, res) => {
             console.log(`[Upload] Config nginx generada: ${confFile}`);
         }
 
-        // 4. Asegurar default.conf fallback
         const defaultConf = path.join(NGINX_CONFIGS_DIR, 'default.conf');
         if (!fs.existsSync(defaultConf)) {
             fs.writeFileSync(defaultConf, `server {\n    listen 80 default_server;\n    server_name _;\n    return 404;\n}\n`);
         }
 
-        // 5. Registrar en static_projects.json
         const projects = readStaticProjects();
         projects[subdomain] = { repo: 'zip-upload', branch: 'upload', build_cmd: '', output_dir: '' };
         writeStaticProjects(projects);
 
-        // 6. Recargar nginx (sin downtime)
-        exec('docker exec static_server nginx -s reload', (err) => {
-            if (err) console.warn(`[Upload] nginx reload warning: ${err.message}`);
-            else console.log(`[Upload] nginx recargado OK`);
-        });
+        await reloadNginx();
 
         console.log(`[Upload] ✓ Despliegue exitoso: ${subdomain}.stardest.com`);
         res.json({
@@ -769,141 +730,6 @@ app.post('/deploy/upload', upload.single('file'), (req, res) => {
     } catch (error) {
         console.error('[Upload] Error durante el despliegue:', error.message);
         res.status(500).json({ status: 'error', details: error.message });
-    }
-});
-
-// ==========================================
-// --- DEPLOY ESTÁTICO (DRAG & DROP) ---
-// ==========================================
-const fsExtra = require('fs-extra');
-
-const STATIC_BASE   = '/home/project/deploys/static_sites';
-const NGINX_CONFIGS = '/home/project/deploys/nginx_configs';
-
-const upload = multer({
-    dest: '/tmp/static_uploads/',
-    limits: { fileSize: 50 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Solo se aceptan archivos .zip'));
-        }
-    }
-});
-
-async function reloadNginx() {
-    try {
-        const container = docker.getContainer('static_server');
-        const exec = await container.exec({
-            Cmd: ['nginx', '-s', 'reload'],
-            AttachStdout: true,
-            AttachStderr: true,
-        });
-        await exec.start();
-    } catch (err) {
-        console.warn('[Static] No se pudo recargar nginx (¿está corriendo static_server?):', err.message);
-    }
-}
-
-app.post('/upload-static', upload.single('zip'), async (req, res) => {
-    const tmpFile = req.file?.path;
-    try {
-        const { site } = req.body;
-
-        if (!site || !/^[a-z0-9-]+$/.test(site)) {
-            return res.status(400).json({ ok: false, error: 'Nombre de sitio inválido.' });
-        }
-        if (!req.file) {
-            return res.status(400).json({ ok: false, error: 'No se recibió ningún archivo .zip' });
-        }
-
-        const siteDir  = path.join(STATIC_BASE, site);
-        const confPath = path.join(NGINX_CONFIGS, `${site}.conf`);
-
-        await fsExtra.emptyDir(siteDir);
-        const zip = new AdmZip(tmpFile);
-        zip.extractAllTo(siteDir, true);
-
-        // Si el zip tenía una sola carpeta raíz, subir contenido un nivel
-        const entries = await fsExtra.readdir(siteDir);
-        if (entries.length === 1) {
-            const singleEntry = path.join(siteDir, entries[0]);
-            const stat = await fsExtra.stat(singleEntry);
-            if (stat.isDirectory()) {
-                const innerFiles = await fsExtra.readdir(singleEntry);
-                for (const f of innerFiles) {
-                    await fsExtra.move(path.join(singleEntry, f), path.join(siteDir, f), { overwrite: true });
-                }
-                await fsExtra.remove(singleEntry);
-            }
-        }
-
-        const hasIndex = await fsExtra.pathExists(path.join(siteDir, 'index.html'));
-        if (!hasIndex) {
-            await fsExtra.emptyDir(siteDir);
-            return res.status(400).json({ ok: false, error: 'El zip no contiene un index.html en la raíz.' });
-        }
-
-        if (!await fsExtra.pathExists(confPath)) {
-            const nginxConf = `server {
-    listen 80;
-    server_name ${site}.stardest.com;
-    root /srv/static/${site};
-    index index.html;
-    location / { try_files $uri $uri/ /index.html; }
-    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}`;
-            await fsExtra.writeFile(confPath, nginxConf);
-        }
-
-        // Asegurar default.conf fallback
-        const defaultConf = path.join(NGINX_CONFIGS, 'default.conf');
-        if (!fs.existsSync(defaultConf)) {
-            fs.writeFileSync(defaultConf, `server {\n    listen 80 default_server;\n    server_name _;\n    return 404;\n}\n`);
-        }
-
-        // Registrar en static_projects.json
-        const projects = readStaticProjects();
-        projects[site] = { repo: 'zip-upload', branch: 'upload', build_cmd: '', output_dir: '' };
-        writeStaticProjects(projects);
-
-        await reloadNginx();
-        await fsExtra.remove(tmpFile);
-
-        console.log(`[Static] Deploy exitoso: ${site}.stardest.com`);
-        res.json({ ok: true, url: `https://${site}.stardest.com` });
-
-    } catch (err) {
-        if (tmpFile) await fsExtra.remove(tmpFile).catch(() => {});
-        console.error('[Static] Error:', err.message);
-        res.status(500).json({ ok: false, error: err.message });
-    }
-});
-
-app.delete('/static-sites/:site', async (req, res) => {
-    try {
-        const { site } = req.params;
-        if (!/^[a-z0-9-]+$/.test(site)) {
-            return res.status(400).json({ ok: false, error: 'Nombre inválido.' });
-        }
-        await fsExtra.remove(path.join(STATIC_BASE, site));
-        await fsExtra.remove(path.join(NGINX_CONFIGS, `${site}.conf`));
-
-        // Eliminar de static_projects.json
-        const projects = readStaticProjects();
-        if (projects[site]) {
-            delete projects[site];
-            writeStaticProjects(projects);
-        }
-
-        await reloadNginx();
-        res.json({ ok: true });
-    } catch (err) {
-        res.status(500).json({ ok: false, error: err.message });
     }
 });
 

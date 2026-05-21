@@ -162,7 +162,7 @@ function PreferencesDropdown() {
         aria-label="Apariencia e idioma"
         className={`pref-trigger-btn ${open ? 'active' : ''}`}
         style={{
-          minWidth: '40px', minHeight: '40px',
+          minWidth: '44px', minHeight: '44px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', outline: 'none',
         }}
@@ -361,7 +361,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
 
           {/* RIGHT */}
           <div className="flex items-center gap-2">
-            <div className="hidden md:block">
+            <div className="hidden md:flex items-center">
               <PreferencesDropdown />
             </div>
             <Link
