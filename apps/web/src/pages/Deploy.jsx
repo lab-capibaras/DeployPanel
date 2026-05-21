@@ -110,30 +110,6 @@ export default function Deploy() {
   const isDark = useTheme();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login');
-    }
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return (
-      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <PixelStarfield dark={isDark} />
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Jersey 10',monospace", fontSize: 24, color: isDark ? '#e8eeff' : '#0d1433' }}>
-          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '4px solid rgba(45,95,255,0.3)', borderTopColor: '#2d5fff', borderRadius: '50%', margin: '0 auto 16px' }} />
-          Cargando...
-        </div>
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   const t = useTranslation();
   const d = t.deploy;
 
@@ -175,6 +151,29 @@ export default function Deploy() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logLines]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/login');
+    }
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <PixelStarfield dark={isDark} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Jersey 10',monospace", fontSize: 24, color: isDark ? '#e8eeff' : '#0d1433' }}>
+          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '4px solid rgba(45,95,255,0.3)', borderTopColor: '#2d5fff', borderRadius: '50%', margin: '0 auto 16px' }} />
+          Cargando...
+        </div>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   const showToast = (message, type = 'info') => {
     const id = toastIdRef.current++;
