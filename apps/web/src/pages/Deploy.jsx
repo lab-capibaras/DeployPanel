@@ -5,6 +5,7 @@ import { getPrefs, subscribePrefs } from '../store/prefs';
 import PixelRocket from '../components/PixelRocket';
 import JSZip from 'jszip';
 import { useAuth } from '../hooks/useAuth';
+import WebhookInstructions from '../components/WebhookInstructions';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -129,6 +130,7 @@ export default function Deploy() {
   const [logLines, setLogLines] = useState([]);
   const [subdomainError, setSubdomainError] = useState('');
   const [showRocketLaunch, setShowRocketLaunch] = useState(false);
+  const [webhookInfo, setWebhookInfo] = useState(null);
   const logRef = useRef(null);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
@@ -266,6 +268,10 @@ export default function Deploy() {
         setTimeout(() => {
           setShowRocketLaunch(false);
           setPhase('success');
+          setWebhookInfo({
+            subdomain: formData.subdomain,
+            repoUrl: formData.repoUrl,
+          });
         }, 3200);
       } catch (err) {
         setErrorMessage(err.message);
@@ -1619,6 +1625,13 @@ export default function Deploy() {
             </div>
           </div>
         </div>
+      {/* ======= WEBHOOK INSTRUCTIONS MODAL ======= */}
+      {webhookInfo && (
+        <WebhookInstructions
+          subdomain={webhookInfo.subdomain}
+          repoUrl={webhookInfo.repoUrl}
+          onClose={() => setWebhookInfo(null)}
+        />
       )}
 
       <style>{`
