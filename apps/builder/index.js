@@ -29,6 +29,98 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 // ==========================================
+// --- AUTENTICACIÓN OAuth ---
+// ==========================================
+const session    = require('express-session');
+const passport   = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const GitHubStrategy = require('passport-github2').Strategy;
+
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: true,       // HTTPS via Cloudflare
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000  // 7 días
+    }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+// Google
+passport.use(new GoogleStrategy({
+    clientID:     process.env.GOOGLE_CLIENT_ID || 'dummy',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
+    callbackURL:  'https://stardest.com/api/auth/google/callback',
+}, (accessToken, refreshToken, profile, done) => {
+    const user = {
+        id:       profile.id,
+        name:     profile.displayName,
+        email:    profile.emails?.[0]?.value,
+        avatar:   profile.photos?.[0]?.value,
+        provider: 'google',
+    };
+    return done(null, user);
+}));
+
+// GitHub
+passport.use(new GitHubStrategy({
+    clientID:     process.env.GITHUB_CLIENT_ID || 'dummy',
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || 'dummy',
+    callbackURL:  'https://stardest.com/api/auth/github/callback',
+}, (accessToken, refreshToken, profile, done) => {
+    const user = {
+        id:       profile.id,
+        name:     profile.displayName || profile.username,
+        email:    profile.emails?.[0]?.value,
+        avatar:   profile.photos?.[0]?.value,
+        provider: 'github',
+        username: profile.username,
+    };
+    return done(null, user);
+}));
+
+// Rutas OAuth
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1` }),
+    (req, res) => res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy`)
+);
+
+app.get('/auth/github',
+    passport.authenticate('github', { scope: ['user:email'] })
+);
+app.get('/auth/github/callback',
+    passport.authenticate('github', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1` }),
+    (req, res) => res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy`)
+);
+
+// Sesión actual
+app.get('/auth/me', (req, res) => {
+    if (req.isAuthenticated()) {
+        res.json({ authenticated: true, user: req.user });
+    } else {
+        res.json({ authenticated: false, user: null });
+    }
+});
+
+// Logout
+app.post('/auth/logout', (req, res) => {
+    req.logout((err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ ok: true });
+    });
+});
+
+// ==========================================
 // --- SISTEMA DE MEMORIA PARA WEBHOOKS ---
 // ==========================================
 const DB_FILE = path.join(__dirname, 'deployments.json');

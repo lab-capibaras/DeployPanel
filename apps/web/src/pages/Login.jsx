@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 import { PixelRocket } from '../components/PixelIcons';
+import { useAuth } from '../hooks/useAuth';
 
 function useTheme() {
   const [prefs, setPrefs] = useState(getPrefs);
@@ -97,121 +98,59 @@ function PixelStarfield({ dark = true }) {
   return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, zIndex: 0, imageRendering: 'pixelated' }} />;
 }
 
-/* ─── Pixel input component ─── */
-function PixelInput({ id, type, label, placeholder, value, onChange, required }) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <label
-        htmlFor={id}
-        style={{
-          display: 'block',
-          fontFamily: "'Jersey 10',monospace",
-          fontSize: 14,
-          color: '#8ab0ff',
-          marginBottom: 8,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-        }}
-      >
-        {label}
-      </label>
-      <input
-        id={id}
-        type={type}
-        required={required}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        style={{
-          width: '100%',
-          padding: '12px 16px',
-          background: '#020210',
-          border: `2px solid ${focused ? '#2d5fff' : '#1e2d7a'}`,
-          color: '#e8eeff',
-          fontFamily: "'Share Tech Mono',monospace",
-          fontSize: 15,
-          outline: 'none',
-          boxShadow: focused ? '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)' : 'inset 0 0 8px rgba(0,0,0,0.4)',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
-          boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  );
-}
-
-/* ─── Pixel button ─── */
-function PixelButton({ children, type = 'button', disabled, onClick, variant = 'primary' }) {
-  const [hov, setHov] = useState(false);
-  const primary = variant === 'primary';
-  return (
-    <button
-      type={type}
-      disabled={disabled}
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        width: '100%',
-        padding: '14px 24px',
-        background: primary
-          ? (hov ? 'linear-gradient(135deg,#1a3aff,#0f1f5c)' : 'linear-gradient(135deg,#0f1f5c,#1a3aff)')
-          : 'transparent',
-        border: `2px solid ${primary ? '#2d5fff' : '#1e2d7a'}`,
-        color: primary ? '#e8eeff' : '#8ab0ff',
-        fontFamily: "'Jersey 10',monospace",
-        fontSize: 18,
-        letterSpacing: '0.08em',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: hov && !disabled
-          ? `4px 4px 0 rgba(0,0,0,0.7), 0 0 20px rgba(45,95,255,0.4)`
-          : `3px 3px 0 rgba(0,0,0,0.6)`,
-        transform: hov && !disabled ? 'translate(-1px,-1px)' : 'none',
-        transition: 'all 0.1s steps(2)',
-        opacity: disabled ? 0.5 : 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function Login() {
   const t = useTranslation();
   const l = t.login;
   const isDark = useTheme();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const error = params.get('error');
 
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    if (!loading && user) navigate('/deploy');
+  }, [user, loading, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
-  };
+  if (loading) {
+    return (
+      <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <PixelStarfield dark={isDark} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Jersey 10',monospace", fontSize: 24, color: isDark ? '#e8eeff' : '#0d1433' }}>
+          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '4px solid rgba(45,95,255,0.3)', borderTopColor: '#2d5fff', borderRadius: '50%', margin: '0 auto 16px' }} />
+          Cargando...
+        </div>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
+  }
+
+  const cardBg = isDark ? 'rgba(2,2,16,0.85)' : 'rgba(255,255,255,0.9)';
+  const cardBorder = isDark ? '#1e2d7a' : '#c3d3e5';
+  const textTitle = isDark ? '#e8eeff' : '#0d1433';
+  const textMuted = isDark ? '#4a6a9a' : '#6b7280';
+  const btnBorder = isDark ? '#1e2d7a' : '#c3d3e5';
+  const btnBg = isDark ? 'rgba(15,44,69,0.3)' : 'rgba(45,95,255,0.05)';
+  const btnColor = isDark ? '#e8eeff' : '#0d1433';
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <PixelStarfield dark={isDark} />
 
       {/* Scanlines */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
-        background: 'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)',
-      }} />
+      {isDark && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
+          background: 'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)',
+        }} />
+      )}
 
       {/* Central glow */}
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
         width: 600, height: 600, pointerEvents: 'none', zIndex: 1,
-        background: 'radial-gradient(ellipse,rgba(45,95,255,0.12) 0%,transparent 70%)',
+        background: isDark ? 'radial-gradient(ellipse,rgba(45,95,255,0.12) 0%,transparent 70%)' : 'radial-gradient(ellipse,rgba(45,95,255,0.06) 0%,transparent 70%)',
       }} />
 
       {/* Card */}
@@ -220,14 +159,14 @@ function Login() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ animation: 'px-float 4s ease-in-out infinite', filter: 'drop-shadow(0 0 12px rgba(45,95,255,0.7))' }}>
+            <div style={{ animation: 'px-float 4s ease-in-out infinite', filter: isDark ? 'drop-shadow(0 0 12px rgba(45,95,255,0.7))' : 'none' }}>
               <PixelRocket scale={2} />
             </div>
             <span style={{
               fontFamily: "'Jersey 10',monospace",
               fontSize: 28,
-              color: '#e8eeff',
-              textShadow: '0 0 20px rgba(0,212,255,0.4)',
+              color: textTitle,
+              textShadow: isDark ? '0 0 20px rgba(0,212,255,0.4)' : 'none',
               letterSpacing: '0.05em',
             }}>
               StarDest
@@ -237,242 +176,196 @@ function Login() {
 
         {/* Main panel */}
         <div style={{
-          background: 'rgba(2,2,16,0.85)',
-          border: '2px solid #1e2d7a',
-          boxShadow: '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)',
+          background: cardBg,
+          border: `2px solid ${cardBorder}`,
+          boxShadow: isDark ? '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)' : '6px 6px 0 rgba(45,95,255,0.1), 0 0 20px rgba(45,95,255,0.05)',
           padding: '40px 36px',
         }}>
 
           {/* Panel header bar */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            marginBottom: 28, borderBottom: '1px solid #1e2d7a', paddingBottom: 16,
+            marginBottom: 28, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
           }}>
             {['#ff5f57', '#febc2e', '#28c840'].map(c => (
               <div key={c} style={{ width: 9, height: 9, background: c }} />
             ))}
             <span style={{
               marginLeft: 8, fontFamily: "'Share Tech Mono',monospace",
-              fontSize: 12, color: '#4a6a9a', letterSpacing: '0.05em',
+              fontSize: 12, color: textMuted, letterSpacing: '0.05em',
             }}>
               auth — secure-login
             </span>
           </div>
 
           {/* Heading */}
-          <div style={{ marginBottom: 28 }}>
+          <div style={{ marginBottom: 28, textAlign: 'center' }}>
             <h1 style={{
               fontFamily: "'Jersey 10',monospace",
               fontSize: 28,
-              color: '#e8eeff',
+              color: textTitle,
               margin: '0 0 6px',
               letterSpacing: '0.04em',
             }}>
-              {l.welcome}
+              {l.welcome || 'BIENVENIDO'}
             </h1>
             <p style={{
               fontFamily: "'Jersey 10',monospace",
               fontSize: 16,
-              color: '#4a6a9a',
+              color: textMuted,
               margin: 0,
             }}>
-              {l.subtitle}
+              {l.subtitle || 'Inicia sesión para continuar'}
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            <PixelInput
-              id="email"
-              type="email"
-              label={l.email_label}
-              placeholder={l.email_ph}
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label
-                  htmlFor="password"
-                  style={{
-                    fontFamily: "'Jersey 10',monospace",
-                    fontSize: 14,
-                    color: '#8ab0ff',
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {l.password_label}
-                </label>
-                <a
-                  href="#"
-                  style={{
-                    fontFamily: "'Jersey 10',monospace",
-                    fontSize: 13,
-                    color: '#2d5fff',
-                    textDecoration: 'none',
-                  }}
-                  onMouseEnter={e => e.target.style.color = '#00d4ff'}
-                  onMouseLeave={e => e.target.style.color = '#2d5fff'}
-                >
-                  {l.forgot}
-                </a>
-              </div>
-              <PixelInput
-                id="password"
-                type="password"
-                label=""
-                placeholder={l.password_ph}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
+          {/* Error */}
+          {error && (
+            <div style={{
+              marginBottom: 20,
+              padding: '12px 16px',
+              border: '2px solid #ef4444',
+              background: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',
+              color: isDark ? '#fca5a5' : '#b91c1c',
+              fontFamily: "'Jersey 10',monospace",
+              fontSize: 15,
+              textAlign: 'center',
+              boxShadow: '3px 3px 0 rgba(239,68,68,0.15)',
+            }}>
+              Error al iniciar sesión. Intenta de nuevo.
             </div>
+          )}
 
-            {/* Remember me */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 28, marginTop: -8 }}>
-              <input
-                id="remember"
-                type="checkbox"
-                style={{
-                  width: 14, height: 14,
-                  accentColor: '#2d5fff',
-                  cursor: 'pointer',
-                }}
-              />
-              <label
-                htmlFor="remember"
-                style={{
-                  marginLeft: 8,
-                  fontFamily: "'Jersey 10',monospace",
-                  fontSize: 14,
-                  color: '#4a6a9a',
-                  cursor: 'pointer',
-                }}
-              >
-                {l.remember}
-              </label>
-            </div>
+          {/* Social login buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Google */}
+            <a
+              href="/api/auth/google"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: '14px 20px',
+                border: `2px solid ${btnBorder}`,
+                background: btnBg,
+                color: btnColor,
+                textDecoration: 'none',
+                fontFamily: "'Jersey 10',monospace",
+                fontSize: 18,
+                letterSpacing: '0.04em',
+                transition: 'all 0.1s steps(2)',
+                cursor: 'pointer',
+                boxShadow: isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#2d5fff';
+                e.currentTarget.style.background = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(45,95,255,0.08)';
+                e.currentTarget.style.boxShadow = isDark
+                  ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                  : '4px 4px 0 rgba(45,95,255,0.15), 0 0 12px rgba(45,95,255,0.1)';
+                e.currentTarget.style.transform = 'translate(-1px,-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = btnBorder;
+                e.currentTarget.style.background = btnBg;
+                e.currentTarget.style.boxShadow = isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <GoogleIcon />
+              Continuar con Google
+            </a>
 
-            {/* Submit */}
-            <PixelButton type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <svg style={{ width: 18, height: 18, animation: 'spin 1s linear infinite' }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  {l.submitting}
-                </>
-              ) : `▶ ${l.submit}`}
-            </PixelButton>
-          </form>
-
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0' }}>
-            <div style={{ flex: 1, height: 1, background: '#1e2d7a' }} />
-            <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 13, color: '#4a6a9a' }}>
-              {l.or_continue}
-            </span>
-            <div style={{ flex: 1, height: 1, background: '#1e2d7a' }} />
+            {/* GitHub */}
+            <a
+              href="/api/auth/github"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                padding: '14px 20px',
+                border: `2px solid ${btnBorder}`,
+                background: btnBg,
+                color: btnColor,
+                textDecoration: 'none',
+                fontFamily: "'Jersey 10',monospace",
+                fontSize: 18,
+                letterSpacing: '0.04em',
+                transition: 'all 0.1s steps(2)',
+                cursor: 'pointer',
+                boxShadow: isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#2d5fff';
+                e.currentTarget.style.background = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(45,95,255,0.08)';
+                e.currentTarget.style.boxShadow = isDark
+                  ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
+                  : '4px 4px 0 rgba(45,95,255,0.15), 0 0 12px rgba(45,95,255,0.1)';
+                e.currentTarget.style.transform = 'translate(-1px,-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = btnBorder;
+                e.currentTarget.style.background = btnBg;
+                e.currentTarget.style.boxShadow = isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)';
+                e.currentTarget.style.transform = 'none';
+              }}
+            >
+              <GitHubIcon color={btnColor} />
+              Continuar con GitHub
+            </a>
           </div>
 
-          {/* Social Login */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {[
-              {
-                label: 'GitHub',
-                icon: (
-                  <svg style={{ width: 18, height: 18 }} viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-                  </svg>
-                ),
-              },
-              {
-                label: 'Google',
-                icon: (
-                  <svg style={{ width: 18, height: 18 }} viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                ),
-              },
-            ].map(({ label, icon }) => (
-              <button
-                key={label}
-                type="button"
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: '2px solid #1e2d7a',
-                  color: '#8ab0ff',
-                  fontFamily: "'Jersey 10',monospace",
-                  fontSize: 15,
-                  cursor: 'pointer',
-                  boxShadow: '3px 3px 0 rgba(0,0,0,0.5)',
-                  transition: 'all 0.1s steps(2)',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = '#2d5fff';
-                  e.currentTarget.style.color = '#e8eeff';
-                  e.currentTarget.style.boxShadow = '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = '#1e2d7a';
-                  e.currentTarget.style.color = '#8ab0ff';
-                  e.currentTarget.style.boxShadow = '3px 3px 0 rgba(0,0,0,0.5)';
-                }}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Footer inside card */}
+          <p style={{
+            marginTop: 24,
+            textAlign: 'center',
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 13,
+            color: textMuted,
+          }}>
+            Al continuar aceptas los términos de uso
+          </p>
+
         </div>
 
-        {/* Sign up link */}
-        <p style={{
-          textAlign: 'center', marginTop: 20,
-          fontFamily: "'Jersey 10',monospace",
-          fontSize: 15, color: '#4a6a9a',
-        }}>
-          {l.no_account}{' '}
-          <a
-            href="#"
-            style={{ color: '#2d5fff', textDecoration: 'none', fontWeight: 'bold' }}
-            onMouseEnter={e => e.target.style.color = '#00d4ff'}
-            onMouseLeave={e => e.target.style.color = '#2d5fff'}
-          >
-            {l.sign_up}
-          </a>
-        </p>
-
         {/* Back to home */}
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
           <Link
             to="/"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               fontFamily: "'Jersey 10',monospace",
-              fontSize: 14, color: '#4a6a9a', textDecoration: 'none',
+              fontSize: 15, color: textMuted, textDecoration: 'none',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#e8eeff'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#4a6a9a'; }}
+            onMouseEnter={e => { e.currentTarget.style.color = textTitle; }}
+            onMouseLeave={e => { e.currentTarget.style.color = textMuted; }}
           >
-            ← {l.back_home}
+            ← {l.back_home || 'Volver al inicio'}
           </Link>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
+function GitHubIcon({ color }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={color}>
+      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+    </svg>
   );
 }
 

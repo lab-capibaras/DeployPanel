@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
 import PixelRocket from './components/PixelRocket';
+import { useAuth } from './hooks/useAuth';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
 import { useTranslation } from './i18n';
@@ -274,13 +275,175 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
         {/* Footer */}
         <div className="px-5 py-5 border-t border-[#2F4A67]/30">
-          <Link to="/login" onClick={onClose}
-            className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium"
-          >
-            Login
-          </Link>
+          <UserMobileMenu onClose={onClose} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function UserMobileMenu({ onClose }) {
+  const { user, loading, logout } = useAuth();
+  if (loading) return null;
+
+  if (!user) {
+    return (
+      <Link to="/login" onClick={onClose}
+        className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium cursor-pointer"
+        style={{ textDecoration: 'none' }}
+      >
+        Login
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-3 px-3 py-2 border border-[#2F4A67]/30 bg-[#0F2C45]/20 rounded-xl">
+        {user.avatar ? (
+          <img src={user.avatar} alt="" className="w-8 h-8 rounded-full border border-[#00d4ff]" />
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-[#00d4ff] text-white flex items-center justify-center text-xs font-bold">
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="overflow-hidden">
+          <p className="text-sm font-bold text-white leading-tight truncate">{user.name}</p>
+          <p className="text-xs text-[#CBCDD3]/60 leading-tight truncate">{user.email || user.provider}</p>
+        </div>
+      </div>
+      <button
+        onClick={() => { logout(); onClose(); }}
+        className="block w-full text-center py-3 border border-[#ff5f57]/50 text-[#ff5f57] hover:text-white hover:bg-[#ff5f57]/20 rounded-xl transition text-sm font-medium cursor-pointer"
+        style={{ background: 'transparent' }}
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const { user, loading, logout } = useAuth();
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  if (loading) return null;
+
+  const textCyan    = isDark ? '#00d4ff'                  : '#1a3aff';
+  const borderLogin = isDark ? 'rgba(0,212,255,0.4)'      : 'rgba(26,58,255,0.5)';
+  const bgLogin     = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
+  const textMain    = isDark ? '#e8eeff'                  : '#0d1433';
+  const cardBg      = isDark ? 'rgba(11, 15, 25, 0.97)'   : 'rgba(255, 255, 255, 0.97)';
+  const cardBorder  = isDark ? 'rgba(47,74,103,0.5)'     : 'rgba(195,211,229,0.9)';
+
+  if (!user) {
+    return (
+      <Link
+        to="/login"
+        style={{
+          textDecoration: 'none',
+          padding: '8px 20px',
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          touchAction: 'manipulation',
+          fontFamily: "'Jersey 10',monospace",
+          fontSize: 18,
+          color: textCyan,
+          border: `2px solid ${borderLogin}`,
+          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
+          background: bgLogin,
+          letterSpacing: '0.04em'
+        }}
+      >
+        LOGIN
+      </Link>
+    );
+  }
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 14px',
+          height: '44px',
+          cursor: 'pointer',
+          border: `2px solid ${borderLogin}`,
+          background: bgLogin,
+          color: textMain,
+          fontFamily: "'Jersey 10', monospace",
+          fontSize: '17px',
+          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
+          letterSpacing: '0.04em',
+          outline: 'none',
+        }}
+      >
+        {user.avatar ? (
+          <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', border: `1px solid ${textCyan}` }} />
+        ) : (
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: textCyan, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user.name?.split(' ')[0]}
+        </span>
+        <svg style={{ width: 12, height: 12, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 8px)',
+          right: 0,
+          background: cardBg,
+          border: `2px solid ${cardBorder}`,
+          boxShadow: isDark ? '4px 4px 0 rgba(0,0,0,0.5)' : '4px 4px 0 rgba(0,0,0,0.08)',
+          padding: '6px',
+          minWidth: '160px',
+          zIndex: 200,
+        }}>
+          <button
+            onClick={logout}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              textAlign: 'left',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#ff5f57',
+              fontFamily: "'Jersey 10', monospace",
+              fontSize: '16px',
+              letterSpacing: '0.02em',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,95,87,0.1)' : 'rgba(255,95,87,0.05)'}
+            onMouseLeave={e => e.target.style.background = 'none'}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -364,13 +527,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <div className="hidden md:flex items-center">
               <PreferencesDropdown />
             </div>
-            <Link
-              to="/login"
-              className="hidden md:flex"
-              style={{ textDecoration: 'none', padding: '8px 20px', minHeight: 44, alignItems: 'center', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textCyan, border: `2px solid ${borderLogin}`, boxShadow: '2px 2px 0 rgba(0,0,0,0.3)', background: bgLogin, letterSpacing: '0.04em' }}
-            >
-              LOGIN
-            </Link>
+            <UserMenu />
             <button
               onClick={onHamburger}
               aria-label="Abrir menú"
