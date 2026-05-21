@@ -9,6 +9,7 @@ const os = require('os');
 const { exec } = require('child_process');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 // Multer: guarda el zip en memoria para procesarlo con adm-zip
@@ -41,7 +42,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: true,       // HTTPS via Cloudflare
+        secure: process.env.NODE_ENV === 'production' || process.env.SESSION_SECURE === 'true',
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000  // 7 días
     }
@@ -57,7 +58,7 @@ passport.deserializeUser((user, done) => done(null, user));
 passport.use(new GoogleStrategy({
     clientID:     process.env.GOOGLE_CLIENT_ID || 'dummy',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
-    callbackURL:  'https://stardest.com/api/auth/google/callback',
+    callbackURL:  process.env.GOOGLE_CALLBACK_URL || 'https://stardest.com/api/auth/google/callback',
 }, (accessToken, refreshToken, profile, done) => {
     const user = {
         id:       profile.id,
@@ -73,7 +74,7 @@ passport.use(new GoogleStrategy({
 passport.use(new GitHubStrategy({
     clientID:     process.env.GITHUB_CLIENT_ID || 'dummy',
     clientSecret: process.env.GITHUB_CLIENT_SECRET || 'dummy',
-    callbackURL:  'https://stardest.com/api/auth/github/callback',
+    callbackURL:  process.env.GITHUB_CALLBACK_URL || 'https://stardest.com/api/auth/github/callback',
 }, (accessToken, refreshToken, profile, done) => {
     const user = {
         id:       profile.id,
