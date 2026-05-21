@@ -36,8 +36,31 @@ const session    = require('express-session');
 const passport   = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
+const { RedisStore } = require('connect-redis');
+const Redis = require('ioredis');
+
+// Configuración del cliente Redis
+const redisClient = new Redis({
+    host: process.env.REDIS_HOST || 'redis',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || undefined,
+});
+
+redisClient.on('error', (err) => {
+    console.error('[Redis] Error de conexión:', err);
+});
+
+redisClient.on('connect', () => {
+    console.log('[Redis] Conectado exitosamente para almacenamiento de sesiones');
+});
+
+const redisStore = new RedisStore({
+    client: redisClient,
+    prefix: 'sess:',
+});
 
 app.use(session({
+    store: redisStore,
     secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
     resave: false,
     saveUninitialized: false,
