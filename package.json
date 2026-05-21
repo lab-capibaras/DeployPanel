@@ -15,8 +15,11 @@
     "start": "node apps/api/src/index.js"
   },
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "dockerode": "^4.0.10",
     "express": "^5.2.1",
-    "simple-git": "^3.33.0"
+    "multer": "^1.4.5-lts.2",
+    "simple-git": "^3.33.0",
+    "jszip": "^3.10.1"
   }
 }

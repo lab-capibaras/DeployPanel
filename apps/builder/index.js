@@ -1,6 +1,8 @@
 const Docker = require('dockerode');
 const git = require('simple-git')();
 const express = require('express');
+const multer = require('multer');
+const AdmZip = require('adm-zip');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -9,9 +11,26 @@ const { exec } = require('child_process');
 const app = express();
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
+// Multer: guarda el zip en memoria para procesarlo con adm-zip
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB máximo
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'application/zip' || file.originalname.endsWith('.zip')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Solo se aceptan archivos .zip'), false);
+        }
+    },
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+const uploadStatic = require('./upload-static');
+app.use(uploadStatic);
+
 
 // ==========================================
 // --- SISTEMA DE MEMORIA PARA WEBHOOKS ---
@@ -557,4 +576,201 @@ app.get('/deploys', async (req, res) => {
     }
 });
 
-app.listen(4000, () => console.log("Panel PRO (Vercel Style) de 445 líneas en puerto 4000"));
+// ==========================================
+// --- STATIC SITES (archivo spec: static-deploy-spec.md) ---
+// ==========================================
+// Rutas base de la infraestructura (dentro del contenedor deploy_panel)
+const DEPLOYS_DIR = process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..'); // /home/project/deploys en prod
+const STATIC_SITES_DIR   = path.join(DEPLOYS_DIR, 'static_sites');
+const NGINX_CONFIGS_DIR  = path.join(DEPLOYS_DIR, 'nginx_configs');
+const STATIC_PROJECTS_FILE = path.join(DEPLOYS_DIR, 'static_projects.json');
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://host.docker.internal:9000/hooks/deploy-static';
+
+function readStaticProjects() {
+    if (!fs.existsSync(STATIC_PROJECTS_FILE)) return {};
+    try { return JSON.parse(fs.readFileSync(STATIC_PROJECTS_FILE, 'utf8')); }
+    catch (e) { return {}; }
+}
+
+function writeStaticProjects(data) {
+    fs.writeFileSync(STATIC_PROJECTS_FILE, JSON.stringify(data, null, 2));
+}
+
+// 5a. GET /api/static-projects — Lista todos los sitios estáticos registrados
+app.get('/api/static-projects', (req, res) => {
+    const projects = readStaticProjects();
+    res.json({ status: 'success', projects });
+});
+
+// 5b. POST /api/static-projects — Registrar un sitio estático y disparar primer deploy
+app.post('/api/static-projects', async (req, res) => {
+    const { site, repo, branch = 'main', build_cmd = '', output_dir = 'dist' } = req.body;
+
+    if (!site || !repo) {
+        return res.status(400).json({ status: 'error', message: 'Faltan campos: site y repo son obligatorios' });
+    }
+    const siteRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+    if (!siteRegex.test(site) || site.length > 40) {
+        return res.status(400).json({ status: 'error', message: 'Nombre de sitio inválido' });
+    }
+
+    const projects = readStaticProjects();
+    projects[site] = { repo, branch, build_cmd, output_dir };
+    writeStaticProjects(projects);
+    console.log(`[Static] Proyecto registrado: ${site} → ${repo}`);
+
+    // Disparar deploy via webhook (adnanh/webhook)
+    try {
+        const http = require('http');
+        const body = JSON.stringify({ site });
+        const url = new URL(WEBHOOK_URL);
+        await new Promise((resolve, reject) => {
+            const reqHook = http.request({
+                hostname: url.hostname,
+                port: url.port || 9000,
+                path: url.pathname,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            }, (r) => { r.resume(); resolve(r.statusCode); });
+            reqHook.on('error', reject);
+            reqHook.write(body);
+            reqHook.end();
+        });
+        console.log(`[Static] Webhook disparado para: ${site}`);
+    } catch (err) {
+        console.warn(`[Static] Webhook no disponible (local?): ${err.message}`);
+    }
+
+    res.json({
+        status: 'success',
+        message: `Sitio '${site}' registrado y deploy iniciado`,
+        url: `https://${site}.stardest.com`,
+        deployedAt: new Date().toISOString(),
+    });
+});
+
+// 5c. DELETE /api/static-projects/:site — Eliminar sitio estático
+app.delete('/api/static-projects/:site', (req, res) => {
+    const { site } = req.params;
+    const projects = readStaticProjects();
+
+    if (!projects[site]) {
+        return res.status(404).json({ status: 'error', message: `Sitio '${site}' no encontrado` });
+    }
+
+    delete projects[site];
+    writeStaticProjects(projects);
+
+    // Borrar archivos del sitio
+    const siteDir  = path.join(STATIC_SITES_DIR, site);
+    const confFile = path.join(NGINX_CONFIGS_DIR, `${site}.conf`);
+    if (fs.existsSync(siteDir))  fs.rmSync(siteDir, { recursive: true, force: true });
+    if (fs.existsSync(confFile)) fs.rmSync(confFile);
+
+    // Recargar nginx
+    exec('docker exec static_server nginx -s reload', (err) => {
+        if (err) console.warn(`[Static] nginx reload warning: ${err.message}`);
+    });
+
+    console.log(`[Static] Proyecto eliminado: ${site}`);
+    res.json({ status: 'success', message: `Sitio '${site}' eliminado` });
+});
+
+// 5d. POST /deploy/upload — Subida de .zip → extrae directo al static_server (sin Docker por sitio)
+app.post('/deploy/upload', upload.single('file'), (req, res) => {
+    const { subdomain } = req.body;
+
+    if (!subdomain) {
+        return res.status(400).json({ status: 'error', message: 'Falta el subdominio' });
+    }
+    if (!req.file) {
+        return res.status(400).json({ status: 'error', message: 'No se recibió ningún archivo .zip' });
+    }
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+    if (!subdomainRegex.test(subdomain) || subdomain.length > 40) {
+        return res.status(400).json({ status: 'error', message: 'Subdominio inválido' });
+    }
+
+    try {
+        // 1. Asegurar directorios
+        if (!fs.existsSync(STATIC_SITES_DIR))  fs.mkdirSync(STATIC_SITES_DIR, { recursive: true });
+        if (!fs.existsSync(NGINX_CONFIGS_DIR)) fs.mkdirSync(NGINX_CONFIGS_DIR, { recursive: true });
+
+        const siteDir = path.join(STATIC_SITES_DIR, subdomain);
+        if (fs.existsSync(siteDir)) fs.rmSync(siteDir, { recursive: true, force: true });
+        fs.mkdirSync(siteDir, { recursive: true });
+
+        // 2. Extraer ZIP
+        console.log(`[Upload] Extrayendo zip para: ${subdomain} (${req.file.size} bytes)`);
+        const zip = new AdmZip(req.file.buffer);
+        zip.extractAllTo(siteDir, true);
+
+        // Si el zip tiene una sola carpeta raíz, mover su contenido hacia arriba
+        const entries = fs.readdirSync(siteDir);
+        if (entries.length === 1) {
+            const singleEntry = path.join(siteDir, entries[0]);
+            if (fs.statSync(singleEntry).isDirectory()) {
+                console.log(`[Upload] Carpeta raíz detectada: ${entries[0]} — aplanando estructura`);
+                const subEntries = fs.readdirSync(singleEntry);
+                for (const f of subEntries) {
+                    fs.renameSync(path.join(singleEntry, f), path.join(siteDir, f));
+                }
+                fs.rmSync(singleEntry, { recursive: true, force: true });
+            }
+        }
+        console.log(`[Upload] Archivos extraídos en: ${siteDir}`);
+
+        // 3. Generar config nginx (solo si no existe)
+        const confFile = path.join(NGINX_CONFIGS_DIR, `${subdomain}.conf`);
+        if (!fs.existsSync(confFile)) {
+            const nginxConf = `server {
+    listen 80;
+    server_name ${subdomain}.stardest.com;
+    root /srv/static/${subdomain};
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+`;
+            fs.writeFileSync(confFile, nginxConf);
+            console.log(`[Upload] Config nginx generada: ${confFile}`);
+        }
+
+        // 4. Asegurar default.conf fallback
+        const defaultConf = path.join(NGINX_CONFIGS_DIR, 'default.conf');
+        if (!fs.existsSync(defaultConf)) {
+            fs.writeFileSync(defaultConf, `server {\n    listen 80 default_server;\n    server_name _;\n    return 404;\n}\n`);
+        }
+
+        // 5. Registrar en static_projects.json
+        const projects = readStaticProjects();
+        projects[subdomain] = { repo: 'zip-upload', branch: 'upload', build_cmd: '', output_dir: '' };
+        writeStaticProjects(projects);
+
+        // 6. Recargar nginx (sin downtime)
+        exec('docker exec static_server nginx -s reload', (err) => {
+            if (err) console.warn(`[Upload] nginx reload warning: ${err.message}`);
+            else console.log(`[Upload] nginx recargado OK`);
+        });
+
+        console.log(`[Upload] ✓ Despliegue exitoso: ${subdomain}.stardest.com`);
+        res.json({
+            status: 'success',
+            url: `https://${subdomain}.stardest.com`,
+            message: 'Archivo desplegado exitosamente',
+            deployedAt: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error('[Upload] Error durante el despliegue:', error.message);
+        res.status(500).json({ status: 'error', details: error.message });
+    }
+});
+
+app.listen(4000, () => console.log("Panel PRO (Vercel Style) en puerto 4000"));

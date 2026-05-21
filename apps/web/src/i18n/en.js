@@ -142,6 +142,81 @@ const en = {
       server_error:    'The server returned an error while deploying',
     },
 
+    // ── Upload Tab ───────────────────────────────────────────
+    upload: {
+      tab_git:          'Git',
+      tab_upload:       'Upload Files',
+      title_1:          'Upload',
+      title_2:          'Project',
+      subtitle:         'Zip your code and deploy it in seconds',
+
+      drop_title:       'Drag your .zip here',
+      drop_or:          'or',
+      drop_btn:         'Select File',
+      drop_hint:        '.zip files only · Max 200 MB',
+      file_selected:    'Selected file:',
+      file_change:      'Change',
+
+      subdomain_label:  'Subdomain',
+      subdomain_ph:     'my-app',
+      subdomain_suffix: '.stardest.com',
+      subdomain_url:    'Final URL:',
+
+      submit:           'Review Deployment',
+
+      confirm_title:    'Review Deployment',
+      confirm_sub:      'Confirm parameters before launching',
+      confirm_file:     'File',
+      confirm_url:      'Production URL',
+      confirm_edit:     'Edit',
+      confirm_btn:      'Confirm & Deploy',
+
+      progress_title:   'Deploying...',
+      uploading:        'Uploading',
+      building:         'Building',
+      publishing:       'Publishing',
+
+      success_title:    'Deployment Successful',
+      success_sub:      'Your application is live and receiving traffic',
+      success_file:     'File',
+      success_status:   'Status',
+      success_status_v: 'ACTIVE',
+      success_open:     'Open in New Tab',
+      success_new:      'Deploy Another Project',
+
+      error_title:      'Deployment Failed',
+      error_retry:      'Retry',
+      error_modify:     'Modify',
+
+      validation: {
+        no_file:   'Please select a .zip file',
+        no_sub:    'Subdomain is required',
+        invalid:   'Lowercase letters, numbers and hyphens only',
+        too_long:  'Maximum 40 characters',
+        fill_all:  'Please fill in all fields',
+      },
+
+      logs: [
+        { delay: 300,   text: '> Receiving ZIP file...',                color: 'text-[#CBCDD3]' },
+        { delay: 800,   text: '✓ File received successfully',           color: 'text-green-400' },
+        { delay: 1400,  text: '> Extracting ZIP contents...',           color: 'text-[#CBCDD3]' },
+        { delay: 2200,  text: '✓ Extraction complete',                  color: 'text-green-400' },
+        { delay: 2800,  text: '> Detecting project type...',            color: 'text-[#CBCDD3]' },
+        { delay: 3500,  text: '✓ Environment detected and configured',  color: 'text-green-400' },
+        { delay: 4000,  text: '> Building container image...',          color: 'text-[#CBCDD3]' },
+        { delay: 5200,  text: '> Resolving dependencies...',            color: 'text-[#CBCDD3]' },
+        { delay: 6500,  text: '✓ Image compiled successfully',          color: 'text-green-400' },
+        { delay: 7200,  text: '> Provisioning distribution network...', color: 'text-[#CBCDD3]' },
+        { delay: 8000,  text: '✓ TLS certificate provisioned',         color: 'text-green-400' },
+        { delay: 8800,  text: '> Publishing container to active node...', color: 'text-[#CBCDD3]' },
+        { delay: 9600,  text: '✓ Container active and responding',      color: 'text-green-400' },
+        { delay: 10200, text: '> Running health check...',              color: 'text-[#CBCDD3]' },
+        { delay: 10800, text: '✓ HEALTH CHECK PASSED [200 OK]',         color: 'text-green-400 font-bold' },
+      ],
+    },
+
+
+
     logs: [
       { delay: 300,   text: '> Starting deployment pipeline...',           color: 'text-[#CBCDD3]' },
       { delay: 700,   text: '> Connecting to remote repository...',        color: 'text-[#CBCDD3]' },

@@ -142,6 +142,79 @@ const es = {
       server_error:    'El servidor retornó un error al desplegar',
     },
 
+    // ── Upload Tab ───────────────────────────────────────────
+    upload: {
+      tab_git:          'Git',
+      tab_upload:       'Subir Archivos',
+      title_1:          'Subir',
+      title_2:          'Proyecto',
+      subtitle:         'Comprime tu código y despliégalo en segundos',
+
+      drop_title:       'Arrastra tu .zip aquí',
+      drop_or:          'o',
+      drop_btn:         'Seleccionar Archivo',
+      drop_hint:        'Solo archivos .zip · Máximo 200 MB',
+      file_selected:    'Archivo seleccionado:',
+      file_change:      'Cambiar',
+
+      subdomain_label:  'Subdominio',
+      subdomain_ph:     'mi-app',
+      subdomain_suffix: '.stardest.com',
+      subdomain_url:    'URL final:',
+
+      submit:           'Revisar Despliegue',
+
+      confirm_title:    'Revisa el Despliegue',
+      confirm_sub:      'Confirma los parámetros antes de iniciar',
+      confirm_file:     'Archivo',
+      confirm_url:      'URL de producción',
+      confirm_edit:     'Editar',
+      confirm_btn:      'Confirmar y Desplegar',
+
+      progress_title:   'Desplegando...',
+      uploading:        'Subiendo',
+      building:         'Compilando',
+      publishing:       'Publicando',
+
+      success_title:    'Despliegue Exitoso',
+      success_sub:      'Tu aplicación está activa y recibiendo tráfico',
+      success_file:     'Archivo',
+      success_status:   'Estado',
+      success_status_v: 'ACTIVO',
+      success_open:     'Abrir en Nueva Pestaña',
+      success_new:      'Desplegar Otro Proyecto',
+
+      error_title:      'Error en el Despliegue',
+      error_retry:      'Reintentar',
+      error_modify:     'Modificar',
+
+      validation: {
+        no_file:   'Selecciona un archivo .zip',
+        no_sub:    'El subdominio es obligatorio',
+        invalid:   'Solo letras minúsculas, números y guiones',
+        too_long:  'Máximo 40 caracteres',
+        fill_all:  'Completa todos los campos',
+      },
+
+      logs: [
+        { delay: 300,   text: '> Recibiendo archivo ZIP...',              color: 'text-[#CBCDD3]' },
+        { delay: 800,   text: '✓ Archivo recibido correctamente',          color: 'text-green-400' },
+        { delay: 1400,  text: '> Extrayendo contenido del ZIP...',         color: 'text-[#CBCDD3]' },
+        { delay: 2200,  text: '✓ Extracción completa',                     color: 'text-green-400' },
+        { delay: 2800,  text: '> Detectando tipo de proyecto...',          color: 'text-[#CBCDD3]' },
+        { delay: 3500,  text: '✓ Entorno detectado y configurado',         color: 'text-green-400' },
+        { delay: 4000,  text: '> Construyendo imagen de contenedor...',    color: 'text-[#CBCDD3]' },
+        { delay: 5200,  text: '> Resolviendo dependencias...',             color: 'text-[#CBCDD3]' },
+        { delay: 6500,  text: '✓ Imagen compilada exitosamente',           color: 'text-green-400' },
+        { delay: 7200,  text: '> Provisionando red de distribución...',    color: 'text-[#CBCDD3]' },
+        { delay: 8000,  text: '✓ Certificado TLS provisionado',            color: 'text-green-400' },
+        { delay: 8800,  text: '> Publicando contenedor en nodo activo...', color: 'text-[#CBCDD3]' },
+        { delay: 9600,  text: '✓ Contenedor activo y respondiendo',        color: 'text-green-400' },
+        { delay: 10200, text: '> Ejecutando health check...',              color: 'text-[#CBCDD3]' },
+        { delay: 10800, text: '✓ HEALTH CHECK PASSED [200 OK]',            color: 'text-green-400 font-bold' },
+      ],
+    },
+
     logs: [
       { delay: 300,   text: '> Iniciando pipeline de despliegue...',       color: 'text-[#CBCDD3]' },
       { delay: 700,   text: '> Conectando con repositorio remoto...',       color: 'text-[#CBCDD3]' },

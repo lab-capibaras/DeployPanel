@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 import PixelRocket from '../components/PixelRocket';
+import JSZip from 'jszip';
+
 
 /** Lightweight hook: re-renders when theme/lang changes */
 function useTheme() {
@@ -107,6 +109,10 @@ export default function Deploy() {
   const t = useTranslation();
   const d = t.deploy;
 
+  // ── Mode: 'git' | 'upload' ──
+  const [mode, setMode] = useState('git');
+
+  // ── Git deploy state ──
   const [formData, setFormData] = useState({ repoUrl: '', branch: '', subdomain: '' });
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
@@ -122,6 +128,20 @@ export default function Deploy() {
   const logRef = useRef(null);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
+
+  // ── Upload deploy state ──
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadSubdomain, setUploadSubdomain] = useState('');
+  const [uploadSubdomainError, setUploadSubdomainError] = useState('');
+  const [uploadPhase, setUploadPhase] = useState('form'); // 'form'|'confirm'|'progress'|'success'|'error'
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadLogLines, setUploadLogLines] = useState([]);
+  const [uploadSuccessUrl, setUploadSuccessUrl] = useState('');
+  const [uploadErrorMsg, setUploadErrorMsg] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const uploadLogRef = useRef(null);
+  const uploadTimerRefs = useRef([]);
+  const fileInputRef = useRef(null);
 
   // Auto-scroll log
   useEffect(() => {
@@ -236,7 +256,179 @@ export default function Deploy() {
     setPhase('form');
   };
 
+  // ── Upload helpers ──
+  const validateUploadSubdomain = (val) => {
+    if (!val) return u.validation.no_sub;
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(val)) return u.validation.invalid;
+    if (val.length > 40) return u.validation.too_long;
+    return '';
+  };
+
+  const handleUploadSubdomainChange = (e) => {
+    const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setUploadSubdomain(val);
+    setUploadSubdomainError(validateUploadSubdomain(val));
+  };
+
+  const addEntryToZip = (zip, entry, basePath = '') => {
+    return new Promise((resolve, reject) => {
+      if (entry.isFile) {
+        entry.file((file) => { zip.file(basePath + file.name, file); resolve(); }, reject);
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        reader.readEntries(async (entries) => {
+          for (const child of entries) {
+            await addEntryToZip(zip, child, basePath + entry.name + '/');
+          }
+          resolve();
+        }, reject);
+      } else {
+        resolve();
+      }
+    });
+  };
+
+  const buildZipFromItems = async (items) => {
+    const zip = new JSZip();
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.();
+      if (!entry) continue;
+      if (entry.isDirectory) {
+        const reader = entry.createReader();
+        await new Promise((resolve, reject) => {
+          reader.readEntries(async (entries) => {
+            for (const child of entries) {
+              await addEntryToZip(zip, child, '');
+            }
+            resolve();
+          }, reject);
+        });
+      } else {
+        await addEntryToZip(zip, entry, '');
+      }
+    }
+    return zip.generateAsync({ type: 'blob' });
+  };
+
+  const handleFileDrop = async (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    if (!uploadSubdomain || validateUploadSubdomain(uploadSubdomain)) {
+      showToast('Escribe un subdominio válido antes de arrastrar los archivos.', 'warning');
+      return;
+    }
+
+    const items = Array.from(e.dataTransfer.items || []);
+    const files = Array.from(e.dataTransfer.files || []);
+
+    if (files.length === 0) return;
+
+    // Check if it is a single ZIP file
+    if (files.length === 1 && files[0].name.endsWith('.zip')) {
+      setUploadFile(files[0]);
+      showToast('Archivo ZIP detectado y cargado.', 'success');
+      return;
+    }
+
+    // Otherwise, we zip it on the client
+    showToast('Comprimiendo carpeta/archivos en tu navegador...', 'info');
+    try {
+      const zipBlob = await buildZipFromItems(items);
+      const zippedFile = new File([zipBlob], `${uploadSubdomain}.zip`, { type: 'application/zip' });
+      setUploadFile(zippedFile);
+      showToast('Compresión terminada. Carpeta cargada.', 'success');
+    } catch (err) {
+      console.error('Error comprimiendo archivos:', err);
+      showToast('Error al comprimir archivos: ' + err.message, 'error');
+    }
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.name.endsWith('.zip') || file.type === 'application/zip') {
+        setUploadFile(file);
+      } else {
+        showToast('Por favor selecciona un archivo .zip o arrastra una carpeta.', 'warning');
+      }
+    }
+  };
+
+  const handleUploadFormSubmit = (e) => {
+    e.preventDefault();
+    if (!uploadFile) { showToast(u.validation.no_file, 'warning'); return; }
+    const err = validateUploadSubdomain(uploadSubdomain);
+    if (err) { setUploadSubdomainError(err); return; }
+    setUploadPhase('confirm');
+  };
+
+  const startUploadDeploy = async () => {
+    setUploadPhase('progress');
+    setUploadLogLines([]);
+    setUploadProgress(0);
+    uploadTimerRefs.current.forEach(clearTimeout);
+    uploadTimerRefs.current = [];
+
+    u.logs.forEach(({ delay, text, color }) => {
+      const timer = setTimeout(() => {
+        setUploadLogLines(prev => [...prev, { text, color }]);
+        setUploadProgress(Math.min((delay / 11300) * 90, 90));
+      }, delay);
+      uploadTimerRefs.current.push(timer);
+    });
+
+    const finalTimer = setTimeout(async () => {
+      try {
+        const formPayload = new FormData();
+        formPayload.append('zip', uploadFile);
+        formPayload.append('site', uploadSubdomain);
+
+        const response = await fetch('/api/upload-static', {
+          method: 'POST',
+          body: formPayload,
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || data.details || data.message || 'Error del servidor');
+        }
+
+        setUploadProgress(100);
+        setUploadSuccessUrl(`https://${uploadSubdomain}.stardest.com`);
+        setShowRocketLaunch(true);
+        setTimeout(() => {
+          setShowRocketLaunch(false);
+          setUploadPhase('success');
+        }, 3200);
+      } catch (err) {
+        setUploadErrorMsg(err.message);
+        setUploadPhase('error');
+        showToast('Error: ' + err.message, 'error');
+      }
+    }, 11500);
+    uploadTimerRefs.current.push(finalTimer);
+  };
+
+  const resetUpload = () => {
+    uploadTimerRefs.current.forEach(clearTimeout);
+    setUploadFile(null);
+    setUploadSubdomain('');
+    setUploadSubdomainError('');
+    setUploadPhase('form');
+    setUploadProgress(0);
+    setUploadLogLines([]);
+    setUploadSuccessUrl('');
+    setUploadErrorMsg('');
+  };
+
+  // Auto-scroll upload log
+  useEffect(() => {
+    if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
+  }, [uploadLogLines]);
+
   const parsedRepo = parseGithubUrl(formData.repoUrl);
+  const u = t.deploy.upload;
 
   // ===== DESIGN CONSTANTS =====
   const pageBg = isDark ? '#0b0f19' : '#f0f4ff';
@@ -338,7 +530,7 @@ export default function Deploy() {
             {/* Panel header bar */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              marginBottom: 28, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
+              marginBottom: 20, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
             }}>
               {['#ff5f57', '#febc2e', '#28c840'].map(c => (
                 <div key={c} style={{ width: 9, height: 9, background: c }} />
@@ -351,8 +543,53 @@ export default function Deploy() {
               </span>
             </div>
 
-            {/* ======= FORM ======= */}
-            {phase === 'form' && (
+            {/* ── Tab switcher ── */}
+            {(phase === 'form' || uploadPhase === 'form') && (
+              <div style={{
+                display: 'flex',
+                gap: 4,
+                marginBottom: 24,
+                padding: 4,
+                background: isDark ? 'rgba(2,2,22,0.7)' : 'rgba(220,230,255,0.4)',
+                border: `2px solid ${cardBorder}`,
+              }}>
+                {[
+                  { id: 'git',    label: u.tab_git,    icon: 'M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z' },
+                  { id: 'upload', label: u.tab_upload, icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' },
+                ].map(tab => {
+                  const isActive = mode === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      id={`tab-${tab.id}`}
+                      onClick={() => { setMode(tab.id); if (tab.id === 'git') resetUpload(); else reset(); }}
+                      style={{
+                        flex: 1,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '10px 16px',
+                        background: isActive ? (isDark ? 'rgba(45,95,255,0.2)' : 'rgba(45,95,255,0.12)') : 'transparent',
+                        border: `2px solid ${isActive ? '#2d5fff' : 'transparent'}`,
+                        color: isActive ? (isDark ? '#a0c0ff' : '#1a3aff') : textMuted,
+                        fontFamily: "'Jersey 10',monospace",
+                        fontSize: 16,
+                        letterSpacing: '0.05em',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: isActive ? (isDark ? 'inset 0 0 12px rgba(45,95,255,0.15)' : 'none') : 'none',
+                      }}
+                    >
+                      <svg style={{ width: 15, height: 15, flexShrink: 0 }} fill={tab.id === 'git' ? 'currentColor' : 'none'} stroke={tab.id === 'upload' ? 'currentColor' : 'none'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d={tab.icon} />
+                      </svg>
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ======= GIT MODE PHASES ======= */}
+            {mode === 'git' && phase === 'form' && (
               <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
                 {/* Repo URL */}
@@ -585,7 +822,7 @@ export default function Deploy() {
             )}
 
             {/* ======= CONFIRM ======= */}
-            {phase === 'confirm' && (
+            {mode === 'git' && phase === 'confirm' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div>
                   <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 24, color: textTitle, margin: '0 0 6px' }}>{d.confirm.title}</h2>
@@ -677,7 +914,7 @@ export default function Deploy() {
             )}
 
             {/* ======= PROGRESS ======= */}
-            {phase === 'progress' && (
+            {mode === 'git' && phase === 'progress' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
@@ -768,7 +1005,7 @@ export default function Deploy() {
             )}
 
             {/* ======= SUCCESS ======= */}
-            {phase === 'success' && (
+            {mode === 'git' && phase === 'success' && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{
                   width: 56,
@@ -884,7 +1121,7 @@ export default function Deploy() {
             )}
 
             {/* ======= ERROR ======= */}
-            {phase === 'error' && (
+            {mode === 'git' && phase === 'error' && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{
                   width: 56,
@@ -966,6 +1203,312 @@ export default function Deploy() {
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════
+                UPLOAD MODE PHASES
+            ═══════════════════════════════════════════════════ */}
+            {mode === 'upload' && (
+              <>
+                {/* ── Upload FORM ── */}
+                {uploadPhase === 'form' && (
+                  <form onSubmit={handleUploadFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                    {/* Drag & Drop Zone */}
+                    <div>
+                      <label style={{
+                        display: 'block', fontFamily: "'Jersey 10',monospace", fontSize: 15,
+                        color: labelColor, marginBottom: 8, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      }}>ZIP</label>
+                      <div
+                        id="upload-dropzone"
+                        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                        onDragLeave={() => setIsDragOver(false)}
+                        onDrop={handleFileDrop}
+                        onClick={() => !uploadFile && fileInputRef.current?.click()}
+                        style={{
+                          border: `2px dashed ${isDragOver ? '#2d5fff' : uploadFile ? '#10b981' : inputBorder}`,
+                          background: isDragOver
+                            ? (isDark ? 'rgba(45,95,255,0.12)' : 'rgba(45,95,255,0.06)')
+                            : uploadFile
+                              ? (isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.05)')
+                              : inputBg,
+                          borderRadius: 0,
+                          padding: '36px 24px',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                          cursor: uploadFile ? 'default' : 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'center',
+                          boxShadow: isDragOver ? `0 0 0 2px #2d5fff` : 'none',
+                        }}
+                      >
+                        {uploadFile ? (
+                          <>
+                            <svg style={{ width: 32, height: 32, color: '#10b981', marginBottom: 4 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 13, color: '#10b981' }}>
+                              {u.file_selected} <strong>{uploadFile.name}</strong>
+                            </span>
+                            <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 13, color: textMuted }}>
+                              {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setUploadFile(null); if(fileInputRef.current) fileInputRef.current.value=''; }}
+                              style={{
+                                marginTop: 4, padding: '4px 14px',
+                                background: 'transparent', border: `1px solid ${inputBorder}`,
+                                color: textMuted, fontFamily: "'Jersey 10',monospace", fontSize: 14,
+                                cursor: 'pointer', letterSpacing: '0.04em',
+                              }}
+                            >{u.file_change}</button>
+                          </>
+                        ) : (
+                          <>
+                            <svg style={{ width: 36, height: 36, color: isDark ? '#2d5fff' : '#4a7aff', marginBottom: 4 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 18, color: isDark ? '#e8eeff' : '#0d1433' }}>
+                              {u.drop_title}
+                            </span>
+                            <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 14, color: textMuted }}>
+                              {u.drop_or}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                              style={{
+                                padding: '8px 20px',
+                                background: btnGradient, border: '2px solid #2d5fff',
+                                color: '#e8eeff', fontFamily: "'Jersey 10',monospace",
+                                fontSize: 15, cursor: 'pointer', boxShadow: btnShadow,
+                                letterSpacing: '0.04em',
+                              }}
+                            >{u.drop_btn}</button>
+                            <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 13, color: textMuted }}>
+                              {u.drop_hint}
+                            </span>
+                          </>
+                        )}
+                        <input ref={fileInputRef} type="file" accept=".zip" onChange={handleFileInput} style={{ display: 'none' }} />
+                      </div>
+                    </div>
+
+                    {/* Subdomain */}
+                    <div>
+                      <label style={{
+                        display: 'block', fontFamily: "'Jersey 10',monospace", fontSize: 15,
+                        color: labelColor, marginBottom: 8, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      }}>{u.subdomain_label}</label>
+                      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                        <input
+                          id="upload-subdomain"
+                          type="text"
+                          placeholder={u.subdomain_ph}
+                          value={uploadSubdomain}
+                          onChange={handleUploadSubdomainChange}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = uploadSubdomainError ? '#ef4444' : '#2d5fff';
+                            e.target.style.boxShadow = uploadSubdomainError ? '0 0 0 1px #ef4444' : '0 0 0 1px #2d5fff';
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = uploadSubdomainError ? '#ef4444' : inputBorder;
+                            e.target.style.boxShadow = inputShadow;
+                          }}
+                          style={{
+                            flex: 1, padding: '12px 16px',
+                            background: inputBg, border: `2px solid ${uploadSubdomainError ? '#ef4444' : inputBorder}`,
+                            color: inputColor, fontFamily: "'Share Tech Mono',monospace",
+                            fontSize: 14, outline: 'none', boxShadow: inputShadow,
+                            transition: 'border-color 0.15s, box-shadow 0.15s',
+                          }}
+                        />
+                        <span style={{
+                          padding: '12px 16px',
+                          background: isDark ? '#131333' : '#e8eeff',
+                          border: `2px solid ${inputBorder}`, borderLeft: 'none',
+                          color: textMuted, fontFamily: "'Share Tech Mono',monospace",
+                          fontSize: 14, display: 'flex', alignItems: 'center',
+                        }}>{u.subdomain_suffix}</span>
+                      </div>
+                      {uploadSubdomainError
+                        ? <p style={{ fontSize: 13, color: '#fca5a5', margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>{uploadSubdomainError}</p>
+                        : uploadSubdomain && (
+                          <p style={{ fontSize: 13, color: isDark ? '#00d4ff' : '#0070cc', margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
+                            {u.subdomain_url} <strong>https://{uploadSubdomain}.stardest.com</strong>
+                          </p>
+                        )
+                      }
+                    </div>
+
+                    <button
+                      type="submit"
+                      onMouseEnter={(e) => { e.currentTarget.style.background = btnGradientHover; e.currentTarget.style.transform = 'translate(-1px,-1px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = btnGradient; e.currentTarget.style.transform = 'none'; }}
+                      style={{
+                        width: '100%', padding: '14px 24px',
+                        background: btnGradient, border: '2px solid #2d5fff',
+                        color: '#e8eeff', fontFamily: "'Jersey 10',monospace",
+                        fontSize: 18, letterSpacing: '0.08em', cursor: 'pointer',
+                        boxShadow: btnShadow, transition: 'all 0.1s steps(2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {u.submit}
+                      <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </form>
+                )}
+
+                {/* ── Upload CONFIRM ── */}
+                {uploadPhase === 'confirm' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div>
+                      <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 24, color: textTitle, margin: '0 0 6px' }}>{u.confirm_title}</h2>
+                      <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: textMuted, margin: 0 }}>{u.confirm_sub}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {[
+                        { label: u.confirm_file, value: uploadFile?.name },
+                        { label: u.confirm_url,  value: `https://${uploadSubdomain}.stardest.com`, accent: true },
+                      ].map(({ label, value, accent }) => (
+                        <div key={label} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 16px', background: inputBg, border: `2px solid ${inputBorder}`,
+                          fontFamily: "'Share Tech Mono',monospace", fontSize: 14,
+                        }}>
+                          <span style={{ color: textMuted }}>{label}</span>
+                          <span style={{ color: accent ? (isDark ? '#00d4ff' : '#0070cc') : pageTextColor, fontWeight: 'bold' }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button
+                        onClick={() => setUploadPhase('form')}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2d5fff'; e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
+                        style={{ flex: 1, padding: '12px 20px', background: 'transparent', border: `2px solid ${inputBorder}`, color: textMuted, fontFamily: "'Jersey 10',monospace", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                      >{u.confirm_edit}</button>
+                      <button
+                        onClick={startUploadDeploy}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = btnGradientHover; e.currentTarget.style.transform = 'translate(-1px,-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = btnGradient; e.currentTarget.style.transform = 'none'; }}
+                        style={{ flex: 1, padding: '12px 20px', background: btnGradient, border: '2px solid #2d5fff', color: '#e8eeff', fontFamily: "'Jersey 10',monospace", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)', fontWeight: 'bold' }}
+                      >{u.confirm_btn}</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Upload PROGRESS ── */}
+                {uploadPhase === 'progress' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: textTitle, margin: 0 }}>{u.progress_title}</h2>
+                        <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 12, color: textMuted, margin: '4px 0 0' }}>{uploadSubdomain}.stardest.com</p>
+                      </div>
+                      <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 28, color: textTitle, fontWeight: 'bold' }}>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: 14, background: inputBg, border: `2px solid ${inputBorder}`, padding: 2, boxSizing: 'border-box' }}>
+                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'repeating-linear-gradient(90deg,#2d5fff 0px,#2d5fff 6px,#00d4ff 6px,#00d4ff 8px)', transition: 'width 0.4s ease-out' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {[
+                        { key: 'uploading',  label: u.uploading,  threshold: 30  },
+                        { key: 'building',   label: u.building,   threshold: 65  },
+                        { key: 'publishing', label: u.publishing, threshold: 90  },
+                      ].map(({ key, label, threshold }) => {
+                        const done   = uploadProgress >= threshold;
+                        const active = uploadProgress > threshold - 30 && uploadProgress < threshold;
+                        return (
+                          <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : inputBorder}`, background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(45,95,255,0.15)' : 'transparent', fontFamily: "'Jersey 10',monospace", fontSize: 13, flex: 1, textAlign: 'center' }}>
+                            <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#10b981' : active ? '#2d5fff' : inputBg, border: `2px solid ${done ? '#10b981' : active ? '#2d5fff' : inputBorder}` }}>
+                              {done ? <svg style={{ width: 14, height: 14, color: '#fff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                   : active ? <div style={{ width: 10, height: 10, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                                   : <div style={{ width: 6, height: 6, background: inputBorder }} />}
+                            </div>
+                            <span style={{ color: done ? '#10b981' : active ? pageTextColor : textMuted, fontWeight: 'bold' }}>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div ref={uploadLogRef} style={{ height: 200, overflowY: 'auto', background: '#020210', border: `2px solid ${inputBorder}`, padding: 16, fontFamily: "'Share Tech Mono',monospace", fontSize: 12, boxSizing: 'border-box' }}>
+                      {uploadLogLines.map((line, i) => (
+                        <p key={i} className={line.color} style={{ margin: '0 0 6px', lineHeight: 1.4 }}>{line.text}</p>
+                      ))}
+                      <p style={{ margin: 0, color: '#2d5fff', animation: 'px-blink 1s steps(1) infinite' }}>█</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Upload SUCCESS ── */}
+                {uploadPhase === 'success' && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 56, height: 56, background: 'rgba(16,185,129,0.15)', border: '2px solid #10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 16px rgba(16,185,129,0.3)' }}>
+                      <svg style={{ width: 28, height: 28, color: '#10b981' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{u.success_title}</h2>
+                    <p style={{ fontFamily: "'Jersey 10',monospace", fontSize: 16, color: textMuted, margin: '0 0 28px' }}>{u.success_sub}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28, textAlign: 'left' }}>
+                      {[
+                        { label: u.success_file,   value: uploadFile?.name },
+                        { label: u.success_status, value: u.success_status_v, green: true },
+                      ].map(({ label, value, green }) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: inputBg, border: `2px solid ${inputBorder}`, fontFamily: "'Share Tech Mono',monospace", fontSize: 14 }}>
+                          <span style={{ color: textMuted }}>{label}</span>
+                          <span style={{ color: green ? '#10b981' : pageTextColor, fontWeight: 'bold' }}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <a
+                        href={uploadSuccessUrl} target="_blank" rel="noopener noreferrer"
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.25)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; }}
+                        style={{ width: '100%', padding: '14px 24px', background: 'rgba(16,185,129,0.15)', border: '2px solid #10b981', color: '#a7f3d0', fontFamily: "'Jersey 10',monospace", fontSize: 18, letterSpacing: '0.05em', textDecoration: 'none', boxShadow: '3px 3px 0 rgba(0,0,0,0.6)', transition: 'all 0.1s steps(2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 'bold', boxSizing: 'border-box' }}
+                      >
+                        <svg style={{ width: 16, height: 16 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        {u.success_open}
+                      </a>
+                      <button
+                        onClick={resetUpload}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2d5fff'; e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
+                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `2px solid ${inputBorder}`, color: textMuted, fontFamily: "'Jersey 10',monospace", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                      >{u.success_new}</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Upload ERROR ── */}
+                {uploadPhase === 'error' && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 56, height: 56, background: 'rgba(239,68,68,0.15)', border: '2px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 16px rgba(239,68,68,0.3)' }}>
+                      <svg style={{ width: 28, height: 28, color: '#ef4444' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </div>
+                    <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{u.error_title}</h2>
+                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: '#fca5a5', margin: '0 0 28px' }}>{uploadErrorMsg}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <button
+                        onClick={startUploadDeploy}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = btnGradientHover; e.currentTarget.style.transform = 'translate(-1px,-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = btnGradient; e.currentTarget.style.transform = 'none'; }}
+                        style={{ width: '100%', padding: '14px 24px', background: btnGradient, border: '2px solid #2d5fff', color: '#e8eeff', fontFamily: "'Jersey 10',monospace", fontSize: 18, letterSpacing: '0.08em', cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)', fontWeight: 'bold' }}
+                      >{u.error_retry}</button>
+                      <button
+                        onClick={resetUpload}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2d5fff'; e.currentTarget.style.color = isDark ? '#e8eeff' : '#0055cc'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
+                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `2px solid ${inputBorder}`, color: textMuted, fontFamily: "'Jersey 10',monospace", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                      >{u.error_modify}</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
           </div>
