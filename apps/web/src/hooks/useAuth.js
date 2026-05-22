@@ -5,7 +5,10 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/auth/me', { credentials: 'include' })
+        const token = localStorage.getItem('auth_token');
+        fetch('/api/auth/me', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
             .then(r => r.json())
             .then(data => {
                 setUser(data.authenticated ? data.user : null);
@@ -15,7 +18,8 @@ export function useAuth() {
     }, []);
 
     const logout = async () => {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+        await fetch('/api/auth/logout', { method: 'POST' });
+        localStorage.removeItem('auth_token');
         setUser(null);
         window.location.href = '/login';
     };

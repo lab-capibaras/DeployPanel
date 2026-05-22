@@ -32,33 +32,12 @@ app.use(express.static('public'));
 // ==========================================
 // --- AUTENTICACIÓN OAuth ---
 // ==========================================
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
+const jwt = require('jsonwebtoken');
 const passport   = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 
-app.use(session({
-    store: new FileStore({ 
-        path: '/tmp/sessions', 
-        retries: 1, 
-        logFn: () => {} 
-    }),
-    secret: process.env.SESSION_SECRET || 'dev-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: true,
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    }
-}));
-
 app.use(passport.initialize());
-app.use(passport.session());
-
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
 
 // Google
 passport.use(new GoogleStrategy({
@@ -95,36 +74,48 @@ passport.use(new GitHubStrategy({
 
 // Rutas OAuth
 app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
 );
 app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1` }),
-    (req, res) => res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy`)
+    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
+    (req, res) => {
+        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.send(`<!DOCTYPE html><html><body><script>
+            localStorage.setItem('auth_token', '${token}');
+            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
+        </script></body></html>`);
+    }
 );
 
 app.get('/auth/github',
-    passport.authenticate('github', { scope: ['user:email'] })
+    passport.authenticate('github', { scope: ['user:email'], session: false })
 );
 app.get('/auth/github/callback',
-    passport.authenticate('github', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1` }),
-    (req, res) => res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy`)
+    passport.authenticate('github', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
+    (req, res) => {
+        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.send(`<!DOCTYPE html><html><body><script>
+            localStorage.setItem('auth_token', '${token}');
+            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
+        </script></body></html>`);
+    }
 );
 
 // Sesión actual
 app.get('/auth/me', (req, res) => {
-    if (req.isAuthenticated()) {
-        res.json({ authenticated: true, user: req.user });
-    } else {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.json({ authenticated: false, user: null });
+    try {
+        const user = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
+        res.json({ authenticated: true, user });
+    } catch {
         res.json({ authenticated: false, user: null });
     }
 });
 
 // Logout
 app.post('/auth/logout', (req, res) => {
-    req.logout((err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ ok: true });
-    });
+    res.json({ ok: true });
 });
 
 // ==========================================
