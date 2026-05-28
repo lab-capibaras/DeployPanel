@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 import PixelRocket from '../components/PixelRocket';
 import JSZip from 'jszip';
+import { useAuth } from '../hooks/useAuth';
+import WebhookInstructions from '../components/WebhookInstructions';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -125,6 +128,7 @@ export default function Deploy() {
   const [logLines, setLogLines] = useState([]);
   const [subdomainError, setSubdomainError] = useState('');
   const [showRocketLaunch, setShowRocketLaunch] = useState(false);
+  const [webhookInfo, setWebhookInfo] = useState(null);
   const logRef = useRef(null);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
@@ -147,6 +151,24 @@ export default function Deploy() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [logLines]);
+
+  // Auto-scroll upload log
+  useEffect(() => {
+    if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
+  }, [uploadLogLines]);
+
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+      if (!loading && !user) {
+          navigate('/login');
+      }
+  }, [user, loading, navigate]);
+
+  // CRÍTICO: no renderizar nada mientras carga
+  if (loading) return null;
+  if (!user) return null;
 
   const showToast = (message, type = 'info') => {
     const id = toastIdRef.current++;
@@ -234,6 +256,10 @@ export default function Deploy() {
         setTimeout(() => {
           setShowRocketLaunch(false);
           setPhase('success');
+          setWebhookInfo({
+            subdomain: formData.subdomain,
+            repoUrl: formData.repoUrl,
+          });
         }, 3200);
       } catch (err) {
         setErrorMessage(err.message);
@@ -423,11 +449,6 @@ export default function Deploy() {
     setUploadErrorMsg('');
   };
 
-  // Auto-scroll upload log
-  useEffect(() => {
-    if (uploadLogRef.current) uploadLogRef.current.scrollTop = uploadLogRef.current.scrollHeight;
-  }, [uploadLogLines]);
-
   const parsedRepo = parseGithubUrl(formData.repoUrl);
   const u = t.deploy.upload;
 
@@ -521,11 +542,10 @@ export default function Deploy() {
         </div>
 
         <div className="w-full max-w-2xl" style={{ position: 'relative', zIndex: 2 }}>
-          <div style={{
+          <div className="p-5 sm:p-8" style={{
             background: cardBg,
             border: `2px solid ${cardBorder}`,
             boxShadow: cardShadow,
-            padding: '36px 32px',
           }}>
 
             {/* Panel header bar */}
@@ -564,25 +584,25 @@ export default function Deploy() {
                       key={tab.id}
                       id={`tab-${tab.id}`}
                       onClick={() => { setMode(tab.id); if (tab.id === 'git') resetUpload(); else reset(); }}
+                      className="px-2 py-2 sm:px-4 sm:py-2.5"
                       style={{
                         flex: 1,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        padding: '10px 16px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         background: isActive ? (isDark ? 'rgba(45,95,255,0.2)' : 'rgba(45,95,255,0.12)') : 'transparent',
                         border: `2px solid ${isActive ? '#2d5fff' : 'transparent'}`,
                         color: isActive ? (isDark ? '#a0c0ff' : '#1a3aff') : textMuted,
                         fontFamily: "'Jersey 10',monospace",
-                        fontSize: 16,
+                        fontSize: 'clamp(14px, 3.5vw, 16px)',
                         letterSpacing: '0.05em',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                         boxShadow: isActive ? (isDark ? 'inset 0 0 12px rgba(45,95,255,0.15)' : 'none') : 'none',
                       }}
                     >
-                      <svg style={{ width: 15, height: 15, flexShrink: 0 }} fill={tab.id === 'git' ? 'currentColor' : 'none'} stroke={tab.id === 'upload' ? 'currentColor' : 'none'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                      <svg style={{ width: 14, height: 14, flexShrink: 0 }} fill={tab.id === 'git' ? 'currentColor' : 'none'} stroke={tab.id === 'upload' ? 'currentColor' : 'none'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                         <path d={tab.icon} />
                       </svg>
-                      {tab.label}
+                      <span className="truncate">{tab.label}</span>
                     </button>
                   );
                 })}
@@ -604,7 +624,7 @@ export default function Deploy() {
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                   }}>{d.form.repo_label}</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       placeholder={d.form.repo_placeholder}
@@ -629,6 +649,7 @@ export default function Deploy() {
                         outline: 'none',
                         boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
+                        width: '100%',
                       }}
                     />
                     <button
@@ -661,10 +682,11 @@ export default function Deploy() {
                         boxShadow: btnShadow,
                         transition: 'all 0.1s steps(2)',
                         opacity: loadingBranches ? 0.6 : 1,
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       {loadingBranches ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                           <div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                           {d.form.loading}
                         </span>
@@ -685,7 +707,7 @@ export default function Deploy() {
                       display: 'block',
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 15,
-                      color: '#8ab0ff',
+                      color: labelColor,
                       marginBottom: 8,
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase',
@@ -698,23 +720,23 @@ export default function Deploy() {
                         e.target.style.boxShadow = '0 0 0 1px #2d5fff, inset 0 0 12px rgba(45,95,255,0.08)';
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = '#1e2d7a';
-                        e.target.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.4)';
+                        e.target.style.borderColor = inputBorder;
+                        e.target.style.boxShadow = inputShadow;
                       }}
                       style={{
                         width: '100%',
                         padding: '12px 16px',
-                        background: '#020210',
-                        border: '2px solid #1e2d7a',
-                        color: '#e8eeff',
+                        background: inputBg,
+                        border: `2px solid ${inputBorder}`,
+                        color: inputColor,
                         fontFamily: "'Share Tech Mono',monospace",
                         fontSize: 14,
                         outline: 'none',
-                        boxShadow: 'inset 0 0 8px rgba(0,0,0,0.4)',
+                        boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
                     >
-                      {branches.map(b => <option key={b} value={b} style={{ background: '#020210', color: '#e8eeff' }}>{b}</option>)}
+                      {branches.map(b => <option key={b} value={b} style={{ background: inputBg, color: inputColor }}>{b}</option>)}
                     </select>
                   </div>
                 )}
@@ -757,8 +779,7 @@ export default function Deploy() {
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                       }}
                     />
-                    <span style={{
-                      padding: '12px 16px',
+                    <span className="px-2 sm:px-4 py-3" style={{
                       background: isDark ? '#131333' : '#e8eeff',
                       border: `2px solid ${inputBorder}`,
                       borderLeft: 'none',
@@ -767,12 +788,13 @@ export default function Deploy() {
                       fontSize: 14,
                       display: 'flex',
                       alignItems: 'center',
+                      whiteSpace: 'nowrap',
                     }}>
                       {d.form.subdomain_suffix}
                     </span>
                   </div>
                   {subdomainError
-                    ? <p style={{ fontSize: 13, color: '#fca5a5', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>{subdomainError}</p>
+                    ? <p style={{ fontSize: 13, color: isDark ? '#fca5a5' : '#ef4444', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>{subdomainError}</p>
                     : formData.subdomain && (
                       <p style={{ fontSize: 13, color: isDark ? '#00d4ff' : '#0070cc', marginTop: 6, margin: '6px 0 0', fontFamily: "'Jersey 10',monospace" }}>
                         {d.form.subdomain_url} <strong>https://{formData.subdomain}.stardest.com</strong>
@@ -943,7 +965,7 @@ export default function Deploy() {
                   />
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div className="flex flex-col sm:flex-row gap-3">
                   {[
                     { key: 'clone',   label: d.progress.clone,   threshold: 35 },
                     { key: 'build',   label: d.progress.build,   threshold: 65 },
@@ -987,15 +1009,11 @@ export default function Deploy() {
                   })}
                 </div>
 
-                <div ref={logRef} style={{
+                <div ref={logRef} className="px-terminal" style={{
                   height: 200,
                   overflowY: 'auto',
-                  background: '#020210',
-                  border: `2px solid ${inputBorder}`,
-                  padding: 16,
-                  fontFamily: "'Share Tech Mono',monospace",
-                  fontSize: 12,
                   boxSizing: 'border-box',
+                  fontSize: 12,
                 }}>
                   {logLines.map((line, i) => (
                     <p key={i} className={line.color} style={{ margin: '0 0 6px', lineHeight: 1.4 }}>{line.text}</p>
@@ -1070,7 +1088,7 @@ export default function Deploy() {
                       padding: '14px 24px',
                       background: 'rgba(16,185,129,0.15)',
                       border: '2px solid #10b981',
-                      color: '#a7f3d0',
+                      color: isDark ? '#a7f3d0' : '#047857',
                       fontFamily: "'Jersey 10',monospace",
                       fontSize: 18,
                       letterSpacing: '0.05em',
@@ -1140,7 +1158,7 @@ export default function Deploy() {
                   </svg>
                 </div>
                 <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{d.error.title}</h2>
-                <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: '#fca5a5', margin: '0 0 28px' }}>{errorMessage}</p>
+                <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: isDark ? '#fca5a5' : '#b91c1c', margin: '0 0 28px' }}>{errorMessage}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <button
                     onClick={startDeploy}
@@ -1417,7 +1435,7 @@ export default function Deploy() {
                     <div style={{ width: '100%', height: 14, background: inputBg, border: `2px solid ${inputBorder}`, padding: 2, boxSizing: 'border-box' }}>
                       <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'repeating-linear-gradient(90deg,#2d5fff 0px,#2d5fff 6px,#00d4ff 6px,#00d4ff 8px)', transition: 'width 0.4s ease-out' }} />
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div className="flex flex-col sm:flex-row gap-3">
                       {[
                         { key: 'uploading',  label: u.uploading,  threshold: 30  },
                         { key: 'building',   label: u.building,   threshold: 65  },
@@ -1437,7 +1455,12 @@ export default function Deploy() {
                         );
                       })}
                     </div>
-                    <div ref={uploadLogRef} style={{ height: 200, overflowY: 'auto', background: '#020210', border: `2px solid ${inputBorder}`, padding: 16, fontFamily: "'Share Tech Mono',monospace", fontSize: 12, boxSizing: 'border-box' }}>
+                    <div ref={uploadLogRef} className="px-terminal" style={{
+                      height: 200,
+                      overflowY: 'auto',
+                      boxSizing: 'border-box',
+                      fontSize: 12,
+                    }}>
                       {uploadLogLines.map((line, i) => (
                         <p key={i} className={line.color} style={{ margin: '0 0 6px', lineHeight: 1.4 }}>{line.text}</p>
                       ))}
@@ -1492,7 +1515,7 @@ export default function Deploy() {
                       <svg style={{ width: 28, height: 28, color: '#ef4444' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </div>
                     <h2 style={{ fontFamily: "'Jersey 10',monospace", fontSize: 26, color: textTitle, margin: '0 0 8px' }}>{u.error_title}</h2>
-                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: '#fca5a5', margin: '0 0 28px' }}>{uploadErrorMsg}</p>
+                    <p style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 14, color: isDark ? '#fca5a5' : '#b91c1c', margin: '0 0 28px' }}>{uploadErrorMsg}</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <button
                         onClick={startUploadDeploy}
@@ -1520,10 +1543,10 @@ export default function Deploy() {
       <div style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {toasts.map(toast => {
           const cfg = {
-            success: { bg: 'rgba(16,185,129,0.15)', border: '#10b981', text: '#a7f3d0', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /> },
-            error:   { bg: 'rgba(239,68,68,0.15)',  border: '#ef4444', text: '#fca5a5', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /> },
-            warning: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#fde68a', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /> },
-            info:    { bg: 'rgba(13,13,43,0.85)',   border: '#1e2d7a', text: '#e8eeff', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
+            success: { bg: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.08)', border: '#10b981', text: isDark ? '#a7f3d0' : '#065f46', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /> },
+            error:   { bg: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',  border: '#ef4444', text: isDark ? '#fca5a5' : '#991b1b', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /> },
+            warning: { bg: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.08)', border: '#f59e0b', text: isDark ? '#fde68a' : '#854d0e', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /> },
+            info:    { bg: isDark ? 'rgba(13,13,43,0.85)' : 'rgba(235,240,255,0.95)', border: isDark ? '#1e2d7a' : '#2d5fff', text: isDark ? '#e8eeff' : '#0d1433', icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
           }[toast.type] || {};
           return (
             <div key={toast.id} className="animate-fade-in" style={{
@@ -1590,6 +1613,14 @@ export default function Deploy() {
             </div>
           </div>
         </div>
+      )}
+      {/* ======= WEBHOOK INSTRUCTIONS MODAL ======= */}
+      {webhookInfo && (
+        <WebhookInstructions
+          subdomain={webhookInfo.subdomain}
+          repoUrl={webhookInfo.repoUrl}
+          onClose={() => setWebhookInfo(null)}
+        />
       )}
 
       <style>{`

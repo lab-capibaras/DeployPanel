@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Deploy from './pages/Deploy';
 import Dashboard from './pages/Dashboard';
 import PixelRocket from './components/PixelRocket';
+import { useAuth } from './hooks/useAuth';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
 import { useTranslation } from './i18n';
@@ -339,7 +340,9 @@ function UserMenu() {
    (only re-renders when mobileOpen changes)
 ═══════════════════════════════════════════════════════════ */
 function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
   // Read lang directly from DOM attribute — no subscription needed here
   // since the drawer re-renders on open anyway
   const lang = document.documentElement.getAttribute('data-lang') || 'es';
@@ -366,14 +369,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
   return (
     <div className={`fixed top-0 right-0 h-full w-72 max-w-[85vw] z-50 md:hidden transform transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="h-full bg-[#0b0f19]/95 backdrop-blur-xl border-l border-[#2F4A67]/40 flex flex-col">
+      <div className={`h-full backdrop-blur-xl border-l flex flex-col ${isDark ? 'bg-[#0b0f19]/95 border-[#2F4A67]/40' : 'bg-[#f0f4ff]/95 border-blue-200'}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2F4A67]/30">
-          <span className="text-white font-bold text-base">{labelMenu}</span>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
+          <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-blue-900'}`}>{labelMenu}</span>
           <button
             onClick={onClose}
-            className="flex items-center justify-center rounded-lg border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 transition"
+            className={`flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-200 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
             style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,7 +386,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Preferences inline */}
-        <div className="px-4 py-2 border-b border-[#2F4A67]/20">
+        <div className={`px-4 py-2 border-b ${isDark ? 'border-[#2F4A67]/20' : 'border-blue-200/30'}`}>
           <PreferencesPanel inline />
         </div>
 
@@ -395,16 +398,16 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
               <div key={section.id} className="rounded-xl overflow-hidden">
                 <button
                   onClick={() => setOpenSection(isOpen ? null : section.id)}
-                  className="w-full flex items-center justify-between px-4 rounded-xl hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25 transition group"
+                  className={`w-full flex items-center justify-between px-4 rounded-xl transition group ${isDark ? 'hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25' : 'hover:bg-blue-100/30 active:bg-blue-200/30'}`}
                   style={{ minHeight: '52px', cursor: 'pointer' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67] transition flex-shrink-0">
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-lg border transition flex-shrink-0 ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67]' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover:border-blue-300'}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
                     </div>
-                    <span className="text-sm font-semibold text-white">{section.label}</span>
+                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-blue-900'}`}>{section.label}</span>
                   </div>
-                  <svg className={`w-4 h-4 text-[#CBCDD3] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 transition-transform duration-300 ${isDark ? 'text-[#CBCDD3]' : 'text-blue-700'} ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -413,14 +416,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
                   <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
                     {section.items.map((item) => (
                       <Link key={item.label} to={item.to} onClick={onClose}
-                        className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30 transition group/item"
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition group/item ${isDark ? 'hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30' : 'hover:bg-blue-100/40 active:bg-blue-200/40'}`}
                       >
-                        <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30 transition">
+                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover/item:border-blue-300'}`}>
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-white leading-tight">{item.label}</p>
-                          <p className="text-xs text-[#CBCDD3]/80 mt-0.5 leading-tight">{item.desc}</p>
+                          <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-blue-900'}`}>{item.label}</p>
+                          <p className={`text-xs mt-0.5 leading-tight ${isDark ? 'text-[#CBCDD3]/80' : 'text-blue-700/80'}`}>{item.desc}</p>
                         </div>
                       </Link>
                     ))}
@@ -432,31 +435,270 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-5 border-t border-[#2F4A67]/30">
-          {user ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs text-[#CBCDD3]/60 font-mono text-center truncate mb-1">
-                👤 {user.email}
-              </span>
-              <button
-                onClick={() => {
-                  logout();
-                  onClose();
-                }}
-                className="block w-full text-center py-3 border border-red-500/50 text-red-400 hover:text-white hover:bg-red-500/20 rounded-xl transition text-sm font-medium cursor-pointer"
-              >
-                {lang === 'es' ? 'Cerrar Sesión' : 'Logout'}
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" onClick={onClose}
-              className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium"
-            >
-              Login
-            </Link>
-          )}
+        <div className={`px-5 py-5 border-t ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
+          <UserMobileMenu onClose={onClose} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function UserMobileMenu({ onClose }) {
+  const { user, loading, logout } = useAuth();
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
+  if (loading) return null;
+
+  if (!user) {
+    return (
+      <Link to="/login" onClick={onClose}
+        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-300 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
+        style={{ textDecoration: 'none' }}
+      >
+        Login
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={`flex items-center gap-3 px-3 py-2 border rounded-xl ${isDark ? 'border-[#2F4A67]/30 bg-[#0F2C45]/20' : 'border-blue-200 bg-blue-100/30'}`}>
+        {user.avatar ? (
+          <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-[#00d4ff]' : 'border-blue-500'}`} />
+        ) : (
+          <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold ${isDark ? 'bg-[#00d4ff]' : 'bg-blue-500'}`}>
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="overflow-hidden">
+          <p className={`text-sm font-bold leading-tight truncate ${isDark ? 'text-white' : 'text-blue-900'}`}>{user.name}</p>
+          <p className={`text-xs leading-tight truncate ${isDark ? 'text-[#CBCDD3]/60' : 'text-blue-700/70'}`}>{user.email || user.provider}</p>
+        </div>
+      </div>
+
+      <Link
+        to="/dashboard"
+        onClick={onClose}
+        style={{
+          display: 'block',
+          width: '100%',
+          textAlign: 'center',
+          padding: '10px 12px',
+          fontFamily: "'Jersey 10',monospace",
+          fontSize: 16,
+          color: isDark ? '#00d4ff' : '#1a3aff',
+          background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(26,58,255,0.06)',
+          border: isDark ? '1px solid rgba(0,212,255,0.25)' : '1px solid rgba(26,58,255,0.25)',
+          borderRadius: '8px',
+          textDecoration: 'none',
+        }}
+      >
+        🎛️ Dashboard
+      </Link>
+
+      <Link
+        to="/deploy"
+        onClick={onClose}
+        style={{
+          display: 'block',
+          width: '100%',
+          textAlign: 'center',
+          padding: '10px 12px',
+          fontFamily: "'Jersey 10',monospace",
+          fontSize: 16,
+          color: isDark ? '#00d4ff' : '#1a3aff',
+          background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(26,58,255,0.06)',
+          border: isDark ? '1px solid rgba(0,212,255,0.25)' : '1px solid rgba(26,58,255,0.25)',
+          borderRadius: '8px',
+          textDecoration: 'none',
+        }}
+      >
+        🚀 Nuevo Deploy
+      </Link>
+
+      <button
+        onClick={() => { logout(); onClose(); }}
+        className="block w-full text-center py-3 border border-[#ff5f57]/50 text-[#ff5f57] hover:text-white hover:bg-[#ff5f57]/20 rounded-xl transition text-sm font-medium cursor-pointer"
+        style={{ background: 'transparent', borderRadius: '8px', marginTop: '4px' }}
+      >
+        Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
+function UserMenu() {
+  const { user, loading, logout } = useAuth();
+  const { theme } = usePrefs();
+  const isDark = theme === 'dark';
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  if (loading) return null;
+
+  const textCyan    = isDark ? '#00d4ff'                  : '#1a3aff';
+  const borderLogin = isDark ? 'rgba(0,212,255,0.4)'      : 'rgba(26,58,255,0.5)';
+  const bgLogin     = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
+  const textMain    = isDark ? '#e8eeff'                  : '#0d1433';
+  const cardBg      = isDark ? 'rgba(11, 15, 25, 0.97)'   : 'rgba(255, 255, 255, 0.97)';
+  const cardBorder  = isDark ? 'rgba(47,74,103,0.5)'     : 'rgba(195,211,229,0.9)';
+
+  if (!user) {
+    return (
+      <Link
+        to="/login"
+        style={{
+          textDecoration: 'none',
+          padding: '8px 20px',
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          touchAction: 'manipulation',
+          fontFamily: "'Jersey 10',monospace",
+          fontSize: 18,
+          color: textCyan,
+          border: `2px solid ${borderLogin}`,
+          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
+          background: bgLogin,
+          letterSpacing: '0.04em'
+        }}
+      >
+        LOGIN
+      </Link>
+    );
+  }
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 14px',
+          height: '44px',
+          cursor: 'pointer',
+          border: `2px solid ${borderLogin}`,
+          background: bgLogin,
+          color: textMain,
+          fontFamily: "'Jersey 10', monospace",
+          fontSize: '17px',
+          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
+          letterSpacing: '0.04em',
+          outline: 'none',
+        }}
+      >
+        {user.avatar ? (
+          <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', border: `1px solid ${textCyan}` }} />
+        ) : (
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: textCyan, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+            {user.name?.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {user.name?.split(' ')[0]}
+        </span>
+        <svg style={{ width: 12, height: 12, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 8px)',
+          right: 0,
+          background: cardBg,
+          border: `2px solid ${cardBorder}`,
+          boxShadow: isDark ? '4px 4px 0 rgba(0,0,0,0.5)' : '4px 4px 0 rgba(0,0,0,0.08)',
+          padding: '8px',
+          minWidth: '180px',
+          zIndex: 200,
+        }}>
+          {user.email && (
+            <div style={{
+              padding: '4px 12px 10px',
+              borderBottom: '1px solid var(--px-border)',
+              marginBottom: 8,
+              fontFamily: "'Share Tech Mono',monospace",
+              fontSize: 12,
+              color: isDark ? 'rgba(200,216,255,0.5)' : '#4a6a8a',
+              wordBreak: 'break-all',
+            }}>
+              {user.email}
+            </div>
+          )}
+
+          <Link
+            to="/dashboard"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'block',
+              padding: '8px 12px',
+              fontFamily: "'Jersey 10',monospace",
+              fontSize: 16,
+              color: textMain,
+              textDecoration: 'none',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(26,58,255,0.15)' : 'rgba(45,95,255,0.05)'}
+            onMouseLeave={e => e.target.style.background = 'none'}
+          >
+            🎛️ Dashboard
+          </Link>
+
+          <Link
+            to="/deploy"
+            onClick={() => setOpen(false)}
+            style={{
+              display: 'block',
+              padding: '8px 12px',
+              fontFamily: "'Jersey 10',monospace",
+              fontSize: 16,
+              color: textMain,
+              textDecoration: 'none',
+              transition: 'background 0.1s',
+            }}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(26,58,255,0.15)' : 'rgba(45,95,255,0.05)'}
+            onMouseLeave={e => e.target.style.background = 'none'}
+          >
+            🚀 Nuevo Deploy
+          </Link>
+
+          <button
+            onClick={logout}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              textAlign: 'left',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#ff5f57',
+              fontFamily: "'Jersey 10', monospace",
+              fontSize: '16px',
+              letterSpacing: '0.02em',
+              transition: 'background 0.1s',
+              outline: 'none',
+            }}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,95,87,0.1)' : 'rgba(255,95,87,0.05)'}
+            onMouseLeave={e => e.target.style.background = 'none'}
+          >
+            🚪 Cerrar sesión
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -541,28 +783,20 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <div className="hidden md:flex items-center">
               <PreferencesDropdown />
             </div>
-            {user ? (
-              <div className="hidden md:flex">
-                <UserMenu />
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="hidden md:flex"
-                style={{ textDecoration: 'none', padding: '8px 20px', minHeight: 44, alignItems: 'center', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textCyan, border: `2px solid ${borderLogin}`, boxShadow: '2px 2px 0 rgba(0,0,0,0.3)', background: bgLogin, letterSpacing: '0.04em' }}
-              >
-                LOGIN
-              </Link>
-            )}
+            <UserMenu />
             <button
               onClick={onHamburger}
               aria-label="Abrir menú"
-              className="md:hidden flex flex-col justify-center items-center rounded-lg border border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30 transition gap-1.5 p-2"
+              className={`md:hidden flex flex-col justify-center items-center rounded-lg border transition gap-1.5 p-2 ${
+                isDark 
+                  ? 'border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30' 
+                  : 'border-blue-200 bg-blue-50/50 hover:bg-blue-100/50'
+              }`}
               style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
             >
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? 'opacity-0' : ''}`} />
-              <span className={`block w-full h-0.5 bg-white rounded transition-all duration-300 ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'opacity-0' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
             </button>
           </div>
         </div>

@@ -1,39 +1,32 @@
 import { useState, useEffect } from 'react';
-import { getUser, login as storeLogin, logout as storeLogout, subscribeAuth } from '../store/auth';
 
 export function useAuth() {
-  const [user, setUser] = useState(() => getUser());
-  const [loading, setLoading] = useState(true);
+    const [user, setUser]       = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check auth on mount, simulating a small delay to prevent layout flicker and mimic real session check
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 150);
+    useEffect(() => {
+        const token = localStorage.getItem('auth_token');
+        fetch('/api/auth/me', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
+            .then(r => r.json())
+            .then(data => {
+                setUser(data.authenticated ? data.user : null);
+            })
+            .catch(() => setUser(null))
+            .finally(() => setLoading(false));
+    }, []);
 
-    const unsubscribe = subscribeAuth((newUser) => {
-      setUser(newUser);
-    });
-
-    return () => {
-      clearTimeout(timeout);
-      unsubscribe();
+    const logout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error('Logout request failed:', e);
+        }
+        localStorage.removeItem('auth_token');
+        setUser(null);
+        window.location.href = '/login';
     };
-  }, []);
 
-  const login = (email, password) => {
-    // Validate credentials if needed, but for stubs we can just sign them in.
-    storeLogin(email);
-  };
-
-  const logout = () => {
-    storeLogout();
-  };
-
-  return {
-    user,
-    loading,
-    login,
-    logout,
-  };
+    return { user, loading, logout };
 }

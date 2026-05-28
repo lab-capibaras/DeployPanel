@@ -9,6 +9,7 @@ const os = require('os');
 const { exec } = require('child_process');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 // Multer: guarda el zip en memoria para procesarlo con adm-zip
@@ -27,6 +28,95 @@ const upload = multer({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// ==========================================
+// --- AUTENTICACIÓN OAuth ---
+// ==========================================
+const jwt = require('jsonwebtoken');
+const passport   = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const GitHubStrategy = require('passport-github2').Strategy;
+
+app.use(passport.initialize());
+
+// Google
+passport.use(new GoogleStrategy({
+    clientID:     process.env.GOOGLE_CLIENT_ID || 'dummy',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
+    callbackURL:  process.env.GOOGLE_CALLBACK_URL || 'https://stardest.com/api/auth/google/callback',
+}, (accessToken, refreshToken, profile, done) => {
+    const user = {
+        id:       profile.id,
+        name:     profile.displayName,
+        email:    profile.emails?.[0]?.value,
+        avatar:   profile.photos?.[0]?.value,
+        provider: 'google',
+    };
+    return done(null, user);
+}));
+
+// GitHub
+passport.use(new GitHubStrategy({
+    clientID:     process.env.GITHUB_CLIENT_ID || 'dummy',
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || 'dummy',
+    callbackURL:  process.env.GITHUB_CALLBACK_URL || 'https://stardest.com/api/auth/github/callback',
+}, (accessToken, refreshToken, profile, done) => {
+    const user = {
+        id:       profile.id,
+        name:     profile.displayName || profile.username,
+        email:    profile.emails?.[0]?.value,
+        avatar:   profile.photos?.[0]?.value,
+        provider: 'github',
+        username: profile.username,
+    };
+    return done(null, user);
+}));
+
+// Rutas OAuth
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'], session: false })
+);
+app.get('/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
+    (req, res) => {
+        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.send(`<!DOCTYPE html><html><body><script>
+            localStorage.setItem('auth_token', '${token}');
+            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
+        </script></body></html>`);
+    }
+);
+
+app.get('/auth/github',
+    passport.authenticate('github', { scope: ['user:email'], session: false })
+);
+app.get('/auth/github/callback',
+    passport.authenticate('github', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
+    (req, res) => {
+        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.send(`<!DOCTYPE html><html><body><script>
+            localStorage.setItem('auth_token', '${token}');
+            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
+        </script></body></html>`);
+    }
+);
+
+// Sesión actual
+app.get('/auth/me', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.json({ authenticated: false, user: null });
+    try {
+        const user = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
+        res.json({ authenticated: true, user });
+    } catch {
+        res.json({ authenticated: false, user: null });
+    }
+});
+
+// Logout
+app.post('/auth/logout', (req, res) => {
+    res.json({ ok: true });
+});
 
 // ==========================================
 // --- SISTEMA DE MEMORIA PARA WEBHOOKS ---

@@ -103,26 +103,29 @@ function PixelStarfield({ dark = true }) {
   return <canvas ref={canvasRef} style={{ position:'fixed', inset:0, zIndex:0, imageRendering:'pixelated' }} />;
 }
 
-
 /* ─── Mission step card ─── */
 function MissionStep({ num, icon, title, desc, color='#2d5fff', active }) {
+  const isDark = useTheme();
+  const cardBg = isDark ? 'rgba(13,13,43,0.6)' : 'rgba(255,255,255,0.75)';
+  const titleColor = isDark ? '#e8eeff' : '#0f172a';
+  const iconBg = isDark ? '#080818' : '#f8fafc';
   return (
     <div style={{
       display:'flex', gap:20, alignItems:'flex-start',
       padding:'24px 28px',
-      background: 'rgba(13,13,43,0.6)',
+      background: cardBg,
       border:`2px solid ${active ? color : 'var(--px-border)'}`,
       boxShadow: active ? `4px 4px 0 rgba(0,0,0,0.7), 0 0 20px ${color}44` : '3px 3px 0 rgba(0,0,0,0.6)',
       transition:'all 0.2s',
     }}>
       <div style={{
         flexShrink:0, width:48, height:48, display:'flex', alignItems:'center', justifyContent:'center',
-        border:`2px solid ${color}`, background:'#080818',
+        border:`2px solid ${color}`, background: iconBg,
         boxShadow:`0 0 12px ${color}55`,
       }}>{icon}</div>
       <div>
         <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'var(--px-muted)', marginBottom:4, letterSpacing:'0.1em' }}>PASO {num}</div>
-        <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', margin:'0 0 8px' }}>{title}</h3>
+        <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color: titleColor, margin:'0 0 8px' }}>{title}</h3>
         <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:17, color:'var(--px-muted)', margin:0, lineHeight:1.5 }}>{desc}</p>
       </div>
     </div>
@@ -132,12 +135,17 @@ function MissionStep({ num, icon, title, desc, color='#2d5fff', active }) {
 /* ─── Feature orbit card ─── */
 function FeatureCard({ icon, title, desc, tag, glowColor='#2d5fff' }) {
   const [hov, setHov] = useState(false);
+  const isDark = useTheme();
+  const cardBg = isDark
+    ? (hov ? 'rgba(13,13,43,0.95)' : 'rgba(10,10,34,0.7)')
+    : (hov ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)');
+  const titleColor = isDark ? '#e8eeff' : '#0f172a';
   return (
     <div
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         padding:'28px 24px',
-        background: hov ? 'rgba(13,13,43,0.95)' : 'rgba(10,10,34,0.7)',
+        background: cardBg,
         border:`2px solid ${hov ? glowColor : 'var(--px-border)'}`,
         boxShadow: hov ? `5px 5px 0 rgba(0,0,0,0.7), 0 0 24px ${glowColor}44` : '3px 3px 0 rgba(0,0,0,0.6)',
         transform: hov ? 'translate(-2px,-2px)' : 'none',
@@ -147,7 +155,7 @@ function FeatureCard({ icon, title, desc, tag, glowColor='#2d5fff' }) {
     >
       <div style={{ marginBottom:16, filter:`drop-shadow(0 0 8px ${glowColor})` }}>{icon}</div>
       <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:10, color:glowColor, marginBottom:8, letterSpacing:'0.12em' }}>{tag}</div>
-      <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', margin:'0 0 10px' }}>{title}</h3>
+      <h3 style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color: titleColor, margin:'0 0 10px' }}>{title}</h3>
       <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:17, color:'var(--px-muted)', margin:0, lineHeight:1.5 }}>{desc}</p>
     </div>
   );
@@ -155,15 +163,16 @@ function FeatureCard({ icon, title, desc, tag, glowColor='#2d5fff' }) {
 
 /* ─── Live terminal ─── */
 function LiveTerminal() {
+  const isDark = useTheme();
   const lines = [
-    { t:0,    c:'#6a7ab5', txt:'> stardest deploy main' },
-    { t:800,  c:'#6a7ab5', txt:'  » Analizando repositorio...' },
-    { t:1600, c:'#00ff88', txt:'  ✓ Repositorio autenticado' },
-    { t:2400, c:'#6a7ab5', txt:'  » Construyendo contenedor...' },
-    { t:3400, c:'#00ff88', txt:'  ✓ Imagen compilada [1.2s]' },
-    { t:4200, c:'#6a7ab5', txt:'  » Provisionando red global...' },
-    { t:5000, c:'#00ff88', txt:'  ✓ TLS aprovisionado' },
-    { t:5800, c:'#00d4ff', txt:'  >> LIVE → prod-x4.stardest.com' },
+    { t:0,    c: isDark ? '#6a7ab5' : '#1e40af', txt:'> stardest deploy main' },
+    { t:800,  c: isDark ? '#6a7ab5' : '#1e40af', txt:'  » Analizando repositorio...' },
+    { t:1600, c: isDark ? '#00ff88' : '#16a34a', txt:'  ✓ Repositorio autenticado' },
+    { t:2400, c: isDark ? '#6a7ab5' : '#1e40af', txt:'  » Construyendo contenedor...' },
+    { t:3400, c: isDark ? '#00ff88' : '#16a34a', txt:'  ✓ Imagen compilada [1.2s]' },
+    { t:4200, c: isDark ? '#6a7ab5' : '#1e40af', txt:'  » Provisionando red global...' },
+    { t:5000, c: isDark ? '#00ff88' : '#16a34a', txt:'  ✓ TLS aprovisionado' },
+    { t:5800, c: isDark ? '#00d4ff' : '#0284c7', txt:'  >> LIVE → prod-x4.stardest.com' },
   ];
   const [visible, setVisible] = useState([]);
   useEffect(() => {
@@ -179,8 +188,9 @@ function LiveTerminal() {
   }, []);
   return (
     <div style={{
-      background:'#020210', border:'2px solid var(--px-border)',
-      boxShadow:'inset 0 0 30px rgba(0,0,20,0.9), 4px 4px 0 rgba(0,0,0,0.7)',
+      background: isDark ? '#020210' : '#e8eeff',
+      border:'2px solid var(--px-border)',
+      boxShadow: isDark ? 'inset 0 0 30px rgba(0,0,20,0.9), 4px 4px 0 rgba(0,0,0,0.7)' : '4px 4px 0 rgba(0,0,0,0.1)',
       padding:'20px 24px', fontFamily:"'Share Tech Mono',monospace",
       minHeight:220,
     }}>
@@ -294,19 +304,26 @@ export default function Home() {
           </div>
 
           {/* Metrics row */}
-          <div style={{
-            display:'inline-grid', gridTemplateColumns:'repeat(4,1fr)',
-            gap:0, border:'2px solid var(--px-border)',
-            boxShadow:'4px 4px 0 rgba(0,0,0,0.6)',
-            background:'rgba(13,13,43,0.7)', maxWidth:700, width:'100%',
-          }}>
+          <div 
+            className="grid grid-cols-2 sm:grid-cols-4"
+            style={{
+              border:'2px solid var(--px-border)',
+              boxShadow: isDark ? '4px 4px 0 rgba(0,0,0,0.6)' : '4px 4px 0 rgba(0,0,0,0.1)',
+              background: isDark ? 'rgba(13,13,43,0.7)' : 'rgba(255,255,255,0.75)', 
+              maxWidth:700, width:'100%',
+              margin: '0 auto',
+            }}
+          >
             {h.metrics.map(({ val, label }, i) => (
-              <div key={label} style={{
-                padding:'20px 16px', textAlign:'center',
-                borderRight: i < 3 ? '1px solid var(--px-border)' : 'none',
-              }}>
-                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:26, color:'#00d4ff', marginBottom:6,
-                  textShadow:'0 0 12px rgba(0,212,255,0.5)' }}>{val}</div>
+              <div key={label} 
+                className={`border-[var(--px-border)] ${i % 2 === 0 ? 'border-r' : ''} ${i < 2 ? 'border-b' : ''} ${i < 3 ? 'sm:border-r' : 'sm:border-r-0'} ${i < 2 ? 'sm:border-b-0' : ''}`}
+                style={{
+                  padding:'20px 16px', textAlign:'center',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:26, color: isDark ? '#00d4ff' : '#0070cc', marginBottom:6,
+                  textShadow: isDark ? '0 0 12px rgba(0,212,255,0.5)' : 'none' }}>{val}</div>
                 <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'var(--px-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>{label}</div>
               </div>
             ))}
@@ -321,12 +338,12 @@ export default function Home() {
               <div style={{ flex:1, height:2, background:'linear-gradient(90deg,transparent,var(--px-border))' }} />
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'#9b59ff', letterSpacing:'0.15em', marginBottom:8 }}>MISIÓN DE CONTROL</div>
-                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color:'#e8eeff', margin:0 }}>{h.timeline_title}</h2>
+                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color: isDark ? '#e8eeff' : '#0f172a', margin:0 }}>{h.timeline_title}</h2>
               </div>
               <div style={{ flex:1, height:2, background:'linear-gradient(90deg,var(--px-border),transparent)' }} />
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, alignItems:'center' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               {/* Steps */}
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 <MissionStep num={1} icon={<PixelSatellite scale={1} />} title={h.timeline_steps[0].title} desc={h.timeline_steps[0].desc} color="#2d5fff" active />
@@ -352,7 +369,7 @@ export default function Home() {
               <div style={{ flex:1, height:2, background:'linear-gradient(90deg,transparent,var(--px-border))' }} />
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:"'Jersey 10',monospace", fontSize:11, color:'#00d4ff', letterSpacing:'0.15em', marginBottom:8 }}>SISTEMAS DE LA NAVE</div>
-                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color:'#e8eeff', margin:0 }}>{h.features_title}</h2>
+                <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:32, color: isDark ? '#e8eeff' : '#0f172a', margin:0 }}>{h.features_title}</h2>
               </div>
               <div style={{ flex:1, height:2, background:'linear-gradient(90deg,var(--px-border),transparent)' }} />
             </div>
@@ -365,24 +382,25 @@ export default function Home() {
 
         {/* ══ CTA FINAL ══ */}
         <section style={{ padding:'80px 24px 100px' }}>
-          <div style={{
+          <div className="px-6 py-10 sm:px-10 sm:py-16" style={{
             maxWidth:760, margin:'0 auto', textAlign:'center',
-            padding:'60px 40px',
-            background:'rgba(13,13,43,0.8)',
-            border:'2px solid var(--px-border-glow)',
-            boxShadow:'8px 8px 0 rgba(0,0,0,0.6), 0 0 40px rgba(45,95,255,0.25)',
+            background: isDark ? 'rgba(13,13,43,0.8)' : 'rgba(255,255,255,0.75)',
+            border: `2px solid ${isDark ? 'var(--px-border-glow)' : 'var(--px-border)'}`,
+            boxShadow: isDark 
+              ? '8px 8px 0 rgba(0,0,0,0.6), 0 0 40px rgba(45,95,255,0.25)' 
+              : '8px 8px 0 rgba(0,0,0,0.1), 0 0 20px rgba(45,95,255,0.1)',
           }}>
             <div style={{ display:'flex', justifyContent:'center', marginBottom:20, filter:'drop-shadow(0 0 20px #2d5fff)' }}>
               <PixelRocket scale={4} />
             </div>
-            <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:34, color:'#e8eeff', margin:'0 0 16px' }}>{h.cta_title}</h2>
+            <h2 style={{ fontFamily:"'Jersey 10',monospace", fontSize:34, color: isDark ? '#e8eeff' : '#0f172a', margin:'0 0 16px' }}>{h.cta_title}</h2>
             <p style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'var(--px-muted)', margin:'0 0 36px', lineHeight:1.5 }}>{h.cta_sub}</p>
             <Link to="/deploy" style={{
               textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
               fontFamily:"'Jersey 10',monospace", fontSize:18, color:'#080818',
               padding:'16px 40px', background:'#00d4ff',
               border:'2px solid #00d4ff',
-              boxShadow:'5px 5px 0 rgba(0,0,0,0.6)',
+              boxShadow: isDark ? '5px 5px 0 rgba(0,0,0,0.6)' : '5px 5px 0 rgba(0,0,0,0.1)',
             }}>
               {h.cta_btn}
             </Link>
@@ -395,7 +413,7 @@ export default function Home() {
             {/* Logo */}
             <div style={{ marginBottom:40, display:'flex', alignItems:'center', gap:16 }}>
               <PixelRocket scale={1.2} />
-              <span style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color:'#e8eeff', textShadow:'0 0 10px rgba(0,212,255,0.5)' }}>StarDest</span>
+              <span style={{ fontFamily:"'Jersey 10',monospace", fontSize:20, color: isDark ? '#e8eeff' : '#0f172a', textShadow: isDark ? '0 0 10px rgba(0,212,255,0.5)' : 'none' }}>StarDest</span>
               <span style={{ fontFamily:"'Jersey 10',monospace", fontSize:12, color:'var(--px-muted)', marginLeft:4 }}>// Cloud PaaS</span>
             </div>
 
