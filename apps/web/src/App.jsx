@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
+import Dashboard from './pages/Dashboard';
 import PixelRocket from './components/PixelRocket';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
 import { useTranslation } from './i18n';
+import { useAuth } from './hooks/useAuth';
 
 /** Hook — only components calling this will re-render on prefs change */
 function usePrefs() {
@@ -187,14 +189,171 @@ function PreferencesDropdown() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   USER PROFILE DROPDOWN (click-based, desktop)
+   Shows user info, dashboard navigation, and logout options.
+═══════════════════════════════════════════════════════════ */
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  if (!user) return null;
+
+  const emailPrefix = user.email.split('@')[0].toUpperCase();
+
+  const handleLogout = () => {
+    logout();
+    setOpen(false);
+    navigate('/');
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-label="Menú de usuario"
+        style={{
+          fontFamily: "'Jersey 10',monospace",
+          fontSize: 18,
+          color: '#00d4ff',
+          background: 'rgba(0,212,255,0.06)',
+          border: '2px solid rgba(0,212,255,0.4)',
+          padding: '8px 16px',
+          minHeight: 44,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          boxShadow: '2px 2px 0 rgba(0,0,0,0.3)',
+          letterSpacing: '0.04em',
+          outline: 'none',
+        }}
+      >
+        <span>👤 {emailPrefix}</span>
+        <svg style={{ width:12, height:12, transition:'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div className="pref-dropdown-panel" style={{
+        position: 'absolute',
+        top: 'calc(100% + 10px)',
+        right: 0,
+        zIndex: 200,
+        opacity: open ? 1 : 0,
+        visibility: open ? 'visible' : 'hidden',
+        transform: open ? 'translateY(0) scale(1)' : 'translateY(-6px) scale(0.97)',
+        transformOrigin: 'top right',
+        transition: 'opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease',
+        padding: '12px 8px',
+        minWidth: 180,
+      }}>
+        {/* Email Header */}
+        <div style={{
+          padding: '4px 12px 10px',
+          borderBottom: '1px solid var(--px-border)',
+          marginBottom: 8,
+          fontFamily: "'Share Tech Mono',monospace",
+          fontSize: 12,
+          color: 'rgba(200,216,255,0.5)',
+          wordBreak: 'break-all',
+        }}>
+          {user.email}
+        </div>
+
+        {/* Dashboard Link */}
+        <Link
+          to="/dashboard"
+          onClick={() => setOpen(false)}
+          style={{
+            display: 'block',
+            padding: '8px 12px',
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 16,
+            color: '#e8eeff',
+            textDecoration: 'none',
+            transition: 'background 0.15s steps(1)',
+          }}
+          onMouseEnter={e => { e.target.style.background = 'rgba(26,58,255,0.15)'; e.target.style.color = '#00d4ff'; }}
+          onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#e8eeff'; }}
+        >
+          🎛️ Dashboard
+        </Link>
+
+        {/* Deploy Link */}
+        <Link
+          to="/deploy"
+          onClick={() => setOpen(false)}
+          style={{
+            display: 'block',
+            padding: '8px 12px',
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 16,
+            color: '#e8eeff',
+            textDecoration: 'none',
+            transition: 'background 0.15s steps(1)',
+          }}
+          onMouseEnter={e => { e.target.style.background = 'rgba(26,58,255,0.15)'; e.target.style.color = '#00d4ff'; }}
+          onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#e8eeff'; }}
+        >
+          🚀 Nuevo Deploy
+        </Link>
+
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          style={{
+            display: 'block',
+            width: '100%',
+            textAlign: 'left',
+            padding: '8px 12px',
+            background: 'transparent',
+            border: 'none',
+            fontFamily: "'Jersey 10',monospace",
+            fontSize: 16,
+            color: '#ff3c3c',
+            cursor: 'pointer',
+            transition: 'background 0.15s steps(1)',
+            outline: 'none',
+          }}
+          onMouseEnter={e => { e.target.style.background = 'rgba(255,60,60,0.08)'; }}
+          onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+        >
+          🚪 Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    MOBILE DRAWER — reads lang from DOM to avoid re-render
    (only re-renders when mobileOpen changes)
 ═══════════════════════════════════════════════════════════ */
 function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
+  const { user, logout } = useAuth();
   // Read lang directly from DOM attribute — no subscription needed here
   // since the drawer re-renders on open anyway
   const lang = document.documentElement.getAttribute('data-lang') || 'es';
-  const TOOLS = NAV_TOOLS[lang] || NAV_TOOLS.es;
+  const baseTools = NAV_TOOLS[lang] || NAV_TOOLS.es;
+  const TOOLS = user ? [
+    {
+      to: '/dashboard',
+      label: 'Dashboard',
+      desc: lang === 'es' ? 'Gestiona tus deploys activos' : 'Manage your active deployments',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+    },
+    ...baseTools
+  ] : baseTools;
+  
   const labelMenu         = lang === 'es' ? 'Menú' : 'Menu';
   const labelHerramientas = lang === 'es' ? 'Herramientas' : 'Tools';
 
@@ -274,11 +433,28 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
         {/* Footer */}
         <div className="px-5 py-5 border-t border-[#2F4A67]/30">
-          <Link to="/login" onClick={onClose}
-            className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium"
-          >
-            Login
-          </Link>
+          {user ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-[#CBCDD3]/60 font-mono text-center truncate mb-1">
+                👤 {user.email}
+              </span>
+              <button
+                onClick={() => {
+                  logout();
+                  onClose();
+                }}
+                className="block w-full text-center py-3 border border-red-500/50 text-red-400 hover:text-white hover:bg-red-500/20 rounded-xl transition text-sm font-medium cursor-pointer"
+              >
+                {lang === 'es' ? 'Cerrar Sesión' : 'Logout'}
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" onClick={onClose}
+              className="block w-full text-center py-3 border border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20 rounded-xl transition text-sm font-medium"
+            >
+              Login
+            </Link>
+          )}
         </div>
       </div>
     </div>
@@ -291,6 +467,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 ═══════════════════════════════════════════════════════════ */
 const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location }) {
   const { theme } = usePrefs();
+  const { user } = useAuth();
   const isDark = theme === 'dark';
   const textMain   = isDark ? '#e8eeff'                  : '#0d1433';
   const textMuted  = isDark ? 'rgba(200,216,255,0.75)'   : '#3a4a7a';
@@ -364,13 +541,19 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <div className="hidden md:flex items-center">
               <PreferencesDropdown />
             </div>
-            <Link
-              to="/login"
-              className="hidden md:flex"
-              style={{ textDecoration: 'none', padding: '8px 20px', minHeight: 44, alignItems: 'center', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textCyan, border: `2px solid ${borderLogin}`, boxShadow: '2px 2px 0 rgba(0,0,0,0.3)', background: bgLogin, letterSpacing: '0.04em' }}
-            >
-              LOGIN
-            </Link>
+            {user ? (
+              <div className="hidden md:flex">
+                <UserMenu />
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="hidden md:flex"
+                style={{ textDecoration: 'none', padding: '8px 20px', minHeight: 44, alignItems: 'center', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textCyan, border: `2px solid ${borderLogin}`, boxShadow: '2px 2px 0 rgba(0,0,0,0.3)', background: bgLogin, letterSpacing: '0.04em' }}
+              >
+                LOGIN
+              </Link>
+            )}
             <button
               onClick={onHamburger}
               aria-label="Abrir menú"
@@ -452,6 +635,7 @@ function App() {
           <Route path="/"       element={<Home />} />
           <Route path="/login"  element={<Login />} />
           <Route path="/deploy" element={<Deploy />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </div>
     </>

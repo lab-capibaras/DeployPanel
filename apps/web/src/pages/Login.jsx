@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 import { PixelRocket } from '../components/PixelIcons';
+import { useAuth } from '../hooks/useAuth';
 
 function useTheme() {
   const [prefs, setPrefs] = useState(getPrefs);
@@ -187,6 +188,8 @@ function Login() {
   const t = useTranslation();
   const l = t.login;
   const isDark = useTheme();
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -194,7 +197,11 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+    setTimeout(() => {
+      login(formData.email, formData.password);
+      setIsLoading(false);
+      navigate('/dashboard');
+    }, 800);
   };
 
   return (
