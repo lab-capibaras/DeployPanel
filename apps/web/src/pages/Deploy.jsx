@@ -244,9 +244,13 @@ export default function Deploy() {
 
     const finalTimer = setTimeout(async () => {
       try {
+        const token = localStorage.getItem('auth_token');
         const response = await fetch('/deploy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify(formData),
         });
         if (!response.ok) throw new Error(d.toasts.server_error);
@@ -410,8 +414,10 @@ export default function Deploy() {
         formPayload.append('file', uploadFile, `${uploadSubdomain}.zip`);
         formPayload.append('subdomain', uploadSubdomain);
 
+        const token = localStorage.getItem('auth_token');
         const response = await fetch('/api/deploy/upload', {
           method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: formPayload,
         });
 

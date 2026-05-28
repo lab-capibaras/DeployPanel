@@ -40,7 +40,10 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!user) return;
-        fetch('/api/deploys')
+        const token = localStorage.getItem('auth_token');
+        fetch('/api/deploys', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        })
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'success') setDeploys(data.deploys);

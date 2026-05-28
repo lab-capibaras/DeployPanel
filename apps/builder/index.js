@@ -158,7 +158,7 @@ function getSubdomain(repoUrl, branch) {
 // ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
-async function deployApp(repoUrl, subdomain, branch) {
+async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous') {
     const tempDir = path.join(__dirname, 'temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
@@ -502,7 +502,9 @@ CMD ["npm", "start"]
                 [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000",
                 "deploy.branch": branch || "main",
                 "deploy.repo": repoUrl,
-                "deploy.timestamp": new Date().toISOString()
+                "deploy.timestamp": new Date().toISOString(),
+                "deploy.userId": userId,
+                "deploy.userEmail": userEmail
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network",
@@ -529,9 +531,25 @@ CMD ["npm", "start"]
 app.post('/deploy', async (req, res) => {
     const { repoUrl, subdomain, branch } = req.body;
     if (!repoUrl || !subdomain) return res.status(400).send("Faltan datos: repoUrl o subdomain");
+
+    // Extraer usuario del token JWT
+    let userId = 'anonymous';
+    let userEmail = 'anonymous';
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        try {
+            const token = authHeader.split(' ')[1];
+            const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
+            userId = decoded.id || 'anonymous';
+            userEmail = decoded.email || 'anonymous';
+        } catch (e) {
+            // token inválido, continuar como anonymous
+        }
+    }
+
     const actualBranch = branch || 'main';
     try {
-        const url = await deployApp(repoUrl, subdomain, actualBranch);
+        const url = await deployApp(repoUrl, subdomain, actualBranch, userId, userEmail);
         saveDeployment(repoUrl, actualBranch, subdomain);
         res.json({
             status: 'success',
@@ -615,15 +633,35 @@ app.delete('/deploy/:subdomain', async (req, res) => {
 // 4. Consultar Despliegues
 app.get('/deploys', async (req, res) => {
     try {
+        // Intentar extraer userId del token
+        let filterUserId = null;
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
+                filterUserId = decoded.id || null;
+            } catch (e) {
+                // token inválido, mostrar todos
+            }
+        }
+
         const containers = await docker.listContainers({ all: true });
         const deploys = containers
             .filter(c => c.Names.some(name => name.includes('container-')))
+            .filter(c => {
+                // Si hay usuario autenticado, filtrar por su ID
+                if (!filterUserId) return true;
+                return c.Labels['deploy.userId'] === filterUserId;
+            })
             .map(c => ({
                 subdomain: c.Names[0].replace('/container-', ''),
                 status: c.State,
                 branch: c.Labels['deploy.branch'] || 'unknown',
                 repo: c.Labels['deploy.repo'] || 'unknown',
-                deployedAt: c.Labels['deploy.timestamp'] || 'unknown'
+                deployedAt: c.Labels['deploy.timestamp'] || 'unknown',
+                userId: c.Labels['deploy.userId'] || 'unknown',
+                userEmail: c.Labels['deploy.userEmail'] || 'unknown'
             }));
         res.json({ status: 'success', deploys });
     } catch (error) {
