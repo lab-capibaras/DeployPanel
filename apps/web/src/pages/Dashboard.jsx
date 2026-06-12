@@ -2,34 +2,37 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from '../i18n';
 
-function timeAgo(dateStr) {
-    if (!dateStr || dateStr === 'unknown') return 'Fecha desconocida';
+function timeAgo(dateStr, dash) {
+    if (!dateStr || dateStr === 'unknown') return dash.unknown_date;
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins  = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days  = Math.floor(diff / 86400000);
-    if (mins < 1)   return 'Hace un momento';
-    if (mins < 60)  return `Hace ${mins} min`;
-    if (hours < 24) return `Hace ${hours}h`;
-    return `Hace ${days} día${days > 1 ? 's' : ''}`;
+    if (mins < 1)   return dash.time_now;
+    if (mins < 60)  return dash.time_min(mins);
+    if (hours < 24) return dash.time_hour(hours);
+    return dash.time_day(days);
 }
 
-function repoShort(url) {
-    if (!url || url === 'unknown') return 'Desconocido';
+function repoShort(url, dash) {
+    if (!url || url === 'unknown') return dash.unknown_repo;
     const match = url.match(/github\.com\/(.+?)(?:\.git)?$/);
     return match ? match[1] : url;
 }
 
 const STATUS_COLOR = {
-    running:    { bg: 'rgba(0,200,100,0.15)',  border: 'rgba(0,200,100,0.4)',  dot: '#00c864', label: 'Running'    },
-    restarting: { bg: 'rgba(255,180,0,0.15)',  border: 'rgba(255,180,0,0.4)',  dot: '#ffb400', label: 'Restarting' },
-    exited:     { bg: 'rgba(255,60,60,0.15)',  border: 'rgba(255,60,60,0.4)',  dot: '#ff3c3c', label: 'Stopped'    },
+    running:    { bg: 'rgba(0,200,100,0.12)',  border: 'rgba(0,200,100,0.35)',  dot: '#00c864' },
+    restarting: { bg: 'rgba(255,180,0,0.12)',  border: 'rgba(255,180,0,0.35)',  dot: '#ffb400' },
+    exited:     { bg: 'rgba(255,60,60,0.12)',  border: 'rgba(255,60,60,0.35)',  dot: '#ff3c3c' },
 };
 
 export default function Dashboard() {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const t = useTranslation();
+    const dash = t.dashboard;
     const [deploys, setDeploys]   = useState([]);
     const [loading, setLoading]   = useState(true);
     const [deleting, setDeleting] = useState(null);
@@ -53,7 +56,7 @@ export default function Dashboard() {
     }, [user]);
 
     async function handleDelete(subdomain) {
-        if (!confirm(`¿Eliminar ${subdomain}.stardest.com?`)) return;
+        if (!confirm(dash.confirm_delete(subdomain))) return;
         setDeleting(subdomain);
         try {
             const res = await fetch(`/api/deploy/${subdomain}`, { method: 'DELETE' });
@@ -70,7 +73,7 @@ export default function Dashboard() {
 
     if (authLoading || loading) return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontFamily: "'Jersey 10', monospace", color: '#00d4ff', fontSize: 18 }}>Cargando...</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", color: 'var(--px-muted)', fontSize: 16 }}>{dash.loading}</p>
         </div>
     );
 
@@ -80,42 +83,38 @@ export default function Dashboard() {
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 16px' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
                 <div>
-                    <h1 style={{ fontFamily: "'Jersey 10', monospace", fontSize: 28, color: '#e8eeff', margin: 0 }}>
-                        Mis Deploys
+                    <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 26, color: 'var(--px-white)', margin: 0 }}>
+                        {dash.title}
                     </h1>
-                    <p style={{ fontFamily: "'Jersey 10', monospace", fontSize: 14, color: 'rgba(200,216,255,0.5)', margin: '4px 0 0' }}>
-                        {deploys.length} proyecto{deploys.length !== 1 ? 's' : ''} activo{deploys.length !== 1 ? 's' : ''}
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: 'var(--px-muted)', margin: '4px 0 0' }}>
+                        {deploys.length} {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
                     </p>
                 </div>
                 <Link
                     to="/deploy"
+                    className="px-btn"
                     style={{
-                        fontFamily: "'Jersey 10', monospace", fontSize: 16,
-                        padding: '10px 20px',
-                        background: 'rgba(0,212,255,0.1)',
-                        border: '1px solid rgba(0,212,255,0.3)',
-                        color: '#00d4ff',
                         textDecoration: 'none',
+                        display: 'inline-flex', alignItems: 'center',
+                        fontSize: 14, padding: '10px 20px',
                     }}
                 >
-                    + Nuevo Deploy
+                    {dash.new_deploy}
                 </Link>
             </div>
 
             {/* Lista vacía */}
             {deploys.length === 0 && (
-                <div style={{
+                <div className="px-card" style={{
                     textAlign: 'center', padding: '60px 24px',
-                    border: '1px solid rgba(47,74,103,0.4)',
-                    background: 'rgba(11,15,25,0.6)',
                 }}>
-                    <p style={{ fontFamily: "'Jersey 10', monospace", fontSize: 18, color: 'rgba(200,216,255,0.4)', margin: 0 }}>
-                        No tienes deploys aún
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)', margin: 0 }}>
+                        {dash.empty}
                     </p>
-                    <Link to="/deploy" style={{ fontFamily: "'Jersey 10', monospace", fontSize: 15, color: '#00d4ff', marginTop: 12, display: 'inline-block' }}>
-                        Crear tu primer deploy →
+                    <Link to="/deploy" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: 'var(--px-white)', marginTop: 12, display: 'inline-block' }}>
+                        {dash.create_first}
                     </Link>
                 </div>
             )}
@@ -124,14 +123,14 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {deploys.map(deploy => {
                     const s = STATUS_COLOR[deploy.status] || STATUS_COLOR.exited;
+                    const statusLabel = dash.status[deploy.status] || dash.status.exited;
                     const url = `https://${deploy.subdomain}.stardest.com`;
                     return (
                         <div
                             key={deploy.subdomain}
+                            className="px-card"
                             style={{
                                 padding: '20px 24px',
-                                background: 'rgba(11,15,25,0.8)',
-                                border: '1px solid rgba(47,74,103,0.4)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 16,
@@ -142,41 +141,40 @@ export default function Dashboard() {
                             <div style={{
                                 width: 10, height: 10, borderRadius: '50%',
                                 background: s.dot, flexShrink: 0,
-                                boxShadow: `0 0 8px ${s.dot}`,
                             }} />
 
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 200 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                                    <span style={{ fontFamily: "'Jersey 10', monospace", fontSize: 18, color: '#e8eeff', fontWeight: 700 }}>
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-white)', fontWeight: 700 }}>
                                         {deploy.subdomain}
                                     </span>
                                     <span style={{
-                                        fontFamily: "'Jersey 10', monospace", fontSize: 12,
-                                        padding: '2px 8px',
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
+                                        padding: '2px 8px', borderRadius: 6,
                                         background: s.bg, border: `1px solid ${s.border}`,
                                         color: s.dot,
                                     }}>
-                                        {s.label}
+                                        {statusLabel}
                                     </span>
                                 </div>
                                 <a
                                     href={url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    style={{ fontFamily: 'monospace', fontSize: 13, color: '#00d4ff', textDecoration: 'none', display: 'block', marginBottom: 4 }}
+                                    style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-white)', textDecoration: 'none', display: 'block', marginBottom: 4 }}
                                 >
                                     {url}
                                 </a>
                                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                                    <span style={{ fontFamily: "'Jersey 10', monospace", fontSize: 12, color: 'rgba(200,216,255,0.4)' }}>
-                                        📦 {repoShort(deploy.repo)}
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
+                                        📦 {repoShort(deploy.repo, dash)}
                                     </span>
-                                    <span style={{ fontFamily: "'Jersey 10', monospace", fontSize: 12, color: 'rgba(200,216,255,0.4)' }}>
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
                                         🌿 {deploy.branch}
                                     </span>
-                                    <span style={{ fontFamily: "'Jersey 10', monospace", fontSize: 12, color: 'rgba(200,216,255,0.4)' }}>
-                                        🕐 {timeAgo(deploy.deployedAt)}
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
+                                        🕐 {timeAgo(deploy.deployedAt, dash)}
                                     </span>
                                 </div>
                             </div>
@@ -187,29 +185,29 @@ export default function Dashboard() {
                                     href={url}
                                     target="_blank"
                                     rel="noreferrer"
+                                    className="px-border"
                                     style={{
-                                        fontFamily: "'Jersey 10', monospace", fontSize: 14,
-                                        padding: '8px 16px',
-                                        background: 'rgba(0,212,255,0.08)',
-                                        border: '1px solid rgba(0,212,255,0.25)',
-                                        color: '#00d4ff', textDecoration: 'none',
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
+                                        padding: '8px 16px', borderRadius: 8,
+                                        background: 'var(--px-bg)',
+                                        color: 'var(--px-white)', textDecoration: 'none',
                                     }}
                                 >
-                                    Visitar →
+                                    {dash.visit}
                                 </a>
                                 <button
                                     onClick={() => handleDelete(deploy.subdomain)}
                                     disabled={deleting === deploy.subdomain}
                                     style={{
-                                        fontFamily: "'Jersey 10', monospace", fontSize: 14,
-                                        padding: '8px 16px',
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
+                                        padding: '8px 16px', borderRadius: 8,
                                         background: 'rgba(255,60,60,0.08)',
                                         border: '1px solid rgba(255,60,60,0.25)',
                                         color: deleting === deploy.subdomain ? 'rgba(255,60,60,0.4)' : '#ff3c3c',
                                         cursor: deleting === deploy.subdomain ? 'not-allowed' : 'pointer',
                                     }}
                                 >
-                                    {deleting === deploy.subdomain ? '...' : 'Eliminar'}
+                                    {deleting === deploy.subdomain ? dash.deleting : dash.delete}
                                 </button>
                             </div>
                         </div>

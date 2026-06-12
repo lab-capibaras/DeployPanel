@@ -8,6 +8,8 @@ const es = {
     language:  'Idioma',
     light:     'Claro',
     dark:      'Oscuro',
+    new_deploy:'Nuevo Deploy',
+    logout:    'Cerrar sesión',
   },
 
   // ── Home ────────────────────────────────────────────────
@@ -19,15 +21,11 @@ const es = {
     cta_start:  'Comenzar Despliegue',
     cta_explore:'Explorar Arquitectura',
 
-    metrics: [
-      { val: '99.99%', label: 'SLA Garantizado'  },
-      { val: '< 10ms', label: 'Latencia Global'  },
-      { val: '3M+',    label: 'Deployments'       },
-      { val: 'Zero',   label: 'Config Manual'     },
-    ],
-
     features_title: 'Infraestructura como Experiencia',
     features_sub:   'No lidies con servidores. Hemos abstraído la complejidad operativa para que te enfoques solo en enviar código.',
+    features_label: 'FUNCIONALIDADES',
+
+    feature_tags: ['DESPLIEGUE', 'SEGURIDAD', 'RED GLOBAL', 'MONITOREO'],
 
     cards: [
       {
@@ -46,6 +44,21 @@ const es = {
         title: 'Observabilidad Transparente',
         desc:  'Telemetría lista para usarse. Visualiza cuellos de botella en memoria, carga de CPU y banda ancha de red en tiempo real.',
       },
+    ],
+
+    how_it_works:    'CÓMO FUNCIONA',
+    live_simulation: 'SIMULACIÓN EN VIVO',
+    step_label:      'PASO',
+
+    terminal_lines: [
+      '> stardest deploy main',
+      '  » Analizando repositorio...',
+      '  ✓ Repositorio autenticado',
+      '  » Construyendo contenedor...',
+      '  ✓ Imagen compilada [1.2s]',
+      '  » Provisionando red global...',
+      '  ✓ TLS aprovisionado',
+      '  >> LIVE → prod-x4.stardest.com',
     ],
 
     timeline_title: 'Arquitectura de Cero a Cien',
@@ -196,6 +209,9 @@ const es = {
         fill_all:  'Completa todos los campos',
       },
 
+      invalid_subdomain_drop: 'Escribe un subdominio válido antes de arrastrar los archivos.',
+      folder_compressed:      'Compresión terminada. Carpeta cargada.',
+
       logs: [
         { delay: 300,   text: '> Recibiendo archivo ZIP...',              color: 'text-[#CBCDD3]' },
         { delay: 800,   text: '✓ Archivo recibido correctamente',          color: 'text-green-400' },
@@ -236,6 +252,50 @@ const es = {
     ],
   },
 
+  // ── Dashboard ───────────────────────────────────────────
+  dashboard: {
+    title:        'Mis Deploys',
+    loading:      'Cargando...',
+    projects_one: 'proyecto activo',
+    projects_many:'proyectos activos',
+    new_deploy:   '+ Nuevo Deploy',
+    empty:        'No tienes deploys aún',
+    create_first: 'Crear tu primer deploy →',
+    unknown_date: 'Fecha desconocida',
+    time_now:     'Hace un momento',
+    time_min:     (n) => `Hace ${n} min`,
+    time_hour:    (n) => `Hace ${n}h`,
+    time_day:     (n) => `Hace ${n} día${n > 1 ? 's' : ''}`,
+    unknown_repo: 'Desconocido',
+    visit:        'Visitar →',
+    delete:       'Eliminar',
+    deleting:     '...',
+    confirm_delete: (subdomain) => `¿Eliminar ${subdomain}.stardest.com?`,
+    status: {
+      running:    'Activo',
+      restarting: 'Reiniciando',
+      exited:     'Detenido',
+    },
+  },
+
+  // ── Webhook Instructions ─────────────────────────────────
+  webhook: {
+    title:       'Deploy exitoso',
+    description: 'Para que los futuros cambios en tu repositorio se reflejen automáticamente, configura un webhook en GitHub:',
+    steps: [
+      'Ve a tu repositorio en GitHub',
+      'Settings → Webhooks → Add webhook',
+      'Pega la URL de abajo en "Payload URL"',
+      'Content type: application/json',
+      'Events: Just the push event',
+      'Activa el webhook y guarda',
+    ],
+    copy:          'Copiar',
+    copied:        '✓ Copiado',
+    goto_settings: 'Ir a GitHub Settings →',
+    close:         'Cerrar',
+  },
+
   // ── Login ───────────────────────────────────────────────
   login: {
     welcome:        'Bienvenido',
@@ -252,6 +312,10 @@ const es = {
     no_account:     '¿No tienes una cuenta?',
     sign_up:        'Regístrate',
     back_home:      'Volver al inicio',
+    error_login:    'Error al iniciar sesión. Intenta de nuevo.',
+    google:         'Continuar con Google',
+    github:         'Continuar con GitHub',
+    terms:          'Al continuar aceptas los términos de uso',
   },
 };
 

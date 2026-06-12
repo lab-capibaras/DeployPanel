@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ─── Language label switching via [data-lang] on <html> ─────────── */
 .nav-label-en  { display: none; }
@@ -12,28 +12,24 @@ html[data-lang="en"] .nav-label-es { display: none; }
 html[data-lang="en"] .nav-tools-en { display: contents; }
 html[data-lang="en"] .nav-tools-es { display: none; }
 
-/* ─── Pixel Art Space Design Tokens ──────────────────────────────── */
+/* ─── Minimal Black & White Design Tokens ────────────────────────── */
 :root {
-  --px-bg:          #080818;
-  --px-bg2:         #0d0d2b;
-  --px-navy:        #0a0a2e;
-  --px-blue-dark:   #0f1f5c;
-  --px-blue:        #1a3aff;
-  --px-blue-mid:    #2d5fff;
-  --px-cyan:        #00d4ff;
-  --px-purple:      #7b2fff;
-  --px-violet:      #9b59ff;
-  --px-white:       #e8eeff;
-  --px-muted:       #6a7ab5;
-  --px-border:      #1e2d7a;
-  --px-border-glow: #2d5fff;
-  --px-glow-blue:   rgba(45, 95, 255, 0.4);
-  --px-glow-cyan:   rgba(0, 212, 255, 0.3);
-  --px-font-pixel:  'Jersey 10', monospace;
-  --px-font-mono:   'Share Tech Mono', monospace;
-  --px-font-vt:     'Jersey 10', monospace;
-  --nav-bg:         rgba(8, 8, 30, 0.9);
-  --drawer-bg:      rgba(8, 8, 30, 0.97);
+  --px-bg:          #0a0a0a;
+  --px-bg2:         #111111;
+  --px-surface:     #161616;
+  --px-white:       #f5f5f5;
+  --px-muted:       #8a8a8a;
+  --px-border:      #2a2a2a;
+  --px-border-glow: #4a4a4a;
+  --px-accent:      #ffffff;
+  --px-accent-fg:   #0a0a0a;
+  --px-glow-blue:   rgba(255, 255, 255, 0.08);
+  --px-glow-cyan:   rgba(255, 255, 255, 0.06);
+  --px-font-pixel:  'Inter', system-ui, sans-serif;
+  --px-font-mono:   'JetBrains Mono', monospace;
+  --px-font-vt:     'Inter', system-ui, sans-serif;
+  --nav-bg:         rgba(10, 10, 10, 0.85);
+  --drawer-bg:      rgba(10, 10, 10, 0.97);
 }
 
 /* ─── Suppress nav tap highlight ──────────────────── */
@@ -45,334 +41,239 @@ nav, nav * {
 nav { user-select: none; -webkit-user-select: none; }
 
 /* ─── Base ────────────────────────────────────────── */
-html { scroll-behavior: smooth; image-rendering: pixelated; }
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  font-family: 'Jersey 10', monospace;
-  font-size: 18px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
   background-color: var(--px-bg);
   color: var(--px-white);
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: none;
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
 }
 
-/* ─── Pixel Art Scrollbar ─────────────────────────── */
+/* ─── Minimal scrollbar ────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--px-bg); }
 ::-webkit-scrollbar-thumb {
-  background: var(--px-blue-dark);
-  box-shadow: inset 0 0 0 2px var(--px-border);
+  background: var(--px-border);
+  border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--px-blue-mid); }
+::-webkit-scrollbar-thumb:hover { background: var(--px-border-glow); }
 
-/* ─── Pixel border utility ────────────────────────── */
+/* ─── Border utility ──────────────────────────────── */
 .px-border {
-  border: 2px solid var(--px-border);
-  box-shadow: 2px 2px 0 var(--px-border);
+  border: 1px solid var(--px-border);
 }
 .px-border-glow {
-  border: 2px solid var(--px-border-glow);
-  box-shadow: 0 0 8px var(--px-glow-blue), 2px 2px 0 var(--px-border);
+  border: 1px solid var(--px-border-glow);
 }
 
-/* ─── Pixel font classes ──────────────────────────── */
+/* ─── Font classes ─────────────────────────────────── */
 .font-pixel { font-family: var(--px-font-pixel) !important; }
-.font-vt    { font-family: 'Jersey 10', monospace !important; }
+.font-vt    { font-family: 'Inter', system-ui, sans-serif !important; }
 .font-mono  { font-family: var(--px-font-mono) !important; }
 
-/* ─── Animated pixel star field (CSS-based) ──────── */
-@keyframes px-twinkle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.2; transform: scale(0.5); }
-}
-@keyframes px-float {
-  0%   { transform: translateY(0px) translateX(0px); }
-  33%  { transform: translateY(-8px) translateX(4px); }
-  66%  { transform: translateY(4px) translateX(-6px); }
-  100% { transform: translateY(0px) translateX(0px); }
-}
-@keyframes px-scanline {
-  0%   { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
 @keyframes px-blink {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
 }
-@keyframes px-glitch {
-  0%   { clip-path: inset(0 0 95% 0); transform: translateX(-3px); }
-  5%   { clip-path: inset(40% 0 50% 0); transform: translateX(3px); }
-  10%  { clip-path: inset(80% 0 10% 0); transform: translateX(-3px); }
-  15%  { clip-path: inset(0 0 95% 0); transform: translateX(0); }
-  100% { clip-path: inset(0 0 95% 0); transform: translateX(0); }
-}
-@keyframes px-shoot {
-  0%   { transform: translateX(-200px) translateY(200px); opacity: 1; }
-  80%  { opacity: 1; }
-  100% { transform: translateX(300px) translateY(-300px); opacity: 0; }
-}
-@keyframes px-pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px var(--px-glow-blue), 0 0 16px var(--px-glow-blue); }
-  50%       { box-shadow: 0 0 20px var(--px-glow-cyan), 0 0 40px var(--px-glow-cyan); }
-}
-@keyframes px-march {
-  0%   { background-position: 0 0; }
-  100% { background-position: 8px 0; }
-}
 
-/* ─── Marching ants dashed border ────────────────── */
-.px-marching {
-  background-image: repeating-linear-gradient(90deg, var(--px-cyan) 0, var(--px-cyan) 4px, transparent 0, transparent 50%),
-                    repeating-linear-gradient(180deg, var(--px-cyan) 0, var(--px-cyan) 4px, transparent 0, transparent 50%);
-  background-size: 8px 2px, 2px 8px;
-  background-position: 0 0, 0 0;
-  animation: px-march 0.5s steps(1) infinite;
-}
-
-/* ─── Pixel card ──────────────────────────────────── */
+/* ─── Card ────────────────────────────────────────── */
 .px-card {
-  background: linear-gradient(135deg, rgba(13,13,43,0.95), rgba(8,8,24,0.98));
-  border: 2px solid var(--px-border);
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.8), 0 0 16px rgba(29,58,255,0.15);
-  transition: border-color 0.15s steps(1), box-shadow 0.15s steps(1), transform 0.1s steps(2);
-  image-rendering: pixelated;
+  background: var(--px-surface);
+  border: 1px solid var(--px-border);
+  border-radius: 12px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 .px-card:hover {
-  border-color: var(--px-blue-mid);
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.8), 0 0 24px var(--px-glow-blue);
-  transform: translate(-2px, -2px);
+  border-color: var(--px-border-glow);
+  transform: translateY(-2px);
 }
 
-/* ─── Pixel button ────────────────────────────────── */
+/* ─── Button ──────────────────────────────────────── */
 .px-btn {
   font-family: var(--px-font-pixel);
-  font-size: 10px;
-  color: var(--px-white);
-  background: var(--px-blue-dark);
-  border: 2px solid var(--px-blue-mid);
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.6), 0 0 12px var(--px-glow-blue);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--px-accent-fg);
+  background: var(--px-accent);
+  border: 1px solid var(--px-accent);
+  border-radius: 8px;
+  box-shadow: none;
   padding: 10px 20px;
   cursor: pointer;
-  letter-spacing: 0.05em;
-  transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
-  text-transform: uppercase;
-  image-rendering: pixelated;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  text-transform: none;
 }
 .px-btn:hover {
-  background: var(--px-blue-mid);
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.6), 0 0 20px var(--px-glow-blue);
-  transform: translate(2px, 2px);
+  opacity: 0.85;
 }
 .px-btn:active {
-  box-shadow: 0 0 0 rgba(0,0,0,0.6);
-  transform: translate(4px, 4px);
+  transform: scale(0.98);
 }
 
-/* ─── Pixel button cyan variant ───────────────────── */
+/* ─── Button outline variant ──────────────────────── */
 .px-btn-cyan {
   background: transparent;
-  border-color: var(--px-cyan);
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.6), 0 0 12px var(--px-glow-cyan);
-  color: var(--px-cyan);
+  border-color: var(--px-border);
+  box-shadow: none;
+  color: var(--px-white);
 }
 .px-btn-cyan:hover {
-  background: rgba(0,212,255,0.1);
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.6), 0 0 20px var(--px-glow-cyan);
+  background: rgba(255,255,255,0.05);
+  border-color: var(--px-border-glow);
 }
 
-/* ─── Scanline overlay ────────────────────────────── */
-.px-scanlines::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0,0,0,0.03) 0px,
-    rgba(0,0,0,0.03) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
-/* ─── CRT glow effect ─────────────────────────────── */
+/* ─── CRT glow effect (disabled) ──────────────────── */
 .px-crt {
-  text-shadow: 0 0 4px var(--px-cyan), 0 0 8px var(--px-blue-mid);
+  text-shadow: none;
 }
 
-/* ─── Pixel progress bar ──────────────────────────── */
+/* ─── Progress bar ─────────────────────────────────── */
 .px-progress-track {
-  background: var(--px-bg);
-  border: 2px solid var(--px-border);
-  height: 12px;
+  background: var(--px-bg2);
+  border: 1px solid var(--px-border);
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
 }
 .px-progress-fill {
-  background: repeating-linear-gradient(
-    90deg,
-    var(--px-blue-mid) 0px,
-    var(--px-blue-mid) 6px,
-    var(--px-cyan) 6px,
-    var(--px-cyan) 8px
-  );
+  background: var(--px-accent);
   height: 100%;
-  animation: px-march 0.3s steps(4) infinite;
+  border-radius: 6px;
+  transition: width 0.3s ease;
 }
 
-/* ─── Pixel badge ─────────────────────────────────── */
+/* ─── Badge ─────────────────────────────────────────── */
 .px-badge {
   font-family: var(--px-font-pixel);
-  font-size: 8px;
-  padding: 4px 8px;
-  background: rgba(45,95,255,0.15);
-  border: 2px solid var(--px-blue-mid);
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: var(--px-bg2);
+  border: 1px solid var(--px-border);
+  border-radius: 6px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--px-cyan);
+  color: var(--px-muted);
 }
 
-/* ─── Pixel terminal / mono card ──────────────────── */
+/* ─── Terminal / mono card ─────────────────────────── */
 .px-terminal {
-  background: #020210;
-  border: 2px solid var(--px-border);
-  box-shadow: inset 0 0 20px rgba(0,0,30,0.8), 4px 4px 0 rgba(0,0,0,0.6);
+  background: var(--px-bg2);
+  border: 1px solid var(--px-border);
+  border-radius: 10px;
+  box-shadow: none;
   font-family: var(--px-font-mono);
   font-size: 13px;
-  color: var(--px-cyan);
+  color: var(--px-white);
   padding: 16px;
 }
-.px-terminal .px-prompt { color: var(--px-purple); }
-.px-terminal .px-success { color: #00ff88; }
+.px-terminal .px-prompt { color: var(--px-muted); }
+.px-terminal .px-success { color: var(--px-white); font-weight: 600; }
 .px-terminal .px-info { color: var(--px-muted); }
 .px-terminal .px-cursor::after {
   content: '█';
   animation: px-blink 1s steps(1) infinite;
-  color: var(--px-cyan);
+  color: var(--px-white);
 }
 
-/* ─── Pixel nav overrides ─────────────────────────── */
-/* nav border handled per-component in App.jsx */
-
-/* ─── Mega menu pixel style ────────────────────────── */
+/* ─── Mega menu ─────────────────────────────────────── */
 .mega-menu-panel {
-  background: rgba(8,8,30,0.98) !important;
-  border: 2px solid var(--px-border) !important;
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.8), 0 0 20px var(--px-glow-blue) !important;
-  border-radius: 0 !important;
+  background: var(--px-surface) !important;
+  border: 1px solid var(--px-border) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important;
+  border-radius: 12px !important;
 }
 
 /* ─── Pref trigger button ─────────────────────────── */
 .pref-trigger-btn {
-  border: 2px solid var(--px-border) !important;
-  background: rgba(13,13,43,0.8) !important;
+  border: 1px solid var(--px-border) !important;
+  background: var(--px-surface) !important;
   color: var(--px-white) !important;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.5) !important;
-  border-radius: 0 !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
 }
 .pref-trigger-btn:hover,
 .pref-trigger-btn.active {
-  border-color: var(--px-blue-mid) !important;
-  background: rgba(26,58,255,0.2) !important;
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.5), 0 0 12px var(--px-glow-blue) !important;
+  border-color: var(--px-border-glow) !important;
+  background: var(--px-bg2) !important;
+  box-shadow: none !important;
 }
 
 /* ─── Pref dropdown panel ─────────────────────────── */
 .pref-dropdown-panel {
-  background: rgba(8,8,30,0.98) !important;
-  border: 2px solid var(--px-border) !important;
-  border-radius: 0 !important;
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.8) !important;
-}
-
-/* ─── Pixel shooting star ─────────────────────────── */
-.px-shooting-star {
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  background: white;
-  box-shadow: 0 0 4px var(--px-cyan);
-  animation: px-shoot linear infinite;
-}
-
-/* ─── Pixel grid background ──────────────────────── */
-.px-grid-bg {
-  background-image:
-    linear-gradient(rgba(30,45,122,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30,45,122,0.08) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background: var(--px-surface) !important;
+  border: 1px solid var(--px-border) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important;
 }
 
 /* ─── Light mode ─────────────────────────────────── */
 html.light-mode {
-  --px-bg:         #f0f4ff;
-  --px-navy:       #dde6ff;
-  --px-white:      #0d1433;
-  --px-muted:      #3a4a7a;
-  --px-border:     rgba(45,95,255,0.25);
-  --px-border-glow:#2d5fff;
-  --px-cyan:       #0070cc;
-  --px-blue-mid:   #2d5fff;
-  --px-glow-blue:  rgba(45,95,255,0.2);
-  --px-glow-cyan:  rgba(0,100,200,0.2);
+  --px-bg:          #ffffff;
+  --px-bg2:         #f7f7f7;
+  --px-surface:     #ffffff;
+  --px-white:       #0a0a0a;
+  --px-muted:       #6b6b6b;
+  --px-border:      #e2e2e2;
+  --px-border-glow: #c4c4c4;
+  --px-accent:      #0a0a0a;
+  --px-accent-fg:   #ffffff;
+  --px-glow-blue:   rgba(0,0,0,0.04);
+  --px-glow-cyan:   rgba(0,0,0,0.03);
 }
 
 html.light-mode body {
-  background-color: transparent;
-  color: #0d1433;
+  background-color: var(--px-bg);
+  color: #0a0a0a;
 }
 
-/* Let canvas draw the background in light mode */
 html.light-mode canvas {
   opacity: 1;
 }
 
 html.light-mode .px-card {
-  background: rgba(255,255,255,0.7) !important;
-  border-color: rgba(45,95,255,0.2) !important;
-  color: #0d1433 !important;
+  background: #ffffff !important;
+  border-color: #e2e2e2 !important;
+  color: #0a0a0a !important;
 }
 
 html.light-mode .px-terminal {
-  background: #e8eeff !important;
-  border-color: rgba(45,95,255,0.25) !important;
+  background: #f7f7f7 !important;
+  border-color: #e2e2e2 !important;
+  color: #0a0a0a !important;
 }
 
 html.light-mode .mega-menu-panel {
-  background: rgba(240,244,255,0.97) !important;
-  border-color: rgba(45,95,255,0.2) !important;
+  background: #ffffff !important;
+  border-color: #e2e2e2 !important;
 }
 
 html.light-mode .pref-dropdown-panel {
-  background: rgba(240,244,255,0.97) !important;
-  border-color: rgba(45,95,255,0.2) !important;
+  background: #ffffff !important;
+  border-color: #e2e2e2 !important;
 }
 
 html.light-mode .pref-trigger-btn {
-  background: rgba(255, 255, 255, 0.7) !important;
-  border-color: rgba(45, 95, 255, 0.25) !important;
-  color: var(--px-blue-mid) !important;
-  box-shadow: 2px 2px 0 rgba(45, 95, 255, 0.15) !important;
+  background: #ffffff !important;
+  border-color: #e2e2e2 !important;
+  color: #0a0a0a !important;
+  box-shadow: none !important;
 }
 html.light-mode .pref-trigger-btn:hover {
-  background: rgba(45, 95, 255, 0.12) !important;
-  border-color: var(--px-blue-mid) !important;
-  box-shadow: 4px 4px 0 rgba(45, 95, 255, 0.15), 0 0 12px var(--px-glow-blue) !important;
+  background: #f7f7f7 !important;
+  border-color: #c4c4c4 !important;
 }
 
 html.light-mode input[type="text"],
 html.light-mode select {
   background-color: #ffffff !important;
-  border-color: rgba(45,95,255,0.3) !important;
-  color: #0d1433 !important;
+  border-color: #e2e2e2 !important;
+  color: #0a0a0a !important;
 }
 
-/* Grid overlay lighter in light mode */
-html.light-mode .px-grid-bg {
-  background-image:
-    linear-gradient(rgba(45,95,255,0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45,95,255,0.06) 1px, transparent 1px);
-}

@@ -5,18 +5,13 @@
 //   repoUrl: string — la URL del repo (ej: "https://github.com/user/repo")
 //   onClose: function — callback para cerrar el modal
 
-import { useState, useEffect } from 'react';
-import { getPrefs, subscribePrefs } from '../store/prefs';
-
-function useTheme() {
-    const [prefs, setPrefs] = useState(getPrefs);
-    useEffect(() => subscribePrefs(setPrefs), []);
-    return prefs.theme === 'dark';
-}
+import { useState } from 'react';
+import { useTranslation } from '../i18n';
 
 export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
+    const t = useTranslation();
+    const w = t.webhook;
     const [copied, setCopied] = useState(false);
-    const isDark = useTheme();
 
     const webhookUrl = 'https://stardest.com/webhook';
     const siteUrl = `https://${subdomain}.stardest.com`;
@@ -32,70 +27,46 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
         setTimeout(() => setCopied(false), 2000);
     }
 
-    // Estilos adaptables al tema
-    const modalBg = isDark ? '#0b0f19' : '#ffffff';
-    const border = isDark ? '1px solid rgba(47,74,103,0.6)' : '1px solid #c3d3e5';
-    const titleColor = isDark ? '#e8eeff' : '#0d1433';
-    const closeBtnColor = isDark ? 'rgba(200,216,255,0.4)' : 'rgba(13,20,51,0.5)';
-    const shadow = isDark ? '0 10px 30px rgba(0,0,0,0.8)' : '0 10px 30px rgba(0,0,0,0.1)';
-
-    const stepsBoxBg = isDark ? 'rgba(0,212,255,0.04)' : 'rgba(45,95,255,0.03)';
-    const stepsBoxBorder = isDark ? '1px solid rgba(0,212,255,0.2)' : '1px solid rgba(45,95,255,0.15)';
-    const stepText = isDark ? 'rgba(200,216,255,0.7)' : '#4a5568';
-    const stepNumber = isDark ? '#00d4ff' : '#2d5fff';
-
-    const codeBg = isDark ? 'rgba(0,0,0,0.4)' : '#f1f5f9';
-    const codeBorder = isDark ? '1px solid rgba(47,74,103,0.5)' : '1px solid #cbd5e1';
-    const codeText = isDark ? '#00d4ff' : '#1e3a8a';
-
-    const copyBtnBg = copied
-        ? (isDark ? 'rgba(0,212,100,0.15)' : 'rgba(16,185,129,0.1)')
-        : (isDark ? 'rgba(0,212,255,0.1)' : 'rgba(45,95,255,0.05)');
-    const copyBtnBorder = copied
-        ? (isDark ? 'rgba(0,212,100,0.4)' : 'rgba(16,185,129,0.3)')
-        : (isDark ? 'rgba(0,212,255,0.3)' : 'rgba(45,95,255,0.25)');
-    const copyBtnText = copied
-        ? (isDark ? '#00d464' : '#059669')
-        : (isDark ? '#00d4ff' : '#2563eb');
+    const copyBtnBg = copied ? 'rgba(16,185,129,0.12)' : 'var(--px-bg)';
+    const copyBtnBorder = copied ? 'rgba(16,185,129,0.4)' : 'var(--px-border)';
+    const copyBtnText = copied ? '#10b981' : 'var(--px-white)';
 
     return (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(15,23,42,0.4)',
+            background: 'rgba(0,0,0,0.5)',
             backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '24px',
         }}>
-            <div style={{
+            <div className="px-card" style={{
                 width: '100%', maxWidth: '520px',
-                background: modalBg,
-                border: border,
                 padding: '32px',
-                boxShadow: shadow,
                 position: 'relative',
             }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                     <div>
                         <h2 style={{
-                            fontFamily: "'Jersey 10', monospace",
-                            fontSize: '24px', color: titleColor,
+                            fontFamily: "'Inter',sans-serif",
+                            fontWeight: 800,
+                            fontSize: '22px', color: 'var(--px-white)',
                             margin: '0 0 6px',
                         }}>
-                            ✅ Deploy exitoso
+                            {w.title}
                         </h2>
                         <a
                             href={siteUrl}
                             target="_blank"
                             rel="noreferrer"
                             style={{
-                                fontFamily: "'Jersey 10', monospace",
-                                fontSize: '16px', color: '#00d4ff',
+                                fontFamily: "'JetBrains Mono',monospace",
+                                fontSize: '14px', color: 'var(--px-muted)',
                                 textDecoration: 'none',
-                                borderBottom: '1px dashed #00d4ff',
+                                borderBottom: '1px dashed var(--px-border-glow)',
                             }}
-                            onMouseEnter={e => e.target.style.color = '#00a3cc'}
-                            onMouseLeave={e => e.target.style.color = '#00d4ff'}
+                            onMouseEnter={e => e.target.style.color = 'var(--px-white)'}
+                            onMouseLeave={e => e.target.style.color = 'var(--px-muted)'}
                         >
                             {siteUrl}
                         </a>
@@ -104,12 +75,12 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
                         onClick={onClose}
                         style={{
                             background: 'none', border: 'none',
-                            color: closeBtnColor, cursor: 'pointer',
+                            color: 'var(--px-muted)', cursor: 'pointer',
                             fontSize: '22px', lineHeight: 1, padding: '4px',
                             transition: 'color 0.15s',
                         }}
-                        onMouseEnter={e => e.target.style.color = isDark ? '#ffffff' : '#000000'}
-                        onMouseLeave={e => e.target.style.color = closeBtnColor}
+                        onMouseEnter={e => e.target.style.color = 'var(--px-white)'}
+                        onMouseLeave={e => e.target.style.color = 'var(--px-muted)'}
                     >
                         ✕
                     </button>
@@ -117,47 +88,41 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
 
                 {/* Instrucciones webhook */}
                 <div style={{
-                    border: stepsBoxBorder,
-                    background: stepsBoxBg,
+                    border: '1px solid var(--px-border)',
+                    borderRadius: 10,
+                    background: 'var(--px-bg)',
                     padding: '20px',
                     marginBottom: '20px',
                 }}>
                     <p style={{
-                        fontFamily: "'Jersey 10', monospace",
-                        fontSize: '16px', color: stepText,
+                        fontFamily: "'Inter',sans-serif",
+                        fontSize: '14px', color: 'var(--px-muted)',
                         margin: '0 0 16px',
                         lineHeight: 1.6,
                     }}>
-                        Para que los futuros cambios en tu repositorio se reflejen automáticamente, configura un webhook en GitHub:
+                        {w.description}
                     </p>
 
                     {/* Pasos */}
-                    {[
-                        { n: 1, text: 'Ve a tu repositorio en GitHub' },
-                        { n: 2, text: 'Settings → Webhooks → Add webhook' },
-                        { n: 3, text: 'Pega la URL de abajo en "Payload URL"' },
-                        { n: 4, text: 'Content type: application/json' },
-                        { n: 5, text: 'Events: Just the push event' },
-                        { n: 6, text: 'Activa el webhook y guarda' },
-                    ].map(step => (
-                        <div key={step.n} style={{
+                    {w.steps.map((text, i) => (
+                        <div key={i} style={{
                             display: 'flex', gap: '10px', alignItems: 'flex-start',
                             marginBottom: '8px',
                         }}>
                             <span style={{
-                                fontFamily: "'Jersey 10', monospace",
-                                fontSize: '14px', color: stepNumber,
+                                fontFamily: "'JetBrains Mono',monospace",
+                                fontSize: '13px', color: 'var(--px-white)',
                                 minWidth: '20px',
-                                fontWeight: 'bold',
+                                fontWeight: 700,
                             }}>
-                                {step.n}.
+                                {i + 1}.
                             </span>
                             <span style={{
-                                fontFamily: "'Jersey 10', monospace",
-                                fontSize: '15px', color: stepText,
+                                fontFamily: "'Inter',sans-serif",
+                                fontSize: '14px', color: 'var(--px-muted)',
                                 lineHeight: 1.5,
                             }}>
-                                {step.text}
+                                {text}
                             </span>
                         </div>
                     ))}
@@ -169,10 +134,11 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
                     }}>
                         <code style={{
                             flex: 1, padding: '10px 12px',
-                            background: codeBg,
-                            border: codeBorder,
-                            color: codeText,
-                            fontFamily: 'monospace', fontSize: '13px',
+                            background: 'var(--px-surface)',
+                            border: '1px solid var(--px-border)',
+                            borderRadius: 8,
+                            color: 'var(--px-white)',
+                            fontFamily: "'JetBrains Mono',monospace", fontSize: '13px',
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                             {webhookUrl}
@@ -181,22 +147,19 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
                             onClick={copyWebhookUrl}
                             style={{
                                 padding: '10px 16px',
+                                borderRadius: 8,
                                 background: copyBtnBg,
-                                border: copyBtnBorder,
+                                border: `1px solid ${copyBtnBorder}`,
                                 color: copyBtnText,
-                                fontFamily: "'Jersey 10', monospace",
-                                fontSize: '15px', cursor: 'pointer',
-                                transition: 'all 0.15s steps(2)', whiteSpace: 'nowrap',
-                                fontWeight: 'bold',
+                                fontFamily: "'Inter',sans-serif",
+                                fontSize: '14px', cursor: 'pointer',
+                                transition: 'opacity 0.15s ease', whiteSpace: 'nowrap',
+                                fontWeight: 600,
                             }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translate(-1px, -1px)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'none';
-                            }}
+                            onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                         >
-                            {copied ? '✓ Copiado' : 'Copiar'}
+                            {copied ? w.copied : w.copy}
                         </button>
                     </div>
                 </div>
@@ -208,48 +171,34 @@ export default function WebhookInstructions({ subdomain, repoUrl, onClose }) {
                             href={repoSettingsUrl}
                             target="_blank"
                             rel="noreferrer"
+                            className="px-btn"
                             style={{
                                 flex: '1 1 200px', padding: '12px',
-                                background: 'rgba(0,212,255,0.1)',
-                                border: '1px solid rgba(0,212,255,0.3)',
-                                color: '#00d4ff',
-                                fontFamily: "'Jersey 10', monospace",
-                                fontSize: '16px', textDecoration: 'none',
+                                fontFamily: "'Inter',sans-serif",
+                                fontSize: '14px', textDecoration: 'none',
                                 textAlign: 'center', cursor: 'pointer',
-                                fontWeight: 'bold',
-                                transition: 'all 0.1s steps(2)',
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(0,212,255,0.18)';
-                                e.currentTarget.style.transform = 'translate(-1px, -1px)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.background = 'rgba(0,212,255,0.1)';
-                                e.currentTarget.style.transform = 'none';
+                                fontWeight: 600,
                             }}
                         >
-                            Ir a GitHub Settings →
+                            {w.goto_settings}
                         </a>
                     )}
                     <button
                         onClick={onClose}
+                        className="px-border"
                         style={{
                             flex: '1 1 120px', padding: '12px',
-                            background: 'transparent',
-                            border: isDark ? '1px solid rgba(47,74,103,0.5)' : '1px solid #cbd5e1',
-                            color: isDark ? 'rgba(200,216,255,0.6)' : '#475569',
-                            fontFamily: "'Jersey 10', monospace",
-                            fontSize: '16px', cursor: 'pointer',
-                            transition: 'all 0.1s steps(2)',
+                            borderRadius: 8,
+                            background: 'var(--px-bg)',
+                            color: 'var(--px-muted)',
+                            fontFamily: "'Inter',sans-serif",
+                            fontSize: '14px', cursor: 'pointer', fontWeight: 600,
+                            transition: 'opacity 0.15s ease',
                         }}
-                        onMouseEnter={e => {
-                            e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc';
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.background = 'transparent';
-                        }}
+                        onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                     >
-                        Cerrar
+                        {w.close}
                     </button>
                 </div>
             </div>

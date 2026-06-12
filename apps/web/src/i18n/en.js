@@ -8,6 +8,8 @@ const en = {
     language:  'Language',
     light:     'Light',
     dark:      'Dark',
+    new_deploy:'New Deploy',
+    logout:    'Log out',
   },
 
   // ── Home ────────────────────────────────────────────────
@@ -19,15 +21,11 @@ const en = {
     cta_start:  'Start Deployment',
     cta_explore:'Explore Architecture',
 
-    metrics: [
-      { val: '99.99%', label: 'Guaranteed SLA'  },
-      { val: '< 10ms', label: 'Global Latency'  },
-      { val: '3M+',    label: 'Deployments'      },
-      { val: 'Zero',   label: 'Manual Config'    },
-    ],
-
     features_title: 'Infrastructure as Experience',
     features_sub:   "Don't wrestle with servers. We've abstracted operational complexity so you can focus solely on shipping code.",
+    features_label: 'FEATURES',
+
+    feature_tags: ['DEPLOYMENT', 'SECURITY', 'GLOBAL NETWORK', 'MONITORING'],
 
     cards: [
       {
@@ -46,6 +44,21 @@ const en = {
         title: 'Transparent Observability',
         desc:  'Telemetry ready out of the box. Visualize memory bottlenecks, CPU load, and network bandwidth in real time.',
       },
+    ],
+
+    how_it_works:    'HOW IT WORKS',
+    live_simulation: 'LIVE SIMULATION',
+    step_label:      'STEP',
+
+    terminal_lines: [
+      '> stardest deploy main',
+      '  » Analyzing repository...',
+      '  ✓ Repository authenticated',
+      '  » Building container...',
+      '  ✓ Image compiled [1.2s]',
+      '  » Provisioning global network...',
+      '  ✓ TLS provisioned',
+      '  >> LIVE → prod-x4.stardest.com',
     ],
 
     timeline_title: 'Architecture from Zero to Live',
@@ -196,6 +209,9 @@ const en = {
         fill_all:  'Please fill in all fields',
       },
 
+      invalid_subdomain_drop: 'Enter a valid subdomain before dropping the files.',
+      folder_compressed:      'Compression finished. Folder uploaded.',
+
       logs: [
         { delay: 300,   text: '> Receiving ZIP file...',                color: 'text-[#CBCDD3]' },
         { delay: 800,   text: '✓ File received successfully',           color: 'text-green-400' },
@@ -238,6 +254,50 @@ const en = {
     ],
   },
 
+  // ── Dashboard ───────────────────────────────────────────
+  dashboard: {
+    title:        'My Deploys',
+    loading:      'Loading...',
+    projects_one: 'active project',
+    projects_many:'active projects',
+    new_deploy:   '+ New Deploy',
+    empty:        "You don't have any deploys yet",
+    create_first: 'Create your first deploy →',
+    unknown_date: 'Unknown date',
+    time_now:     'Just now',
+    time_min:     (n) => `${n} min ago`,
+    time_hour:    (n) => `${n}h ago`,
+    time_day:     (n) => `${n} day${n > 1 ? 's' : ''} ago`,
+    unknown_repo: 'Unknown',
+    visit:        'Visit →',
+    delete:       'Delete',
+    deleting:     '...',
+    confirm_delete: (subdomain) => `Delete ${subdomain}.stardest.com?`,
+    status: {
+      running:    'Running',
+      restarting: 'Restarting',
+      exited:     'Stopped',
+    },
+  },
+
+  // ── Webhook Instructions ─────────────────────────────────
+  webhook: {
+    title:       'Deployment successful',
+    description: 'For future changes to your repository to be reflected automatically, set up a webhook on GitHub:',
+    steps: [
+      'Go to your repository on GitHub',
+      'Settings → Webhooks → Add webhook',
+      'Paste the URL below into "Payload URL"',
+      'Content type: application/json',
+      'Events: Just the push event',
+      'Enable the webhook and save',
+    ],
+    copy:          'Copy',
+    copied:        '✓ Copied',
+    goto_settings: 'Go to GitHub Settings →',
+    close:         'Close',
+  },
+
   // ── Login ───────────────────────────────────────────────
   login: {
     welcome:        'Welcome',
@@ -254,6 +314,10 @@ const en = {
     no_account:     "Don't have an account?",
     sign_up:        'Sign up',
     back_home:      'Back to home',
+    error_login:    'Login failed. Please try again.',
+    google:         'Continue with Google',
+    github:         'Continue with GitHub',
+    terms:          'By continuing you agree to the terms of use',
   },
 };
 

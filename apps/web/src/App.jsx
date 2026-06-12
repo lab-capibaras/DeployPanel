@@ -4,7 +4,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
 import Dashboard from './pages/Dashboard';
-import PixelRocket from './components/PixelRocket';
+import { LogoMark } from './components/Icons';
 import { useAuth } from './hooks/useAuth';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
@@ -94,22 +94,22 @@ function PreferencesPanel({ inline = false }) {
     outline: 'none', whiteSpace: 'nowrap',
   };
   const pillOn = isDark
-    ? { background: 'rgba(47,74,103,0.55)', borderColor: 'rgba(203,205,211,0.2)', color: '#fff' }
-    : { background: 'rgba(255, 255, 255, 0.9)', borderColor: 'rgba(100, 150, 200, 0.45)', color: '#0d1b2a', boxShadow: '0 2px 8px rgba(100,150,200,0.15)' };
-  
+    ? { background: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.18)', color: '#fff' }
+    : { background: '#ffffff', borderColor: '#c4c4c4', color: '#0a0a0a', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' };
+
   const pillOff = isDark
-    ? { background: 'transparent', borderColor: 'rgba(203,205,211,0.05)', color: 'rgba(203,205,211,0.45)' }
-    : { background: 'transparent', borderColor: 'transparent', color: '#4a6a8a' };
+    ? { background: 'transparent', borderColor: 'transparent', color: 'rgba(255,255,255,0.4)' }
+    : { background: 'transparent', borderColor: 'transparent', color: '#6b6b6b' };
 
   const sectionLabel = {
     margin: '0 0 7px', fontSize: '10px', fontWeight: 700,
     letterSpacing: '0.1em', textTransform: 'uppercase',
-    color: isDark ? 'rgba(203,205,211,0.38)' : '#4a6a8a',
+    color: isDark ? 'rgba(255,255,255,0.35)' : '#6b6b6b',
   };
 
   const trackStyle = {
     display: 'flex', gap: '3px', borderRadius: '9px', padding: '3px',
-    background: isDark ? 'rgba(15,44,69,0.5)' : 'rgba(180, 210, 245, 0.25)',
+    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
   };
 
   return (
@@ -223,14 +223,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
 
   return (
     <div className={`fixed top-0 right-0 h-full w-72 max-w-[85vw] z-50 md:hidden transform transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className={`h-full backdrop-blur-xl border-l flex flex-col ${isDark ? 'bg-[#0b0f19]/95 border-[#2F4A67]/40' : 'bg-[#f0f4ff]/95 border-blue-200'}`}>
+      <div className={`h-full backdrop-blur-xl border-l flex flex-col ${isDark ? 'bg-[#0a0a0a]/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
 
         {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
-          <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-blue-900'}`}>{labelMenu}</span>
+        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-white/10' : 'border-black/10'}`}>
+          <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-black'}`}>{labelMenu}</span>
           <button
             onClick={onClose}
-            className={`flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-200 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
+            className={`flex items-center justify-center rounded-lg border transition ${isDark ? 'border-white/15 text-white/60 hover:text-white hover:bg-white/10' : 'border-black/10 text-black/60 hover:text-black hover:bg-black/5'}`}
             style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,7 +240,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Preferences inline */}
-        <div className={`px-4 py-2 border-b ${isDark ? 'border-[#2F4A67]/20' : 'border-blue-200/30'}`}>
+        <div className={`px-4 py-2 border-b ${isDark ? 'border-white/10' : 'border-black/10'}`}>
           <PreferencesPanel inline />
         </div>
 
@@ -252,16 +252,16 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
               <div key={section.id} className="rounded-xl overflow-hidden">
                 <button
                   onClick={() => setOpenSection(isOpen ? null : section.id)}
-                  className={`w-full flex items-center justify-between px-4 rounded-xl transition group ${isDark ? 'hover:bg-[#2F4A67]/15 active:bg-[#2F4A67]/25' : 'hover:bg-blue-100/30 active:bg-blue-200/30'}`}
+                  className={`w-full flex items-center justify-between px-4 rounded-xl transition group ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
                   style={{ minHeight: '52px', cursor: 'pointer' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-lg border transition flex-shrink-0 ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover:border-[#2F4A67]' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover:border-blue-300'}`}>
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-lg border transition flex-shrink-0 ${isDark ? 'border-white/15 bg-white/5 text-white group-hover:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover:border-black/20'}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
                     </div>
-                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-blue-900'}`}>{section.label}</span>
+                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{section.label}</span>
                   </div>
-                  <svg className={`w-4 h-4 transition-transform duration-300 ${isDark ? 'text-[#CBCDD3]' : 'text-blue-700'} ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 transition-transform duration-300 ${isDark ? 'text-white/60' : 'text-black/60'} ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -270,14 +270,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
                   <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
                     {section.items.map((item) => (
                       <Link key={item.label} to={item.to} onClick={onClose}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition group/item ${isDark ? 'hover:bg-[#2F4A67]/20 active:bg-[#2F4A67]/30' : 'hover:bg-blue-100/40 active:bg-blue-200/40'}`}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition group/item ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
                       >
-                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition ${isDark ? 'border-[#2F4A67]/60 bg-[#0F2C45]/40 text-white group-hover/item:border-white/30' : 'border-blue-200 bg-blue-50 text-blue-700 group-hover/item:border-blue-300'}`}>
+                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition ${isDark ? 'border-white/15 bg-white/5 text-white group-hover/item:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover/item:border-black/20'}`}>
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
                         </div>
                         <div>
-                          <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-blue-900'}`}>{item.label}</p>
-                          <p className={`text-xs mt-0.5 leading-tight ${isDark ? 'text-[#CBCDD3]/80' : 'text-blue-700/80'}`}>{item.desc}</p>
+                          <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-black'}`}>{item.label}</p>
+                          <p className={`text-xs mt-0.5 leading-tight ${isDark ? 'text-white/60' : 'text-black/60'}`}>{item.desc}</p>
                         </div>
                       </Link>
                     ))}
@@ -289,7 +289,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
         </div>
 
         {/* Footer */}
-        <div className={`px-5 py-5 border-t ${isDark ? 'border-[#2F4A67]/30' : 'border-blue-200/50'}`}>
+        <div className={`px-5 py-5 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
           <UserMobileMenu onClose={onClose} />
         </div>
       </div>
@@ -301,32 +301,33 @@ function UserMobileMenu({ onClose }) {
   const { user, loading, logout } = useAuth();
   const { theme } = usePrefs();
   const isDark = theme === 'dark';
+  const t = useTranslation();
   if (loading) return null;
 
   if (!user) {
     return (
       <Link to="/login" onClick={onClose}
-        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-[#2F4A67]/50 text-[#CBCDD3] hover:text-white hover:bg-[#2F4A67]/20' : 'border-blue-300 text-blue-700 hover:text-blue-900 hover:bg-blue-100/50'}`}
+        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
         style={{ textDecoration: 'none' }}
       >
-        Login
+        {t.nav.login}
       </Link>
     );
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={`flex items-center gap-3 px-3 py-2 border rounded-xl ${isDark ? 'border-[#2F4A67]/30 bg-[#0F2C45]/20' : 'border-blue-200 bg-blue-100/30'}`}>
+      <div className={`flex items-center gap-3 px-3 py-2 border rounded-xl ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
         {user.avatar ? (
-          <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-[#00d4ff]' : 'border-blue-500'}`} />
+          <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-white/30' : 'border-black/20'}`} />
         ) : (
-          <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold ${isDark ? 'bg-[#00d4ff]' : 'bg-blue-500'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}>
             {user.name?.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="overflow-hidden">
-          <p className={`text-sm font-bold leading-tight truncate ${isDark ? 'text-white' : 'text-blue-900'}`}>{user.name}</p>
-          <p className={`text-xs leading-tight truncate ${isDark ? 'text-[#CBCDD3]/60' : 'text-blue-700/70'}`}>{user.email || user.provider}</p>
+          <p className={`text-sm font-bold leading-tight truncate ${isDark ? 'text-white' : 'text-black'}`}>{user.name}</p>
+          <p className={`text-xs leading-tight truncate ${isDark ? 'text-white/50' : 'text-black/50'}`}>{user.email || user.provider}</p>
         </div>
       </div>
 
@@ -338,16 +339,17 @@ function UserMobileMenu({ onClose }) {
           width: '100%',
           textAlign: 'center',
           padding: '10px 12px',
-          fontFamily: "'Jersey 10',monospace",
-          fontSize: 16,
-          color: isDark ? '#00d4ff' : '#1a3aff',
-          background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(26,58,255,0.06)',
-          border: isDark ? '1px solid rgba(0,212,255,0.25)' : '1px solid rgba(26,58,255,0.25)',
+          fontFamily: "'Inter',sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+          color: isDark ? '#f5f5f5' : '#0a0a0a',
+          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
           borderRadius: '8px',
           textDecoration: 'none',
         }}
       >
-        🎛️ Dashboard
+        Dashboard
       </Link>
 
       <Link
@@ -358,24 +360,25 @@ function UserMobileMenu({ onClose }) {
           width: '100%',
           textAlign: 'center',
           padding: '10px 12px',
-          fontFamily: "'Jersey 10',monospace",
-          fontSize: 16,
-          color: isDark ? '#00d4ff' : '#1a3aff',
-          background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(26,58,255,0.06)',
-          border: isDark ? '1px solid rgba(0,212,255,0.25)' : '1px solid rgba(26,58,255,0.25)',
+          fontFamily: "'Inter',sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+          color: isDark ? '#f5f5f5' : '#0a0a0a',
+          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
           borderRadius: '8px',
           textDecoration: 'none',
         }}
       >
-        🚀 Nuevo Deploy
+        {t.nav.new_deploy}
       </Link>
 
       <button
         onClick={() => { logout(); onClose(); }}
-        className="block w-full text-center py-3 border border-[#ff5f57]/50 text-[#ff5f57] hover:text-white hover:bg-[#ff5f57]/20 rounded-xl transition text-sm font-medium cursor-pointer"
+        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
         style={{ background: 'transparent', borderRadius: '8px', marginTop: '4px' }}
       >
-        Cerrar sesión
+        {t.nav.logout}
       </button>
     </div>
   );
@@ -385,6 +388,7 @@ function UserMenu() {
   const { user, loading, logout } = useAuth();
   const { theme } = usePrefs();
   const isDark = theme === 'dark';
+  const t = useTranslation();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -401,12 +405,12 @@ function UserMenu() {
 
   if (loading) return null;
 
-  const textCyan    = isDark ? '#00d4ff'                  : '#1a3aff';
-  const borderLogin = isDark ? 'rgba(0,212,255,0.4)'      : 'rgba(26,58,255,0.5)';
-  const bgLogin     = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
-  const textMain    = isDark ? '#e8eeff'                  : '#0d1433';
-  const cardBg      = isDark ? 'rgba(11, 15, 25, 0.97)'   : 'rgba(255, 255, 255, 0.97)';
-  const cardBorder  = isDark ? 'rgba(47,74,103,0.5)'     : 'rgba(195,211,229,0.9)';
+  const textCyan    = isDark ? '#f5f5f5'                  : '#0a0a0a';
+  const borderLogin = isDark ? 'rgba(255,255,255,0.15)'   : 'rgba(0,0,0,0.12)';
+  const bgLogin     = isDark ? 'rgba(255,255,255,0.05)'   : 'rgba(0,0,0,0.03)';
+  const textMain    = isDark ? '#f5f5f5'                  : '#0a0a0a';
+  const cardBg      = isDark ? 'rgba(22, 22, 22, 0.98)'   : 'rgba(255, 255, 255, 0.98)';
+  const cardBorder  = isDark ? 'rgba(255,255,255,0.1)'    : 'rgba(0,0,0,0.1)';
 
   if (!user) {
     return (
@@ -419,16 +423,18 @@ function UserMenu() {
           display: 'flex',
           alignItems: 'center',
           touchAction: 'manipulation',
-          fontFamily: "'Jersey 10',monospace",
-          fontSize: 18,
+          fontFamily: "'Inter',sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
           color: textCyan,
-          border: `2px solid ${borderLogin}`,
-          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
+          border: `1px solid ${borderLogin}`,
+          borderRadius: '8px',
+          boxShadow: 'none',
           background: bgLogin,
-          letterSpacing: '0.04em'
+          letterSpacing: '0.02em'
         }}
       >
-        LOGIN
+        {t.nav.login}
       </Link>
     );
   }
@@ -444,20 +450,22 @@ function UserMenu() {
           padding: '6px 14px',
           height: '44px',
           cursor: 'pointer',
-          border: `2px solid ${borderLogin}`,
+          border: `1px solid ${borderLogin}`,
+          borderRadius: '8px',
           background: bgLogin,
           color: textMain,
-          fontFamily: "'Jersey 10', monospace",
-          fontSize: '17px',
-          boxShadow: isDark ? '2px 2px 0 rgba(0,0,0,0.3)' : '2px 2px 0 rgba(26,58,255,0.1)',
-          letterSpacing: '0.04em',
+          fontFamily: "'Inter', sans-serif",
+          fontSize: '14px',
+          fontWeight: 600,
+          boxShadow: 'none',
+          letterSpacing: '0.02em',
           outline: 'none',
         }}
       >
         {user.avatar ? (
           <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', border: `1px solid ${textCyan}` }} />
         ) : (
-          <div style={{ width: 22, height: 22, borderRadius: '50%', background: textCyan, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: isDark ? '#f5f5f5' : '#0a0a0a', color: isDark ? '#0a0a0a' : '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
             {user.name?.charAt(0).toUpperCase()}
           </div>
         )}
@@ -474,8 +482,9 @@ function UserMenu() {
           top: 'calc(100% + 8px)',
           right: 0,
           background: cardBg,
-          border: `2px solid ${cardBorder}`,
-          boxShadow: isDark ? '4px 4px 0 rgba(0,0,0,0.5)' : '4px 4px 0 rgba(0,0,0,0.08)',
+          border: `1px solid ${cardBorder}`,
+          borderRadius: '10px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
           padding: '8px',
           minWidth: '180px',
           zIndex: 200,
@@ -485,9 +494,9 @@ function UserMenu() {
               padding: '4px 12px 10px',
               borderBottom: '1px solid var(--px-border)',
               marginBottom: 8,
-              fontFamily: "'Share Tech Mono',monospace",
+              fontFamily: "'JetBrains Mono',monospace",
               fontSize: 12,
-              color: isDark ? 'rgba(200,216,255,0.5)' : '#4a6a8a',
+              color: isDark ? 'rgba(255,255,255,0.5)' : '#6b6b6b',
               wordBreak: 'break-all',
             }}>
               {user.email}
@@ -500,16 +509,18 @@ function UserMenu() {
             style={{
               display: 'block',
               padding: '8px 12px',
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 16,
+              borderRadius: '6px',
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 14,
+              fontWeight: 500,
               color: textMain,
               textDecoration: 'none',
               transition: 'background 0.1s',
             }}
-            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(26,58,255,0.15)' : 'rgba(45,95,255,0.05)'}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
             onMouseLeave={e => e.target.style.background = 'none'}
           >
-            🎛️ Dashboard
+            Dashboard
           </Link>
 
           <Link
@@ -518,16 +529,18 @@ function UserMenu() {
             style={{
               display: 'block',
               padding: '8px 12px',
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 16,
+              borderRadius: '6px',
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 14,
+              fontWeight: 500,
               color: textMain,
               textDecoration: 'none',
               transition: 'background 0.1s',
             }}
-            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(26,58,255,0.15)' : 'rgba(45,95,255,0.05)'}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
             onMouseLeave={e => e.target.style.background = 'none'}
           >
-            🚀 Nuevo Deploy
+            {t.nav.new_deploy}
           </Link>
 
           <button
@@ -535,21 +548,23 @@ function UserMenu() {
             style={{
               width: '100%',
               padding: '10px 12px',
+              borderRadius: '6px',
               textAlign: 'left',
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#ff5f57',
-              fontFamily: "'Jersey 10', monospace",
-              fontSize: '16px',
-              letterSpacing: '0.02em',
+              color: isDark ? '#f5f5f5' : '#0a0a0a',
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '14px',
+              fontWeight: 500,
+              letterSpacing: '0.01em',
               transition: 'background 0.1s',
               outline: 'none',
             }}
-            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,95,87,0.1)' : 'rgba(255,95,87,0.05)'}
+            onMouseEnter={e => e.target.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
             onMouseLeave={e => e.target.style.background = 'none'}
           >
-            🚪 Cerrar sesión
+            {t.nav.logout}
           </button>
         </div>
       )}
@@ -565,15 +580,12 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
   const { theme } = usePrefs();
   const { user } = useAuth();
   const isDark = theme === 'dark';
-  const textMain   = isDark ? '#e8eeff'                  : '#0d1433';
-  const textMuted  = isDark ? 'rgba(200,216,255,0.75)'   : '#3a4a7a';
-  const textCyan   = isDark ? '#00d4ff'                  : '#1a3aff';
-  const borderLogin= isDark ? 'rgba(0,212,255,0.4)'      : 'rgba(26,58,255,0.5)';
-  const bgLogin    = isDark ? 'rgba(0,212,255,0.06)'     : 'rgba(26,58,255,0.08)';
+  const textMain   = isDark ? '#f5f5f5'                  : '#0a0a0a';
+  const textMuted  = isDark ? 'rgba(255,255,255,0.6)'    : '#6b6b6b';
   // Static tools for the desktop mega-menu — rendered once per open
   // The mega-menu content updates via CSS [data-lang] class toggling
-  const navBg = isDark ? 'rgba(8, 8, 24, 0.75)' : 'rgba(240, 244, 255, 0.75)';
-  const navBorder = isDark ? 'rgba(45, 95, 255, 0.15)' : 'rgba(45, 95, 255, 0.12)';
+  const navBg = isDark ? 'rgba(10, 10, 10, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+  const navBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <nav className="fixed top-0 left-0 right-0 w-full z-50" style={{
@@ -581,7 +593,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
       borderBottom: `1px solid ${navBorder}`,
       backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
-      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(45,95,255,0.04)',
+      boxShadow: 'none',
     }}>
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
@@ -589,14 +601,14 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
           {/* LEFT: Logo + Herramientas */}
           <div className="flex items-center gap-6">
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 4px', touchAction: 'manipulation' }}>
-              <PixelRocket scale={0.8} />
-              <span style={{ fontFamily: "'Jersey 10',monospace", fontSize: 22, color: textMain, textShadow: isDark ? '0 0 10px rgba(0,212,255,0.5)' : 'none', letterSpacing: '0.04em' }}>StarDest</span>
+              <LogoMark size={26} style={{ color: textMain }} />
+              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 20, color: textMain, letterSpacing: '-0.01em' }}>StarDest</span>
             </Link>
 
             {/* Desktop mega-menu — label switches via CSS [data-lang] */}
             <div className="relative group hidden md:block">
               <button
-                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', minHeight: 44, minWidth: 'auto', cursor: 'pointer', touchAction: 'manipulation', fontFamily: "'Jersey 10',monospace", fontSize: 18, color: textMuted, background: 'transparent', border: 'none', letterSpacing: '0.02em' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', minHeight: 44, minWidth: 'auto', cursor: 'pointer', touchAction: 'manipulation', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 500, color: textMuted, background: 'transparent', border: 'none', letterSpacing: '0.01em' }}
               >
                 <span className="nav-label-es">Herramientas</span>
                 <span className="nav-label-en">Tools</span>
@@ -609,21 +621,21 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
                 <div className="mega-menu-panel" style={{
                   borderRadius: '16px',
                   overflow: 'hidden',
-                  background: 'rgba(11, 15, 25, 0.97)',
+                  background: isDark ? 'rgba(22,22,22,0.98)' : 'rgba(255,255,255,0.98)',
                   backdropFilter: 'blur(24px) saturate(160%)',
                   WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-                  border: '1px solid rgba(47,74,103,0.4)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
                 }}>
                   <div className="p-4">
                     <div className="grid grid-cols-2 gap-2 nav-tools-es">
                       {NAV_TOOLS.es.map((tool) => (
-                        <ToolLink key={tool.label} tool={tool} />
+                        <ToolLink key={tool.label} tool={tool} isDark={isDark} />
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-2 nav-tools-en">
                       {NAV_TOOLS.en.map((tool) => (
-                        <ToolLink key={tool.label} tool={tool} />
+                        <ToolLink key={tool.label} tool={tool} isDark={isDark} />
                       ))}
                     </div>
                   </div>
@@ -640,17 +652,17 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <UserMenu />
             <button
               onClick={onHamburger}
-              aria-label="Abrir menú"
+              aria-label={document.documentElement.getAttribute('data-lang') === 'en' ? 'Open menu' : 'Abrir menú'}
               className={`md:hidden flex flex-col justify-center items-center rounded-lg border transition gap-1.5 p-2 ${
-                isDark 
-                  ? 'border-[#2F4A67]/50 bg-[#0F2C45]/30 hover:bg-[#2F4A67]/30' 
-                  : 'border-blue-200 bg-blue-50/50 hover:bg-blue-100/50'
+                isDark
+                  ? 'border-white/15 bg-white/5 hover:bg-white/10'
+                  : 'border-black/10 bg-black/[0.03] hover:bg-black/5'
               }`}
               style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
             >
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? 'opacity-0' : ''}`} />
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-blue-900'} ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? 'opacity-0' : ''}`} />
+              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
             </button>
           </div>
         </div>
@@ -659,18 +671,20 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
   );
 });
 
-function ToolLink({ tool }) {
+function ToolLink({ tool, isDark }) {
+  const restBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
+  const hoverBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
   return (
-    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, border: '1px solid var(--px-border)', background: 'rgba(13,13,43,0.5)', transition: 'border-color 0.1s, background 0.1s' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-blue-mid)'; e.currentTarget.style.background = 'rgba(26,58,255,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = 'rgba(13,13,43,0.5)'; }}
+    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: 10, border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.1s, background 0.1s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = hoverBg; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = restBg; }}
     >
-      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--px-border)', background: '#080818' }}>
-        <svg style={{ width: 16, height: 16, color: '#00d4ff' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
+      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
+        <svg style={{ width: 16, height: 16, color: 'var(--px-white)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
       </div>
       <div>
-        <div style={{ fontFamily: "'Jersey 10',monospace", fontSize: 17, color: '#e8eeff', marginBottom: 4 }}>{tool.label}</div>
-        <div style={{ fontFamily: "'Jersey 10',monospace", fontSize: 15, color: 'var(--px-muted)', lineHeight: 1.4 }}>{tool.desc}</div>
+        <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: 'var(--px-white)', marginBottom: 4 }}>{tool.label}</div>
+        <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: 'var(--px-muted)', lineHeight: 1.4 }}>{tool.desc}</div>
       </div>
     </Link>
   );
@@ -718,7 +732,7 @@ function App() {
         />
       </div>
 
-      <div className="pt-14 min-h-screen px-scanlines">
+      <div className="pt-14 min-h-screen">
         <Routes>
           <Route path="/"       element={<Home />} />
           <Route path="/login"  element={<Login />} />

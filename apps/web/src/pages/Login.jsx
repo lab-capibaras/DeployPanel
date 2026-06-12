@@ -1,101 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
-import { PixelRocket } from '../components/PixelIcons';
+import { LogoMark } from '../components/Icons';
 import { useAuth } from '../hooks/useAuth';
 
 function useTheme() {
   const [prefs, setPrefs] = useState(getPrefs);
   useEffect(() => subscribePrefs(setPrefs), []);
   return prefs.theme === 'dark';
-}
-
-/* ─── Starfield Canvas (same as Home) ─── */
-function PixelStarfield({ dark = true }) {
-  const canvasRef = useRef(null);
-  const darkRef = useRef(dark);
-  darkRef.current = dark;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    let animId;
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const darkColors  = ['#00d4ff', '#9b59ff', '#2d5fff', '#e8eeff', '#e8eeff'];
-    const lightColors = ['#2d5fff', '#1a3aaa', '#4a7fff', '#9b59ff', '#0d1f6e'];
-
-    const stars = Array.from({ length: 220 }, () => ({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-      size: Math.random() < 0.08 ? 3 : Math.random() < 0.3 ? 2 : 1,
-      speed: Math.random() * 0.25 + 0.03,
-      twinkle: Math.random() * Math.PI * 2,
-    }));
-    const shoots = Array.from({ length: 2 }, () => ({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height * 0.4,
-      vx: 5, vy: 3, life: 0, maxLife: 70, delay: Math.random() * 400 + 100,
-    }));
-
-    const draw = () => {
-      const isDark = darkRef.current;
-      const colors = isDark ? darkColors : lightColors;
-      ctx.fillStyle = isDark ? 'rgba(8,8,24,0.22)' : 'rgba(240,244,255,0.25)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      stars.forEach((s, i) => {
-        s.twinkle += 0.035;
-        const alpha = 0.35 + 0.65 * Math.abs(s.twinkle);
-        ctx.globalAlpha = isDark ? alpha : Math.min(1, alpha * 1.4);
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.fillRect(Math.floor(s.x), Math.floor(s.y), s.size, s.size);
-        if (s.size === 3) {
-          ctx.globalAlpha *= 0.35;
-          ctx.fillRect(Math.floor(s.x) - 2, Math.floor(s.y) + 1, 2, 1);
-          ctx.fillRect(Math.floor(s.x) + 3, Math.floor(s.y) + 1, 2, 1);
-          ctx.fillRect(Math.floor(s.x) + 1, Math.floor(s.y) - 2, 1, 2);
-          ctx.fillRect(Math.floor(s.x) + 1, Math.floor(s.y) + 3, 1, 2);
-        }
-        s.y += s.speed;
-        if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
-      });
-
-      shoots.forEach(sh => {
-        sh.delay--;
-        if (sh.delay > 0) return;
-        sh.life++;
-        if (sh.life > sh.maxLife) {
-          sh.x = Math.random() * canvas.width; sh.y = Math.random() * canvas.height * 0.3;
-          sh.life = 0; sh.delay = Math.random() * 300 + 150; return;
-        }
-        const isDark2 = darkRef.current;
-        const p = sh.life / sh.maxLife;
-        const trailColor = isDark2 ? '#00d4ff' : '#2d5fff';
-        const headColor  = isDark2 ? '#ffffff' : '#1a3aaa';
-        for (let i = 0; i < 18; i++) {
-          ctx.globalAlpha = (i / 18) * (p < 0.8 ? p / 0.8 : (1 - p) / 0.2) * 0.9;
-          ctx.fillStyle = trailColor;
-          ctx.fillRect(Math.floor(sh.x - sh.vx * (i * 0.5)), Math.floor(sh.y - sh.vy * (i * 0.5)), 2, 1);
-        }
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = headColor;
-        ctx.fillRect(Math.floor(sh.x), Math.floor(sh.y), 3, 2);
-        sh.x += sh.vx; sh.y += sh.vy;
-      });
-
-      ctx.globalAlpha = 1;
-      animId = requestAnimationFrame(draw);
-    };
-
-    ctx.fillStyle = darkRef.current ? '#080818' : '#f0f4ff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
-  }, []);
-
-  return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, zIndex: 0, imageRendering: 'pixelated' }} />;
 }
 
 function Login() {
@@ -114,9 +27,8 @@ function Login() {
   if (loading) {
     return (
       <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <PixelStarfield dark={isDark} />
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Jersey 10',monospace", fontSize: 24, color: isDark ? '#e8eeff' : '#0d1433' }}>
-          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '4px solid rgba(45,95,255,0.3)', borderTopColor: '#2d5fff', borderRadius: '50%', margin: '0 auto 16px' }} />
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)' }}>
+          <div style={{ animation: 'spin 1s linear infinite', width: 32, height: 32, border: '3px solid var(--px-border)', borderTopColor: 'var(--px-white)', borderRadius: '50%', margin: '0 auto 16px' }} />
           Cargando...
         </div>
         <style>{`
@@ -126,48 +38,21 @@ function Login() {
     );
   }
 
-  const cardBg = isDark ? 'rgba(2,2,16,0.85)' : 'rgba(255,255,255,0.9)';
-  const cardBorder = isDark ? '#1e2d7a' : '#c3d3e5';
-  const textTitle = isDark ? '#e8eeff' : '#0d1433';
-  const textMuted = isDark ? '#4a6a9a' : '#6b7280';
-  const btnBorder = isDark ? '#1e2d7a' : '#c3d3e5';
-  const btnBg = isDark ? 'rgba(15,44,69,0.3)' : 'rgba(45,95,255,0.05)';
-  const btnColor = isDark ? '#e8eeff' : '#0d1433';
-
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <PixelStarfield dark={isDark} />
-
-      {/* Scanlines */}
-      {isDark && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none',
-          background: 'repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0px,rgba(0,0,0,0.035) 1px,transparent 1px,transparent 3px)',
-        }} />
-      )}
-
-      {/* Central glow */}
-      <div style={{
-        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-        width: 600, height: 600, pointerEvents: 'none', zIndex: 1,
-        background: isDark ? 'radial-gradient(ellipse,rgba(45,95,255,0.12) 0%,transparent 70%)' : 'radial-gradient(ellipse,rgba(45,95,255,0.06) 0%,transparent 70%)',
-      }} />
+    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--px-bg)' }}>
 
       {/* Card */}
-      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 440 }}>
+      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 420 }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ animation: 'px-float 4s ease-in-out infinite', filter: isDark ? 'drop-shadow(0 0 12px rgba(45,95,255,0.7))' : 'none' }}>
-              <PixelRocket scale={2} />
-            </div>
+          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <LogoMark size={40} style={{ color: 'var(--px-white)' }} />
             <span style={{
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 28,
-              color: textTitle,
-              textShadow: isDark ? '0 0 20px rgba(0,212,255,0.4)' : 'none',
-              letterSpacing: '0.05em',
+              fontFamily: "'Inter',sans-serif",
+              fontWeight: 700,
+              fontSize: 22,
+              color: 'var(--px-white)',
             }}>
               StarDest
             </span>
@@ -175,44 +60,25 @@ function Login() {
         </div>
 
         {/* Main panel */}
-        <div style={{
-          background: cardBg,
-          border: `2px solid ${cardBorder}`,
-          boxShadow: isDark ? '6px 6px 0 rgba(0,0,0,0.7), 0 0 40px rgba(45,95,255,0.15)' : '6px 6px 0 rgba(45,95,255,0.1), 0 0 20px rgba(45,95,255,0.05)',
+        <div className="px-card" style={{
           padding: '40px 36px',
         }}>
-
-          {/* Panel header bar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            marginBottom: 28, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
-          }}>
-            {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-              <div key={c} style={{ width: 9, height: 9, background: c }} />
-            ))}
-            <span style={{
-              marginLeft: 8, fontFamily: "'Share Tech Mono',monospace",
-              fontSize: 12, color: textMuted, letterSpacing: '0.05em',
-            }}>
-              auth — secure-login
-            </span>
-          </div>
 
           {/* Heading */}
           <div style={{ marginBottom: 28, textAlign: 'center' }}>
             <h1 style={{
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 28,
-              color: textTitle,
+              fontFamily: "'Inter',sans-serif",
+              fontWeight: 800,
+              fontSize: 26,
+              color: 'var(--px-white)',
               margin: '0 0 6px',
-              letterSpacing: '0.04em',
             }}>
               {l.welcome || 'BIENVENIDO'}
             </h1>
             <p style={{
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 16,
-              color: textMuted,
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 15,
+              color: 'var(--px-muted)',
               margin: 0,
             }}>
               {l.subtitle || 'Inicia sesión para continuar'}
@@ -224,96 +90,84 @@ function Login() {
             <div style={{
               marginBottom: 20,
               padding: '12px 16px',
-              border: '2px solid #ef4444',
-              background: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',
-              color: isDark ? '#fca5a5' : '#b91c1c',
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 15,
+              border: '1px solid var(--px-border-glow)',
+              background: 'var(--px-bg2)',
+              color: 'var(--px-white)',
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 14,
               textAlign: 'center',
-              boxShadow: '3px 3px 0 rgba(239,68,68,0.15)',
+              borderRadius: 8,
             }}>
-              Error al iniciar sesión. Intenta de nuevo.
+              {l.error_login}
             </div>
           )}
 
           {/* Social login buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Google */}
             <a
               href="/api/auth/google"
+              className="px-border"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 12,
-                padding: '14px 20px',
-                border: `2px solid ${btnBorder}`,
-                background: btnBg,
-                color: btnColor,
+                padding: '13px 20px',
+                background: 'var(--px-bg)',
+                color: 'var(--px-white)',
                 textDecoration: 'none',
-                fontFamily: "'Jersey 10',monospace",
-                fontSize: 18,
-                letterSpacing: '0.04em',
-                transition: 'all 0.1s steps(2)',
+                fontFamily: "'Inter',sans-serif",
+                fontWeight: 600,
+                fontSize: 15,
+                borderRadius: 8,
+                transition: 'border-color 0.15s, background 0.15s',
                 cursor: 'pointer',
-                boxShadow: isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#2d5fff';
-                e.currentTarget.style.background = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(45,95,255,0.08)';
-                e.currentTarget.style.boxShadow = isDark
-                  ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
-                  : '4px 4px 0 rgba(45,95,255,0.15), 0 0 12px rgba(45,95,255,0.1)';
-                e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                e.currentTarget.style.borderColor = 'var(--px-border-glow)';
+                e.currentTarget.style.background = 'var(--px-bg2)';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = btnBorder;
-                e.currentTarget.style.background = btnBg;
-                e.currentTarget.style.boxShadow = isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)';
-                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.borderColor = 'var(--px-border)';
+                e.currentTarget.style.background = 'var(--px-bg)';
               }}
             >
               <GoogleIcon />
-              Continuar con Google
+              {l.google}
             </a>
 
             {/* GitHub */}
             <a
               href="/api/auth/github"
+              className="px-border"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 12,
-                padding: '14px 20px',
-                border: `2px solid ${btnBorder}`,
-                background: btnBg,
-                color: btnColor,
+                padding: '13px 20px',
+                background: 'var(--px-bg)',
+                color: 'var(--px-white)',
                 textDecoration: 'none',
-                fontFamily: "'Jersey 10',monospace",
-                fontSize: 18,
-                letterSpacing: '0.04em',
-                transition: 'all 0.1s steps(2)',
+                fontFamily: "'Inter',sans-serif",
+                fontWeight: 600,
+                fontSize: 15,
+                borderRadius: 8,
+                transition: 'border-color 0.15s, background 0.15s',
                 cursor: 'pointer',
-                boxShadow: isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)',
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#2d5fff';
-                e.currentTarget.style.background = isDark ? 'rgba(0,212,255,0.06)' : 'rgba(45,95,255,0.08)';
-                e.currentTarget.style.boxShadow = isDark
-                  ? '4px 4px 0 rgba(0,0,0,0.7), 0 0 12px rgba(45,95,255,0.3)'
-                  : '4px 4px 0 rgba(45,95,255,0.15), 0 0 12px rgba(45,95,255,0.1)';
-                e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                e.currentTarget.style.borderColor = 'var(--px-border-glow)';
+                e.currentTarget.style.background = 'var(--px-bg2)';
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = btnBorder;
-                e.currentTarget.style.background = btnBg;
-                e.currentTarget.style.boxShadow = isDark ? '3px 3px 0 rgba(0,0,0,0.5)' : '3px 3px 0 rgba(45,95,255,0.08)';
-                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.borderColor = 'var(--px-border)';
+                e.currentTarget.style.background = 'var(--px-bg)';
               }}
             >
-              <GitHubIcon color={btnColor} />
-              Continuar con GitHub
+              <GitHubIcon color="var(--px-white)" />
+              {l.github}
             </a>
           </div>
 
@@ -321,11 +175,11 @@ function Login() {
           <p style={{
             marginTop: 24,
             textAlign: 'center',
-            fontFamily: "'Jersey 10',monospace",
+            fontFamily: "'Inter',sans-serif",
             fontSize: 13,
-            color: textMuted,
+            color: 'var(--px-muted)',
           }}>
-            Al continuar aceptas los términos de uso
+            {l.terms}
           </p>
 
         </div>
@@ -336,11 +190,11 @@ function Login() {
             to="/"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontFamily: "'Jersey 10',monospace",
-              fontSize: 15, color: textMuted, textDecoration: 'none',
+              fontFamily: "'Inter',sans-serif",
+              fontSize: 14, color: 'var(--px-muted)', textDecoration: 'none',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = textTitle; }}
-            onMouseLeave={e => { e.currentTarget.style.color = textMuted; }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--px-white)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--px-muted)'; }}
           >
             ← {l.back_home || 'Volver al inicio'}
           </Link>
