@@ -440,22 +440,6 @@ export default function Deploy() {
             boxShadow: cardShadow,
           }}>
 
-            {/* Panel header bar */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginBottom: 20, borderBottom: `1px solid ${cardBorder}`, paddingBottom: 16,
-            }}>
-              {['#888888', '#888888', '#888888'].map((c, i) => (
-                <div key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: c, opacity: 0.4 }} />
-              ))}
-              <span style={{
-                marginLeft: 8, fontFamily: "'JetBrains Mono',monospace",
-                fontSize: 12, color: 'var(--px-muted)', letterSpacing: '0.05em',
-              }}>
-                stardest — mission-control
-              </span>
-            </div>
-
             {/* ── Tab switcher ── */}
             {(phase === 'form' || uploadPhase === 'form') && (
               <div style={{
@@ -544,6 +528,7 @@ export default function Deploy() {
                         boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
                         width: '100%',
+                        borderRadius: 8,
                       }}
                     />
                     <button
@@ -568,9 +553,10 @@ export default function Deploy() {
                         letterSpacing: '0.05em',
                         cursor: loadingBranches ? 'not-allowed' : 'pointer',
                         boxShadow: btnShadow,
-                        transition: 'all 0.1s steps(2)',
+                        transition: 'all 0.15s ease',
                         opacity: loadingBranches ? 0.6 : 1,
                         whiteSpace: 'nowrap',
+                        borderRadius: 8,
                       }}
                     >
                       {loadingBranches ? (
@@ -622,6 +608,7 @@ export default function Deploy() {
                         outline: 'none',
                         boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
+                        borderRadius: 8,
                       }}
                     >
                       {branches.map(b => <option key={b} value={b} style={{ background: inputBg, color: inputColor }}>{b}</option>)}
@@ -665,6 +652,7 @@ export default function Deploy() {
                         outline: 'none',
                         boxShadow: inputShadow,
                         transition: 'border-color 0.15s, box-shadow 0.15s',
+                        borderRadius: '8px 0 0 8px',
                       }}
                     />
                     <span className="px-2 sm:px-4 py-3" style={{
@@ -677,6 +665,7 @@ export default function Deploy() {
                       display: 'flex',
                       alignItems: 'center',
                       whiteSpace: 'nowrap',
+                      borderRadius: '0 8px 8px 0',
                     }}>
                       {d.form.subdomain_suffix}
                     </span>
@@ -710,12 +699,13 @@ export default function Deploy() {
                     letterSpacing: '0.08em',
                     cursor: 'pointer',
                     boxShadow: btnShadow,
-                    transition: 'all 0.1s steps(2)',
+                    transition: 'all 0.15s ease',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
                     textTransform: 'uppercase',
+                    borderRadius: 8,
                   }}
                 >
                   {d.form.submit}
@@ -748,6 +738,7 @@ export default function Deploy() {
                       border: `1px solid ${inputBorder}`,
                       fontFamily: "'JetBrains Mono',monospace",
                       fontSize: 14,
+                      borderRadius: 8,
                     }}>
                       <span style={{ color: textMuted }}>{label}</span>
                       <span style={{ color: accent ? (isDark ? 'var(--px-white)' : 'var(--px-white)') : pageTextColor, fontWeight: 'bold' }}>{value}</span>
@@ -776,7 +767,8 @@ export default function Deploy() {
                       fontSize: 16,
                       cursor: 'pointer',
                       boxShadow: btnShadow,
-                      transition: 'all 0.1s steps(2)',
+                      transition: 'all 0.15s ease',
+                      borderRadius: 8,
                     }}
                   >
                     {d.confirm.edit}
@@ -799,8 +791,9 @@ export default function Deploy() {
                       fontSize: 16,
                       cursor: 'pointer',
                       boxShadow: btnShadow,
-                      transition: 'all 0.1s steps(2)',
+                      transition: 'all 0.15s ease',
                       fontWeight: 'bold',
+                      borderRadius: 8,
                     }}
                   >
                     {d.confirm.confirm}
@@ -827,6 +820,7 @@ export default function Deploy() {
                   border: `1px solid ${inputBorder}`,
                   padding: 2,
                   boxSizing: 'border-box',
+                  borderRadius: 8,
                 }}>
                   <div
                     style={{
@@ -834,6 +828,7 @@ export default function Deploy() {
                       width: `${progress}%`,
                       background: 'repeating-linear-gradient(90deg, var(--px-border-glow) 0px, var(--px-border-glow) 6px, var(--px-white) 6px, var(--px-white) 8px)',
                       transition: 'width 0.4s ease-out',
+                      borderRadius: 4,
                     }}
                   />
                 </div>
@@ -859,6 +854,7 @@ export default function Deploy() {
                         fontSize: 13,
                         flex: 1,
                         textAlign: 'center',
+                        borderRadius: 8,
                       }}>
                         <div style={{
                           width: 24,
@@ -866,6 +862,7 @@ export default function Deploy() {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          borderRadius: 6,
                           background: done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBg,
                           border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}`,
                         }}>
@@ -932,6 +929,7 @@ export default function Deploy() {
                       border: `1px solid ${inputBorder}`,
                       fontFamily: "'JetBrains Mono',monospace",
                       fontSize: 14,
+                      borderRadius: 8,
                     }}>
                       <span style={{ color: textMuted }}>{label}</span>
                       <span style={{ color: green ? '#10b981' : pageTextColor, fontWeight: 'bold' }}>{value}</span>
@@ -990,7 +988,8 @@ export default function Deploy() {
                       fontSize: 16,
                       cursor: 'pointer',
                       boxShadow: btnShadow,
-                      transition: 'all 0.1s steps(2)',
+                      transition: 'all 0.15s ease',
+                      borderRadius: 8,
                     }}
                   >
                     {d.success.new_deploy}
@@ -1039,8 +1038,9 @@ export default function Deploy() {
                       letterSpacing: '0.08em',
                       cursor: 'pointer',
                       boxShadow: btnShadow,
-                      transition: 'all 0.1s steps(2)',
+                      transition: 'all 0.15s ease',
                       fontWeight: 'bold',
+                      borderRadius: 8,
                     }}
                   >
                     {d.error.retry}
@@ -1066,7 +1066,8 @@ export default function Deploy() {
                       fontSize: 16,
                       cursor: 'pointer',
                       boxShadow: btnShadow,
-                      transition: 'all 0.1s steps(2)',
+                      transition: 'all 0.15s ease',
+                      borderRadius: 8,
                     }}
                   >
                     {d.error.modify}
@@ -1103,7 +1104,7 @@ export default function Deploy() {
                             : uploadFile
                               ? (isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.05)')
                               : inputBg,
-                          borderRadius: 0,
+                          borderRadius: 10,
                           padding: '36px 24px',
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
                           cursor: uploadFile ? 'default' : 'pointer',
@@ -1131,6 +1132,7 @@ export default function Deploy() {
                                 background: 'transparent', border: `1px solid ${inputBorder}`,
                                 color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 14,
                                 cursor: 'pointer', letterSpacing: '0.04em',
+                                borderRadius: 8,
                               }}
                             >{u.file_change}</button>
                           </>
@@ -1154,6 +1156,7 @@ export default function Deploy() {
                                 color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif",
                                 fontSize: 15, cursor: 'pointer', boxShadow: btnShadow,
                                 letterSpacing: '0.04em',
+                                borderRadius: 8,
                               }}
                             >{u.drop_btn}</button>
                             <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: textMuted }}>
@@ -1192,6 +1195,7 @@ export default function Deploy() {
                             color: inputColor, fontFamily: "'JetBrains Mono',monospace",
                             fontSize: 14, outline: 'none', boxShadow: inputShadow,
                             transition: 'border-color 0.15s, box-shadow 0.15s',
+                            borderRadius: '8px 0 0 8px',
                           }}
                         />
                         <span style={{
@@ -1200,6 +1204,7 @@ export default function Deploy() {
                           border: `1px solid ${inputBorder}`, borderLeft: 'none',
                           color: textMuted, fontFamily: "'JetBrains Mono',monospace",
                           fontSize: 14, display: 'flex', alignItems: 'center',
+                          borderRadius: '0 8px 8px 0',
                         }}>{u.subdomain_suffix}</span>
                       </div>
                       {uploadSubdomainError
@@ -1221,9 +1226,10 @@ export default function Deploy() {
                         background: btnGradient, border: '1px solid var(--px-accent)',
                         color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif",
                         fontSize: 18, letterSpacing: '0.08em', cursor: 'pointer',
-                        boxShadow: btnShadow, transition: 'all 0.1s steps(2)',
+                        boxShadow: btnShadow, transition: 'all 0.15s ease',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         textTransform: 'uppercase',
+                        borderRadius: 8,
                       }}
                     >
                       {u.submit}
@@ -1250,6 +1256,7 @@ export default function Deploy() {
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '12px 16px', background: inputBg, border: `1px solid ${inputBorder}`,
                           fontFamily: "'JetBrains Mono',monospace", fontSize: 14,
+                          borderRadius: 8,
                         }}>
                           <span style={{ color: textMuted }}>{label}</span>
                           <span style={{ color: accent ? (isDark ? 'var(--px-white)' : 'var(--px-white)') : pageTextColor, fontWeight: 'bold' }}>{value}</span>
@@ -1261,13 +1268,13 @@ export default function Deploy() {
                         onClick={() => setUploadPhase('form')}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
-                        style={{ flex: 1, padding: '12px 20px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                        style={{ flex: 1, padding: '12px 20px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.15s ease', borderRadius: 8 }}
                       >{u.confirm_edit}</button>
                       <button
                         onClick={startUploadDeploy}
                         onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                        style={{ flex: 1, padding: '12px 20px', background: btnGradient, border: '1px solid var(--px-accent)', color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)', fontWeight: 'bold' }}
+                        style={{ flex: 1, padding: '12px 20px', background: btnGradient, border: '1px solid var(--px-accent)', color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.15s ease', fontWeight: 'bold', borderRadius: 8 }}
                       >{u.confirm_btn}</button>
                     </div>
                   </div>
@@ -1283,8 +1290,8 @@ export default function Deploy() {
                       </div>
                       <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, color: textTitle, fontWeight: 'bold' }}>{Math.round(uploadProgress)}%</span>
                     </div>
-                    <div style={{ width: '100%', height: 14, background: inputBg, border: `1px solid ${inputBorder}`, padding: 2, boxSizing: 'border-box' }}>
-                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'repeating-linear-gradient(90deg,var(--px-border-glow) 0px,var(--px-border-glow) 6px,var(--px-white) 6px,var(--px-white) 8px)', transition: 'width 0.4s ease-out' }} />
+                    <div style={{ width: '100%', height: 14, background: inputBg, border: `1px solid ${inputBorder}`, padding: 2, boxSizing: 'border-box', borderRadius: 8 }}>
+                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'repeating-linear-gradient(90deg,var(--px-border-glow) 0px,var(--px-border-glow) 6px,var(--px-white) 6px,var(--px-white) 8px)', transition: 'width 0.4s ease-out', borderRadius: 4 }} />
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
                       {[
@@ -1295,8 +1302,8 @@ export default function Deploy() {
                         const done   = uploadProgress >= threshold;
                         const active = uploadProgress > threshold - 30 && uploadProgress < threshold;
                         return (
-                          <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}`, background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(128,128,128,0.15)' : 'transparent', fontFamily: "'Inter',sans-serif", fontSize: 13, flex: 1, textAlign: 'center' }}>
-                            <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBg, border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}` }}>
+                          <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '12px 8px', border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}`, background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(128,128,128,0.15)' : 'transparent', fontFamily: "'Inter',sans-serif", fontSize: 13, flex: 1, textAlign: 'center', borderRadius: 8 }}>
+                            <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, background: done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBg, border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}` }}>
                               {done ? <svg style={{ width: 14, height: 14, color: '#fff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                                    : active ? <div style={{ width: 10, height: 10, border: '1px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                                    : <div style={{ width: 6, height: 6, background: inputBorder }} />}
@@ -1333,7 +1340,7 @@ export default function Deploy() {
                         { label: u.success_file,   value: uploadFile?.name },
                         { label: u.success_status, value: u.success_status_v, green: true },
                       ].map(({ label, value, green }) => (
-                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: inputBg, border: `1px solid ${inputBorder}`, fontFamily: "'JetBrains Mono',monospace", fontSize: 14 }}>
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: inputBg, border: `1px solid ${inputBorder}`, fontFamily: "'JetBrains Mono',monospace", fontSize: 14, borderRadius: 8 }}>
                           <span style={{ color: textMuted }}>{label}</span>
                           <span style={{ color: green ? '#10b981' : pageTextColor, fontWeight: 'bold' }}>{value}</span>
                         </div>
@@ -1353,7 +1360,7 @@ export default function Deploy() {
                         onClick={resetUpload}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
-                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.15s ease', borderRadius: 8 }}
                       >{u.success_new}</button>
                     </div>
                   </div>
@@ -1372,13 +1379,13 @@ export default function Deploy() {
                         onClick={startUploadDeploy}
                         onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-                        style={{ width: '100%', padding: '14px 24px', background: btnGradient, border: '1px solid var(--px-accent)', color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif", fontSize: 18, letterSpacing: '0.08em', cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)', fontWeight: 'bold' }}
+                        style={{ width: '100%', padding: '14px 24px', background: btnGradient, border: '1px solid var(--px-accent)', color: 'var(--px-accent-fg)', fontFamily: "'Inter',sans-serif", fontSize: 18, letterSpacing: '0.08em', cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.15s ease', fontWeight: 'bold', borderRadius: 8 }}
                       >{u.error_retry}</button>
                       <button
                         onClick={resetUpload}
                         onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = inputBorder; e.currentTarget.style.color = textMuted; }}
-                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.1s steps(2)' }}
+                        style={{ width: '100%', padding: '12px 24px', background: 'transparent', border: `1px solid ${inputBorder}`, color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 16, cursor: 'pointer', boxShadow: btnShadow, transition: 'all 0.15s ease', borderRadius: 8 }}
                       >{u.error_modify}</button>
                     </div>
                   </div>
