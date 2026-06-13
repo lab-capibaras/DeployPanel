@@ -48,9 +48,8 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!user) return;
-        const token = localStorage.getItem('auth_token');
         fetch('/api/deploys', {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
+            credentials: 'include'
         })
             .then(r => r.json())
             .then(data => {
@@ -90,12 +89,11 @@ export default function Dashboard() {
         setRedeploying(prev => ({ ...prev, [deploy.subdomain]: true }));
 
         try {
-            const token = localStorage.getItem('auth_token');
             const res = await fetch('/deploy', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     repoUrl: deploy.repo,

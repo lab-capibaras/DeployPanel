@@ -152,12 +152,11 @@ export default function Deploy() {
 
     const finalTimer = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('auth_token');
         const response = await fetch('/deploy', {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
           body: JSON.stringify(formData),
         });
@@ -322,10 +321,9 @@ export default function Deploy() {
         formPayload.append('file', uploadFile, `${uploadSubdomain}.zip`);
         formPayload.append('subdomain', uploadSubdomain);
 
-        const token = localStorage.getItem('auth_token');
         const response = await fetch('/api/deploy/upload', {
           method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
           body: formPayload,
         });
 

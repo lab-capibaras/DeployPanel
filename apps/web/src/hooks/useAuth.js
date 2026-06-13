@@ -12,9 +12,8 @@ function notify() {
 
 function fetchAuth() {
     if (authPromise) return authPromise;
-    const token = localStorage.getItem('auth_token');
     authPromise = fetch('/api/auth/me', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        credentials: 'include'
     })
         .then(r => r.json())
         .then(data => {
@@ -38,11 +37,10 @@ export function useAuth() {
 
     const logout = async () => {
         try {
-            await fetch('/api/auth/logout', { method: 'POST' });
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
         } catch (e) {
             console.error('Logout request failed:', e);
         }
-        localStorage.removeItem('auth_token');
         authState = { user: null, loading: false };
         authPromise = null;
         notify();

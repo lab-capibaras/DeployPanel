@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
@@ -28,6 +30,11 @@ const upload = multer({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+app.use(cookieParser());
+app.use(cors({
+    origin: 'https://stardest.com',
+    credentials: true
+}));
 
 // ==========================================
 // --- AUTENTICACIÓN OAuth ---
@@ -79,11 +86,14 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
     (req, res) => {
-        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
-        res.send(`<!DOCTYPE html><html><body><script>
-            localStorage.setItem('auth_token', '${token}');
-            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
-        </script></body></html>`);
+        const token = jwt.sign(req.user, process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/dashboard`);
     }
 );
 
@@ -93,28 +103,42 @@ app.get('/auth/github',
 app.get('/auth/github/callback',
     passport.authenticate('github', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stardest.com'}/login?error=1`, session: false }),
     (req, res) => {
-        const token = jwt.sign(req.user, process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
-        res.send(`<!DOCTYPE html><html><body><script>
-            localStorage.setItem('auth_token', '${token}');
-            window.location.href = '${process.env.FRONTEND_URL || 'https://stardest.com'}/deploy';
-        </script></body></html>`);
+        const token = jwt.sign(req.user, process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret', { expiresIn: '7d' });
+        res.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/dashboard`);
     }
 );
 
-// Sesión actual
-app.get('/auth/me', (req, res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.json({ authenticated: false, user: null });
+// Middleware de autenticación centralizado
+const requireAuth = (req, res, next) => {
+    const token = req.cookies.auth_token;
+    if (!token) return res.status(401).json({ error: 'No autorizado' });
     try {
-        const user = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
-        res.json({ authenticated: true, user });
+        req.user = jwt.verify(token, process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret');
+        next();
     } catch {
-        res.json({ authenticated: false, user: null });
+        res.clearCookie('auth_token');
+        res.status(401).json({ error: 'Token inválido o expirado' });
     }
+};
+
+// Sesión actual
+app.get('/auth/me', requireAuth, (req, res) => {
+    res.json({ authenticated: true, user: req.user });
 });
 
 // Logout
 app.post('/auth/logout', (req, res) => {
+    res.clearCookie('auth_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict'
+    });
     res.json({ ok: true });
 });
 
@@ -528,24 +552,12 @@ CMD ["npm", "start"]
 // ==========================================
 
 // 1. Despliegue Manual
-app.post('/deploy', async (req, res) => {
+app.post('/deploy', requireAuth, async (req, res) => {
     const { repoUrl, subdomain, branch } = req.body;
     if (!repoUrl || !subdomain) return res.status(400).send("Faltan datos: repoUrl o subdomain");
 
-    // Extraer usuario del token JWT
-    let userId = 'anonymous';
-    let userEmail = 'anonymous';
-    const authHeader = req.headers.authorization;
-    if (authHeader) {
-        try {
-            const token = authHeader.split(' ')[1];
-            const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
-            userId = decoded.id || 'anonymous';
-            userEmail = decoded.email || 'anonymous';
-        } catch (e) {
-            // token inválido, continuar como anonymous
-        }
-    }
+    const userId = req.user.id || 'anonymous';
+    const userEmail = req.user.email || 'anonymous';
 
     const actualBranch = branch || 'main';
     try {
@@ -631,20 +643,9 @@ app.delete('/deploy/:subdomain', async (req, res) => {
 });
 
 // 4. Consultar Despliegues
-app.get('/deploys', async (req, res) => {
+app.get('/deploys', requireAuth, async (req, res) => {
     try {
-        // Intentar extraer userId del token
-        let filterUserId = null;
-        const authHeader = req.headers.authorization;
-        if (authHeader) {
-            try {
-                const token = authHeader.split(' ')[1];
-                const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'dev-secret');
-                filterUserId = decoded.id || null;
-            } catch (e) {
-                // token inválido, mostrar todos
-            }
-        }
+        const filterUserId = req.user.id || null;
 
         const containers = await docker.listContainers({ all: true });
         const deploys = containers
