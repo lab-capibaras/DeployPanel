@@ -36,6 +36,7 @@ export default function Dashboard() {
     const [deploys, setDeploys]   = useState([]);
     const [loading, setLoading]   = useState(true);
     const [deleting, setDeleting] = useState(null);
+    const [redeploying, setRedeploying] = useState({});
 
     useEffect(() => {
         if (!authLoading && !user) navigate('/login');
@@ -68,6 +69,40 @@ export default function Dashboard() {
             console.error(err);
         } finally {
             setDeleting(null);
+        }
+    }
+
+    async function handleRedeploy(deploy) {
+        if (deploy.repo === 'unknown' || deploy.repo === 'zip-upload') return;
+
+        setRedeploying(prev => ({ ...prev, [deploy.subdomain]: true }));
+
+        try {
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch('/deploy', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    repoUrl: deploy.repo,
+                    subdomain: deploy.subdomain,
+                    branch: deploy.branch === 'unknown' ? 'main' : deploy.branch
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                setDeploys(prev => prev.map(d =>
+                    d.subdomain === deploy.subdomain
+                        ? { ...d, deployedAt: data.deployedAt }
+                        : d
+                ));
+            }
+        } catch (err) {
+            console.error('Error en redeploy:', err);
+        } finally {
+            setRedeploying(prev => ({ ...prev, [deploy.subdomain]: false }));
         }
     }
 
@@ -195,6 +230,25 @@ export default function Dashboard() {
                                 >
                                     {dash.visit}
                                 </a>
+                                {deploy.repo !== 'unknown' && deploy.repo !== 'zip-upload' && (
+                                    <button
+                                        onClick={() => handleRedeploy(deploy)}
+                                        disabled={redeploying[deploy.subdomain]}
+                                        className="px-border"
+                                        style={{
+                                            fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
+                                            padding: '8px 16px', borderRadius: 8,
+                                            background: 'var(--px-bg)',
+                                            color: redeploying[deploy.subdomain] ? 'var(--px-muted)' : 'var(--px-white)',
+                                            cursor: redeploying[deploy.subdomain] ? 'not-allowed' : 'pointer',
+                                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                                            transition: 'opacity 0.15s ease',
+                                            opacity: redeploying[deploy.subdomain] ? 0.6 : 1,
+                                        }}
+                                    >
+                                        {redeploying[deploy.subdomain] ? dash.redeploying : dash.redeploy}
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => handleDelete(deploy.subdomain)}
                                     disabled={deleting === deploy.subdomain}

@@ -270,6 +270,8 @@ const en = {
     time_day:     (n) => `${n} day${n > 1 ? 's' : ''} ago`,
     unknown_repo: 'Unknown',
     visit:        'Visit →',
+    redeploy:     'Redeploy',
+    redeploying:  'Deploying...',
     delete:       'Delete',
     deleting:     '...',
     confirm_delete: (subdomain) => `Delete ${subdomain}.stardest.com?`,

@@ -268,6 +268,8 @@ const es = {
     time_day:     (n) => `Hace ${n} día${n > 1 ? 's' : ''}`,
     unknown_repo: 'Desconocido',
     visit:        'Visitar →',
+    redeploy:     'Redesplegar',
+    redeploying:  'Desplegando...',
     delete:       'Eliminar',
     deleting:     '...',
     confirm_delete: (subdomain) => `¿Eliminar ${subdomain}.stardest.com?`,
