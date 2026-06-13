@@ -15,6 +15,17 @@ const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
+// Un ZIP siempre empieza con PK (0x50 0x4B 0x03 0x04)
+const isValidZip = (buffer) => {
+    return (
+        buffer.length >= 4 &&
+        buffer[0] === 0x50 &&
+        buffer[1] === 0x4B &&
+        buffer[2] === 0x03 &&
+        buffer[3] === 0x04
+    );
+};
+
 // Multer: guarda el zip en memoria para procesarlo con adm-zip
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -817,6 +828,11 @@ app.post('/deploy/upload', upload.single('file'), async (req, res) => {
         return res.status(400).json({ status: 'error', message: 'Subdominio inválido' });
     }
 
+    // Validación de magic bytes — debe ser lo primero
+    if (!isValidZip(req.file.buffer)) {
+        return res.status(400).json({ status: 'error', message: 'Archivo inválido. Solo se aceptan ZIPs reales.' });
+    }
+
     try {
         if (!fs.existsSync(STATIC_SITES_DIR)) fs.mkdirSync(STATIC_SITES_DIR, { recursive: true });
         if (!fs.existsSync(NGINX_CONFIGS_DIR)) fs.mkdirSync(NGINX_CONFIGS_DIR, { recursive: true });
@@ -827,6 +843,15 @@ app.post('/deploy/upload', upload.single('file'), async (req, res) => {
 
         console.log(`[Upload] Extrayendo zip para: ${subdomain} (${req.file.size} bytes)`);
         const zip = new AdmZip(req.file.buffer);
+        const zipEntries = zip.getEntries();
+
+        const MAX_UNCOMPRESSED = 500 * 1024 * 1024; // 500 MB
+        const totalUncompressed = zipEntries.reduce((acc, entry) => acc + entry.header.size, 0);
+
+        if (totalUncompressed > MAX_UNCOMPRESSED) {
+            return res.status(400).json({ status: 'error', message: 'El archivo ZIP excede el tamaño máximo permitido descomprimido.' });
+        }
+
         zip.extractAllTo(siteDir, true);
 
         const entries = fs.readdirSync(siteDir);
