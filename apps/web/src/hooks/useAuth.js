@@ -1,20 +1,39 @@
 import { useState, useEffect } from 'react';
 
+// Module-level cache: every useAuth() consumer shares a single /api/auth/me
+// request instead of each firing its own (navbar, page, etc all mount at once).
+let authState = { user: null, loading: true };
+let authPromise = null;
+const listeners = new Set();
+
+function notify() {
+    listeners.forEach(fn => fn(authState));
+}
+
+function fetchAuth() {
+    if (authPromise) return authPromise;
+    const token = localStorage.getItem('auth_token');
+    authPromise = fetch('/api/auth/me', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+        .then(r => r.json())
+        .then(data => {
+            authState = { user: data.authenticated ? data.user : null, loading: false };
+        })
+        .catch(() => {
+            authState = { user: null, loading: false };
+        })
+        .finally(notify);
+    return authPromise;
+}
+
 export function useAuth() {
-    const [user, setUser]       = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [state, setState] = useState(authState);
 
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
-        fetch('/api/auth/me', {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-        })
-            .then(r => r.json())
-            .then(data => {
-                setUser(data.authenticated ? data.user : null);
-            })
-            .catch(() => setUser(null))
-            .finally(() => setLoading(false));
+        listeners.add(setState);
+        fetchAuth();
+        return () => listeners.delete(setState);
     }, []);
 
     const logout = async () => {
@@ -24,9 +43,11 @@ export function useAuth() {
             console.error('Logout request failed:', e);
         }
         localStorage.removeItem('auth_token');
-        setUser(null);
+        authState = { user: null, loading: false };
+        authPromise = null;
+        notify();
         window.location.href = '/login';
     };
 
-    return { user, loading, logout };
+    return { ...state, logout };
 }
