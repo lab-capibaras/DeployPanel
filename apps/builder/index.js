@@ -9,6 +9,7 @@ const os = require('os');
 const { exec } = require('child_process');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
@@ -35,6 +36,32 @@ app.use(cors({
     origin: 'https://stardest.com',
     credentials: true
 }));
+
+// Limiter para autenticación — 10 intentos cada 15 minutos
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos, espera 15 minutos' }
+});
+
+// Limiter general para toda la API — 100 requests por minuto
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiadas solicitudes, intenta más tarde' }
+});
+
+// Auth — más restrictivo
+app.use('/auth/google', authLimiter);
+app.use('/auth/github', authLimiter);
+app.use('/auth/logout', authLimiter);
+
+// API general
+app.use('/api', apiLimiter);
 
 // ==========================================
 // --- AUTENTICACIÓN OAuth ---
