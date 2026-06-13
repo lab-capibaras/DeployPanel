@@ -28,6 +28,8 @@ const STATUS_COLOR = {
     exited:     { bg: 'rgba(255,60,60,0.12)',  border: 'rgba(255,60,60,0.35)',  dot: '#ff3c3c' },
 };
 
+const REDEPLOY_COOLDOWN_MS = 60000;
+
 export default function Dashboard() {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
@@ -37,6 +39,8 @@ export default function Dashboard() {
     const [loading, setLoading]   = useState(true);
     const [deleting, setDeleting] = useState(null);
     const [redeploying, setRedeploying] = useState({});
+    const [cooldowns, setCooldowns] = useState({});
+    const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
         if (!authLoading && !user) navigate('/login');
@@ -72,8 +76,16 @@ export default function Dashboard() {
         }
     }
 
+    useEffect(() => {
+        const hasActiveCooldown = Object.values(cooldowns).some(expiry => expiry > now);
+        if (!hasActiveCooldown) return;
+        const id = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, [cooldowns, now]);
+
     async function handleRedeploy(deploy) {
         if (deploy.repo === 'unknown' || deploy.repo === 'zip-upload') return;
+        if (cooldowns[deploy.subdomain] > Date.now()) return;
 
         setRedeploying(prev => ({ ...prev, [deploy.subdomain]: true }));
 
@@ -103,6 +115,7 @@ export default function Dashboard() {
             console.error('Error en redeploy:', err);
         } finally {
             setRedeploying(prev => ({ ...prev, [deploy.subdomain]: false }));
+            setCooldowns(prev => ({ ...prev, [deploy.subdomain]: Date.now() + REDEPLOY_COOLDOWN_MS }));
         }
     }
 
@@ -230,25 +243,35 @@ export default function Dashboard() {
                                 >
                                     {dash.visit}
                                 </a>
-                                {deploy.repo !== 'unknown' && deploy.repo !== 'zip-upload' && (
-                                    <button
-                                        onClick={() => handleRedeploy(deploy)}
-                                        disabled={redeploying[deploy.subdomain]}
-                                        className="px-border"
-                                        style={{
-                                            fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
-                                            padding: '8px 16px', borderRadius: 8,
-                                            background: 'var(--px-bg)',
-                                            color: redeploying[deploy.subdomain] ? 'var(--px-muted)' : 'var(--px-white)',
-                                            cursor: redeploying[deploy.subdomain] ? 'not-allowed' : 'pointer',
-                                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                                            transition: 'opacity 0.15s ease',
-                                            opacity: redeploying[deploy.subdomain] ? 0.6 : 1,
-                                        }}
-                                    >
-                                        {redeploying[deploy.subdomain] ? dash.redeploying : dash.redeploy}
-                                    </button>
-                                )}
+                                {deploy.repo !== 'unknown' && deploy.repo !== 'zip-upload' && (() => {
+                                    const isRedeploying = redeploying[deploy.subdomain];
+                                    const cooldownLeft = Math.ceil(((cooldowns[deploy.subdomain] || 0) - now) / 1000);
+                                    const onCooldown = cooldownLeft > 0;
+                                    const disabled = isRedeploying || onCooldown;
+                                    return (
+                                        <button
+                                            onClick={() => handleRedeploy(deploy)}
+                                            disabled={disabled}
+                                            className="px-border"
+                                            style={{
+                                                fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
+                                                padding: '8px 16px', borderRadius: 8,
+                                                background: 'var(--px-bg)',
+                                                color: disabled ? 'var(--px-muted)' : 'var(--px-white)',
+                                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                transition: 'opacity 0.15s ease',
+                                                opacity: disabled ? 0.6 : 1,
+                                            }}
+                                        >
+                                            {isRedeploying
+                                                ? dash.redeploying
+                                                : onCooldown
+                                                    ? dash.redeploy_cooldown(cooldownLeft)
+                                                    : dash.redeploy}
+                                        </button>
+                                    );
+                                })()}
                                 <button
                                     onClick={() => handleDelete(deploy.subdomain)}
                                     disabled={deleting === deploy.subdomain}

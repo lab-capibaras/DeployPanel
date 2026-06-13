@@ -270,6 +270,7 @@ const es = {
     visit:        'Visitar →',
     redeploy:     'Redesplegar',
     redeploying:  'Desplegando...',
+    redeploy_cooldown: (s) => `Espera ${s}s`,
     delete:       'Eliminar',
     deleting:     '...',
     confirm_delete: (subdomain) => `¿Eliminar ${subdomain}.stardest.com?`,

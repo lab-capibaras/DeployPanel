@@ -272,6 +272,7 @@ const en = {
     visit:        'Visit →',
     redeploy:     'Redeploy',
     redeploying:  'Deploying...',
+    redeploy_cooldown: (s) => `Wait ${s}s`,
     delete:       'Delete',
     deleting:     '...',
     confirm_delete: (subdomain) => `Delete ${subdomain}.stardest.com?`,
