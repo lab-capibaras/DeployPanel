@@ -10,6 +10,21 @@ const { exec } = require('child_process');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const pino = require('pino');
+
+const logger = pino({
+    level: 'info',
+    transport: {
+        target: 'pino-pretty',
+        options: { colorize: true, translateTime: 'SYS:standard' }
+    }
+});
+
+// Cloudflare envía la IP real en el header CF-Connecting-IP
+const getIP = (req) =>
+    req.headers['cf-connecting-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0] ||
+    req.socket.remoteAddress;
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Traefik/Cloudflare)
@@ -131,6 +146,13 @@ app.get('/auth/google/callback',
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
+        logger.info({
+            event: 'login',
+            provider: 'google',
+            userId: req.user.id,
+            email: req.user.email,
+            ip: getIP(req)
+        }, 'Login exitoso');
         res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/dashboard`);
     }
 );
@@ -148,6 +170,13 @@ app.get('/auth/github/callback',
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
+        logger.info({
+            event: 'login',
+            provider: 'github',
+            userId: req.user.id,
+            email: req.user.email,
+            ip: getIP(req)
+        }, 'Login exitoso');
         res.redirect(`${process.env.FRONTEND_URL || 'https://stardest.com'}/dashboard`);
     }
 );
@@ -161,6 +190,11 @@ const requireAuth = (req, res, next) => {
         next();
     } catch {
         res.clearCookie('auth_token');
+        logger.warn({
+            event: 'auth_failed',
+            ip: getIP(req),
+            path: req.path
+        }, 'Token inválido o expirado');
         res.status(401).json({ error: 'Token inválido o expirado' });
     }
 };
@@ -172,11 +206,25 @@ app.get('/auth/me', requireAuth, (req, res) => {
 
 // Logout
 app.post('/auth/logout', (req, res) => {
+    let user;
+    try {
+        user = jwt.verify(req.cookies.auth_token, process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret');
+    } catch {
+        // token inválido o ausente, se ignora para el log
+    }
+
     res.clearCookie('auth_token', {
         httpOnly: true,
         secure: true,
         sameSite: 'strict'
     });
+
+    logger.info({
+        event: 'logout',
+        userId: user?.id,
+        ip: getIP(req)
+    }, 'Logout');
+
     res.json({ ok: true });
 });
 
@@ -598,9 +646,25 @@ app.post('/deploy', requireAuth, async (req, res) => {
     const userEmail = req.user.email || 'anonymous';
 
     const actualBranch = branch || 'main';
+
+    logger.info({
+        event: 'deploy_start',
+        userId: req.user?.id,
+        subdomain,
+        repoUrl,
+        branch: branch || 'default',
+        ip: getIP(req)
+    }, 'Deploy iniciado');
+
     try {
         const url = await deployApp(repoUrl, subdomain, actualBranch, userId, userEmail);
         saveDeployment(repoUrl, actualBranch, subdomain);
+        logger.info({
+            event: 'deploy_success',
+            userId: req.user?.id,
+            subdomain,
+            ip: getIP(req)
+        }, 'Deploy completado');
         res.json({
             status: 'success',
             url: url,
@@ -609,6 +673,13 @@ app.post('/deploy', requireAuth, async (req, res) => {
             deployedAt: new Date().toISOString()
         });
     } catch (error) {
+        logger.error({
+            event: 'deploy_error',
+            userId: req.user?.id,
+            subdomain,
+            error: error.message,
+            ip: getIP(req)
+        }, 'Deploy fallido');
         res.status(500).json({ status: 'error', details: error.message });
     }
 });
