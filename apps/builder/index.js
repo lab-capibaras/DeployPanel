@@ -315,6 +315,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         let isVite = false;
         let isPython = !!requirementsPath;
         let isNode = fs.existsSync(packageJsonPath);
+        const hasIndexHtml = fs.existsSync(path.join(repoPath, 'index.html'));
 
         if (!isNextJs && isNode) {
             try {
@@ -559,6 +560,18 @@ CMD ["npm", "start"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile para Node.js generado exitosamente.');
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+            await runDockerBuild(stream);
+
+        } else if (hasIndexHtml) {
+            console.log(`Sitio estático detectado (index.html). Generando Dockerfile con Nginx...`);
+            const dockerfile = `FROM nginx:alpine
+RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+COPY . /usr/share/nginx/html
+EXPOSE 3000
+`;
+            fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
+            console.log('Dockerfile estático de Nginx generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
