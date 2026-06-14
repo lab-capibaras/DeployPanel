@@ -129,7 +129,7 @@ export default function Dashboard() {
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 16px' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+            <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
                 <div>
                     <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 26, color: 'var(--px-white)', margin: 0 }}>
                         {dash.title}
@@ -153,7 +153,7 @@ export default function Dashboard() {
 
             {/* Lista vacía */}
             {deploys.length === 0 && (
-                <div className="px-card" style={{
+                <div className="px-card fade-up fade-up-1" style={{
                     textAlign: 'center', padding: '60px 24px',
                 }}>
                     <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)', margin: 0 }}>
@@ -167,14 +167,14 @@ export default function Dashboard() {
 
             {/* Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {deploys.map(deploy => {
+                {deploys.map((deploy, idx) => {
                     const s = STATUS_COLOR[deploy.status] || STATUS_COLOR.exited;
                     const statusLabel = dash.status[deploy.status] || dash.status.exited;
                     const url = `https://${deploy.subdomain}.stardest.com`;
                     return (
                         <div
                             key={deploy.subdomain}
-                            className="px-card"
+                            className={`px-card fade-up fade-up-${Math.min(idx + 1, 4)}`}
                             style={{
                                 padding: '20px 24px',
                                 display: 'flex',
@@ -226,18 +226,22 @@ export default function Dashboard() {
                             </div>
 
                             {/* Acciones */}
-                            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                            <div className="w-full sm:w-auto" style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                                 <a
                                     href={url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="px-border"
+                                    className="px-border flex-1 sm:flex-none"
                                     style={{
                                         fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
                                         padding: '8px 16px', borderRadius: 8,
                                         background: 'var(--px-bg)',
                                         color: 'var(--px-white)', textDecoration: 'none',
+                                        textAlign: 'center',
+                                        transition: 'border-color 0.15s ease, background 0.15s ease',
                                     }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-bg2)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = 'var(--px-bg)'; }}
                                 >
                                     {dash.visit}
                                 </a>
@@ -250,15 +254,15 @@ export default function Dashboard() {
                                         <button
                                             onClick={() => handleRedeploy(deploy)}
                                             disabled={disabled}
-                                            className="px-border"
+                                            className="px-border flex-1 sm:flex-none"
                                             style={{
                                                 fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
                                                 padding: '8px 16px', borderRadius: 8,
                                                 background: 'var(--px-bg)',
                                                 color: disabled ? 'var(--px-muted)' : 'var(--px-white)',
                                                 cursor: disabled ? 'not-allowed' : 'pointer',
-                                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                                transition: 'opacity 0.15s ease',
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                transition: 'opacity 0.15s ease, border-color 0.15s ease',
                                                 opacity: disabled ? 0.6 : 1,
                                             }}
                                         >
@@ -273,6 +277,7 @@ export default function Dashboard() {
                                 <button
                                     onClick={() => handleDelete(deploy.subdomain)}
                                     disabled={deleting === deploy.subdomain}
+                                    className="flex-1 sm:flex-none"
                                     style={{
                                         fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
                                         padding: '8px 16px', borderRadius: 8,
@@ -280,7 +285,10 @@ export default function Dashboard() {
                                         border: '1px solid rgba(255,60,60,0.25)',
                                         color: deleting === deploy.subdomain ? 'rgba(255,60,60,0.4)' : '#ff3c3c',
                                         cursor: deleting === deploy.subdomain ? 'not-allowed' : 'pointer',
+                                        transition: 'background 0.15s ease, border-color 0.15s ease',
                                     }}
+                                    onMouseEnter={e => { if (deleting !== deploy.subdomain) { e.currentTarget.style.background = 'rgba(255,60,60,0.15)'; e.currentTarget.style.borderColor = 'rgba(255,60,60,0.4)'; } }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,60,60,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,60,60,0.25)'; }}
                                 >
                                     {deleting === deploy.subdomain ? dash.deleting : dash.delete}
                                 </button>

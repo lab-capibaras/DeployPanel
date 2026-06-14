@@ -39,10 +39,11 @@ function Login() {
   }
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--px-bg)' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--px-bg)', overflow: 'hidden' }}>
+      <div className="px-glow-bg" />
 
       {/* Card */}
-      <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 420 }}>
+      <div className="fade-up" style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 420 }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
@@ -62,6 +63,7 @@ function Login() {
         {/* Main panel */}
         <div className="px-card" style={{
           padding: '40px 36px',
+          boxShadow: 'var(--px-shadow-md)',
         }}>
 
           {/* Heading */}

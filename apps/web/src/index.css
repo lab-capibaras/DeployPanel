@@ -30,6 +30,8 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --px-font-vt:     'Inter', system-ui, sans-serif;
   --nav-bg:         rgba(10, 10, 10, 0.85);
   --drawer-bg:      rgba(10, 10, 10, 0.97);
+  --px-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.25);
+  --px-shadow-md:   0 12px 36px rgba(0, 0, 0, 0.35);
 }
 
 /* ─── Suppress nav tap highlight ──────────────────── */
@@ -85,12 +87,13 @@ body {
   background: var(--px-surface);
   border: 1px solid var(--px-border);
   border-radius: 12px;
-  box-shadow: none;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  box-shadow: var(--px-shadow-sm);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 .px-card:hover {
   border-color: var(--px-border-glow);
   transform: translateY(-2px);
+  box-shadow: var(--px-shadow-md);
 }
 
 /* ─── Button ──────────────────────────────────────── */
@@ -111,9 +114,12 @@ body {
 }
 .px-btn:hover {
   opacity: 0.85;
+  box-shadow: var(--px-shadow-sm);
+  transform: translateY(-1px);
 }
 .px-btn:active {
   transform: scale(0.98);
+  box-shadow: none;
 }
 
 /* ─── Button outline variant ──────────────────────── */
@@ -213,6 +219,45 @@ body {
   box-shadow: 0 8px 30px rgba(0,0,0,0.3) !important;
 }
 
+/* ─── Focus states (accessibility + polish) ───────── */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--px-border-glow);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Entrance animations ─────────────────────────── */
+@keyframes px-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+  animation: px-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.fade-up-1 { animation-delay: 0.05s; }
+.fade-up-2 { animation-delay: 0.12s; }
+.fade-up-3 { animation-delay: 0.2s; }
+.fade-up-4 { animation-delay: 0.28s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4 {
+    animation: none;
+  }
+}
+
+/* ─── Glow backdrop (subtle radial highlight) ─────── */
+.px-glow-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(60% 50% at 50% 0%, var(--px-glow-blue), transparent 70%);
+}
+
 /* ─── Light mode ─────────────────────────────────── */
 html.light-mode {
   --px-bg:          #ffffff;
@@ -226,6 +271,8 @@ html.light-mode {
   --px-accent-fg:   #ffffff;
   --px-glow-blue:   rgba(0,0,0,0.04);
   --px-glow-cyan:   rgba(0,0,0,0.03);
+  --px-shadow-sm:   0 2px 12px rgba(0, 0, 0, 0.05);
+  --px-shadow-md:   0 12px 32px rgba(0, 0, 0, 0.08);
 }
 
 html.light-mode body {

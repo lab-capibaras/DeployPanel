@@ -369,7 +369,7 @@ export default function Deploy() {
   const pageTextColor = 'var(--px-white)';
   const cardBg = 'var(--px-surface)';
   const cardBorder = 'var(--px-border)';
-  const cardShadow = 'none';
+  const cardShadow = 'var(--px-shadow-md)';
 
   const textTitle = 'var(--px-white)';
   const textMuted = 'var(--px-muted)';
@@ -389,11 +389,12 @@ export default function Deploy() {
   // ===== RENDER =====
   return (
     <div className="relative min-h-screen overflow-x-hidden" style={{ backgroundColor: pageBg, color: pageTextColor }}>
+      <div className="px-glow-bg" />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 pt-28 pb-20">
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 2 }}>
+        <div className="fade-up" style={{ textAlign: 'center', marginBottom: 40, position: 'relative', zIndex: 2 }}>
           <div className="px-border" style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -430,7 +431,7 @@ export default function Deploy() {
           }}>{d.subtitle}</p>
         </div>
 
-        <div className="w-full max-w-2xl" style={{ position: 'relative', zIndex: 2 }}>
+        <div className="w-full max-w-2xl fade-up fade-up-1" style={{ position: 'relative', zIndex: 2 }}>
           <div className="p-5 sm:p-8" style={{
             background: cardBg,
             border: `1px solid ${cardBorder}`,

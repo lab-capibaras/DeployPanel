@@ -24,6 +24,7 @@ function MissionStep({ num, icon, title, desc, active }) {
       background: cardBg,
       border:`1px solid ${active ? 'var(--px-border-glow)' : 'var(--px-border)'}`,
       borderRadius: 14,
+      boxShadow: 'var(--px-shadow-sm)',
       transition:'all 0.2s',
     }}>
       <div style={{
@@ -40,7 +41,7 @@ function MissionStep({ num, icon, title, desc, active }) {
 }
 
 /* ─── Feature card ─── */
-function FeatureCard({ icon, title, desc, tag }) {
+function FeatureCard({ icon, title, desc, tag, className }) {
   const [hov, setHov] = useState(false);
   const isDark = useTheme();
   const cardBg = isDark
@@ -49,12 +50,14 @@ function FeatureCard({ icon, title, desc, tag }) {
   const titleColor = 'var(--px-white)';
   return (
     <div
+      className={className}
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         padding:'28px 24px',
         background: cardBg,
         border:`1px solid ${hov ? 'var(--px-border-glow)' : 'var(--px-border)'}`,
         borderRadius: 14,
+        boxShadow: hov ? 'var(--px-shadow-md)' : 'var(--px-shadow-sm)',
         transform: hov ? 'translateY(-2px)' : 'none',
         transition:'all 0.15s ease',
         cursor:'default',
@@ -131,13 +134,14 @@ export default function Home() {
       <div style={{ position:'relative', zIndex:2 }}>
 
         {/* ══ HERO ══ */}
-        <section style={{ padding:'120px 24px 80px', textAlign:'center', position:'relative' }}>
+        <section className="px-4 sm:px-6" style={{ padding:'88px 16px 64px', textAlign:'center', position:'relative' }}>
+          <div className="px-glow-bg" />
 
           {/* Main heading */}
-          <h1 style={{ margin:'0 0 24px', lineHeight:1.1 }}>
+          <h1 className="fade-up" style={{ margin:'0 0 24px', lineHeight:1.1, position:'relative' }}>
             <span style={{
               display:'block', fontFamily:"'Inter',sans-serif", fontWeight:800,
-              fontSize:'clamp(40px, 7vw, 84px)',
+              fontSize:'clamp(36px, 7vw, 84px)',
               color:'var(--px-white)',
               marginBottom:8,
               letterSpacing:'-0.02em',
@@ -146,7 +150,7 @@ export default function Home() {
             </span>
             <span style={{
               display:'block', fontFamily:"'Inter',sans-serif", fontWeight:800,
-              fontSize:'clamp(40px, 7vw, 84px)',
+              fontSize:'clamp(36px, 7vw, 84px)',
               color:'var(--px-muted)',
               letterSpacing:'-0.02em',
             }}>
@@ -154,15 +158,15 @@ export default function Home() {
             </span>
           </h1>
 
-          <p style={{
+          <p className="fade-up fade-up-1" style={{
             fontFamily:"'Inter',sans-serif", fontSize:18, color:'var(--px-muted)',
-            maxWidth:580, margin:'0 auto 48px', lineHeight:1.6,
+            maxWidth:580, margin:'0 auto 48px', lineHeight:1.6, position:'relative',
           }}>
             {h.subtitle}
           </p>
 
           {/* CTA buttons */}
-          <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
+          <div className="fade-up fade-up-2" style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap', position:'relative' }}>
             <Link to="/deploy" className="px-btn" style={{
               textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
               fontSize:15, padding:'14px 32px',
@@ -181,28 +185,28 @@ export default function Home() {
         </section>
 
         {/* ══ CÓMO FUNCIONA — Mission Control ══ */}
-        <section id="como-funciona" style={{ padding:'80px 24px', background: 'var(--px-bg2)' }}>
+        <section id="como-funciona" style={{ padding:'clamp(56px, 10vw, 80px) 16px', background: 'var(--px-bg2)' }}>
           <div style={{ maxWidth:900, margin:'0 auto' }}>
             {/* Section header */}
-            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
+            <div className="fade-up" style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
               <div style={{ flex:1, height:1, background:'var(--px-border)' }} />
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:11, color:'var(--px-muted)', letterSpacing:'0.18em', marginBottom:8 }}>{h.how_it_works}</div>
-                <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:28, color: 'var(--px-white)', margin:0 }}>{h.timeline_title}</h2>
+                <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:'clamp(22px, 4vw, 28px)', color: 'var(--px-white)', margin:0 }}>{h.timeline_title}</h2>
               </div>
               <div style={{ flex:1, height:1, background:'var(--px-border)' }} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               {/* Steps */}
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div className="fade-up fade-up-1" style={{ display:'flex', flexDirection:'column', gap:12 }}>
                 <MissionStep num={1} icon={<CommitIcon size={24} style={{ color: 'var(--px-white)' }} />} title={h.timeline_steps[0].title} desc={h.timeline_steps[0].desc} active />
                 <MissionStep num={2} icon={<BuildIcon size={24} style={{ color: 'var(--px-white)' }} />}  title={h.timeline_steps[1].title} desc={h.timeline_steps[1].desc} />
                 <MissionStep num={3} icon={<GlobeIcon size={24} style={{ color: 'var(--px-white)' }} />}  title={h.timeline_steps[2].title} desc={h.timeline_steps[2].desc} />
               </div>
 
               {/* Live terminal */}
-              <div>
+              <div className="fade-up fade-up-2">
                 <div style={{ fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:11, color:'var(--px-muted)', marginBottom:12, letterSpacing:'0.15em' }}>
                   ● {h.live_simulation}
                 </div>
@@ -213,32 +217,33 @@ export default function Home() {
         </section>
 
         {/* ══ FEATURES — Orbit Grid ══ */}
-        <section id="features" style={{ padding:'80px 24px' }}>
+        <section id="features" style={{ padding:'clamp(56px, 10vw, 80px) 16px' }}>
           <div style={{ maxWidth:1000, margin:'0 auto' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
+            <div className="fade-up" style={{ display:'flex', alignItems:'center', gap:16, marginBottom:48 }}>
               <div style={{ flex:1, height:1, background:'var(--px-border)' }} />
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontFamily:"'Inter',sans-serif", fontWeight:600, fontSize:11, color:'var(--px-muted)', letterSpacing:'0.18em', marginBottom:8 }}>{h.features_label}</div>
-                <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:28, color: 'var(--px-white)', margin:0 }}>{h.features_title}</h2>
+                <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:'clamp(22px, 4vw, 28px)', color: 'var(--px-white)', margin:0 }}>{h.features_title}</h2>
               </div>
               <div style={{ flex:1, height:1, background:'var(--px-border)' }} />
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:16 }}>
-              {features.map(f => <FeatureCard key={f.title} {...f} />)}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))', gap:16 }}>
+              {features.map((f, i) => <FeatureCard key={f.title} {...f} className={`fade-up fade-up-${Math.min(i + 1, 4)}`} />)}
             </div>
           </div>
         </section>
 
         {/* ══ CTA FINAL ══ */}
-        <section style={{ padding:'80px 24px 100px' }}>
-          <div className="px-6 py-10 sm:px-10 sm:py-16" style={{
+        <section style={{ padding:'clamp(56px, 10vw, 80px) 16px clamp(64px, 12vw, 100px)' }}>
+          <div className="fade-up px-6 py-10 sm:px-10 sm:py-16" style={{
             maxWidth:760, margin:'0 auto', textAlign:'center',
             background: 'var(--px-surface)',
             border: '1px solid var(--px-border)',
             borderRadius: 20,
+            boxShadow: 'var(--px-shadow-sm)',
           }}>
-            <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:30, color: 'var(--px-white)', margin:'0 0 16px' }}>{h.cta_title}</h2>
+            <h2 style={{ fontFamily:"'Inter',sans-serif", fontWeight:800, fontSize:'clamp(24px, 5vw, 30px)', color: 'var(--px-white)', margin:'0 0 16px' }}>{h.cta_title}</h2>
             <p style={{ fontFamily:"'Inter',sans-serif", fontSize:17, color:'var(--px-muted)', margin:'0 0 36px', lineHeight:1.6 }}>{h.cta_sub}</p>
             <Link to="/deploy" className="px-btn" style={{
               textDecoration:'none', display:'inline-flex', alignItems:'center', gap:10,
