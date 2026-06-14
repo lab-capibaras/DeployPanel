@@ -109,10 +109,12 @@ export default function Deploy() {
     if (!parsed) { showToast(d.validation.invalid_url, 'error'); return; }
     setLoadingBranches(true);
     try {
-      const res = await fetch(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}/branches`);
-      if (!res.ok) throw new Error('Repositorio no encontrado o privado');
+      const res = await fetch(`/api/github/branches?owner=${encodeURIComponent(parsed.owner)}&repo=${encodeURIComponent(parsed.repo)}`, {
+        credentials: 'include',
+      });
       const data = await res.json();
-      const names = data.map(b => b.name);
+      if (!res.ok || data.status !== 'success') throw new Error(data.message || 'Repositorio no encontrado o privado');
+      const names = data.branches;
       setBranches(names);
       setFormData(f => ({ ...f, branch: names[0] || '' }));
       showToast(d.toasts.branches_loaded(names.length), 'success');
@@ -152,7 +154,7 @@ export default function Deploy() {
 
     const finalTimer = setTimeout(async () => {
       try {
-        const response = await fetch('/deploy', {
+        const response = await fetch('/api/deploy', {
           method: 'POST',
           credentials: 'include',
           headers: {

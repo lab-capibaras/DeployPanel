@@ -89,7 +89,7 @@ export default function Dashboard() {
         setRedeploying(prev => ({ ...prev, [deploy.subdomain]: true }));
 
         try {
-            const res = await fetch('/deploy', {
+            const res = await fetch('/api/deploy', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

@@ -684,6 +684,27 @@ app.post('/deploy', requireAuth, async (req, res) => {
     }
 });
 
+// 1b. Listar ramas de un repositorio de GitHub (proxy server-side para evitar
+// problemas de CORS/conectividad del navegador hacia api.github.com)
+app.get('/github/branches', requireAuth, async (req, res) => {
+    const { owner, repo } = req.query;
+    if (!owner || !repo) {
+        return res.status(400).json({ status: 'error', message: 'Faltan owner o repo' });
+    }
+    try {
+        const ghRes = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`, {
+            headers: { 'User-Agent': 'StarDest' }
+        });
+        if (!ghRes.ok) {
+            return res.status(ghRes.status).json({ status: 'error', message: 'Repositorio no encontrado o privado' });
+        }
+        const data = await ghRes.json();
+        res.json({ status: 'success', branches: data.map(b => b.name) });
+    } catch (error) {
+        res.status(502).json({ status: 'error', message: 'No se pudo contactar a GitHub', details: error.message });
+    }
+});
+
 // 2. Webhook Automático (Vercel Style)
 app.post('/webhook', async (req, res) => {
     const payload = req.body;
