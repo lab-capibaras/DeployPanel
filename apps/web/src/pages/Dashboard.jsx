@@ -23,9 +23,9 @@ function repoShort(url, dash) {
 }
 
 const STATUS_COLOR = {
-    running:    { bg: 'rgba(0,200,100,0.12)',  border: 'rgba(0,200,100,0.35)',  dot: '#00c864' },
-    restarting: { bg: 'rgba(255,180,0,0.12)',  border: 'rgba(255,180,0,0.35)',  dot: '#ffb400' },
-    exited:     { bg: 'rgba(255,60,60,0.12)',  border: 'rgba(255,60,60,0.35)',  dot: '#ff3c3c' },
+    running:    { dot: '#00c864' },
+    restarting: { dot: '#ffb400' },
+    exited:     { dot: '#ff3c3c' },
 };
 
 const REDEPLOY_COOLDOWN_MS = 60000;
@@ -119,23 +119,28 @@ export default function Dashboard() {
 
     if (authLoading || loading) return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", color: 'var(--px-muted)', fontSize: 16 }}>{dash.loading}</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", color: 'var(--px-muted)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{dash.loading}</p>
         </div>
     );
 
     if (!user) return null;
 
     return (
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 16px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
             {/* Header */}
-            <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+            <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16, paddingBottom: 24 }}>
                 <div>
-                    <h1 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 26, color: 'var(--px-white)', margin: 0 }}>
+                    <span className="swiss-index">{dash.title}</span>
+                    <h1 style={{
+                        fontFamily: "'Inter',sans-serif", fontWeight: 900,
+                        fontSize: 'clamp(32px, 7vw, 64px)', color: 'var(--px-white)',
+                        margin: '8px 0 0', textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1,
+                    }}>
                         {dash.title}
                     </h1>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: 'var(--px-muted)', margin: '4px 0 0' }}>
-                        {deploys.length} {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
+                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-muted)', margin: '12px 0 0' }}>
+                        {String(deploys.length).padStart(2, '0')} — {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
                     </p>
                 </div>
                 <Link
@@ -144,29 +149,32 @@ export default function Dashboard() {
                     style={{
                         textDecoration: 'none',
                         display: 'inline-flex', alignItems: 'center',
-                        fontSize: 14, padding: '10px 20px',
+                        fontSize: 13, padding: '14px 28px',
                     }}
                 >
                     {dash.new_deploy}
                 </Link>
             </div>
+            <span className="swiss-line swiss-line-red" style={{ marginBottom: 40 }} />
 
             {/* Lista vacía */}
             {deploys.length === 0 && (
-                <div className="px-card fade-up fade-up-1" style={{
-                    textAlign: 'center', padding: '60px 24px',
+                <div className="fade-up fade-up-1" style={{
+                    textAlign: 'center', padding: '80px 24px',
+                    border: '1px solid var(--px-border)',
                 }}>
-                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)', margin: 0 }}>
+                    <span className="swiss-index" style={{ display: 'block', marginBottom: 16 }}>00</span>
+                    <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         {dash.empty}
                     </p>
-                    <Link to="/deploy" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: 'var(--px-white)', marginTop: 12, display: 'inline-block' }}>
+                    <Link to="/deploy" className="swiss-link" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 14, color: 'var(--px-red)', marginTop: 16, display: 'inline-block', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         {dash.create_first}
                     </Link>
                 </div>
             )}
 
-            {/* Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Lista */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {deploys.map((deploy, idx) => {
                     const s = STATUS_COLOR[deploy.status] || STATUS_COLOR.exited;
                     const statusLabel = dash.status[deploy.status] || dash.status.exited;
@@ -174,32 +182,42 @@ export default function Dashboard() {
                     return (
                         <div
                             key={deploy.subdomain}
-                            className={`px-card fade-up fade-up-${Math.min(idx + 1, 4)}`}
+                            className={`fade-up fade-up-${Math.min(idx + 1, 4)}`}
                             style={{
-                                padding: '20px 24px',
+                                padding: '28px 0',
+                                borderBottom: '1px solid var(--px-border)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 16,
+                                gap: 24,
                                 flexWrap: 'wrap',
                             }}
                         >
-                            {/* Status dot */}
+                            {/* Index number */}
+                            <span style={{
+                                fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700,
+                                color: 'var(--px-muted)', flexShrink: 0, minWidth: 28,
+                            }}>
+                                {String(idx + 1).padStart(2, '0')}
+                            </span>
+
+                            {/* Status square */}
                             <div style={{
-                                width: 10, height: 10, borderRadius: '50%',
+                                width: 10, height: 10,
                                 background: s.dot, flexShrink: 0,
                             }} />
 
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 200 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-white)', fontWeight: 700 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 18, color: 'var(--px-white)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
                                         {deploy.subdomain}
                                     </span>
                                     <span style={{
-                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
-                                        padding: '2px 8px', borderRadius: 6,
-                                        background: s.bg, border: `1px solid ${s.border}`,
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 10,
+                                        padding: '3px 8px',
+                                        border: `1px solid ${s.dot}`,
                                         color: s.dot,
+                                        textTransform: 'uppercase', letterSpacing: '0.1em',
                                     }}>
                                         {statusLabel}
                                     </span>
@@ -208,19 +226,20 @@ export default function Dashboard() {
                                     href={url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-white)', textDecoration: 'none', display: 'block', marginBottom: 4 }}
+                                    className="swiss-link"
+                                    style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-muted)', textDecoration: 'none', display: 'inline-block', marginBottom: 8 }}
                                 >
                                     {url}
                                 </a>
-                                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
-                                        📦 {repoShort(deploy.repo, dash)}
+                                <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-muted)' }}>
+                                        {repoShort(deploy.repo, dash)}
                                     </span>
-                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
-                                        🌿 {deploy.branch}
+                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-muted)' }}>
+                                        {deploy.branch}
                                     </span>
-                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: 'var(--px-muted)' }}>
-                                        🕐 {timeAgo(deploy.deployedAt, dash)}
+                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-muted)' }}>
+                                        {timeAgo(deploy.deployedAt, dash)}
                                     </span>
                                 </div>
                             </div>
@@ -233,15 +252,15 @@ export default function Dashboard() {
                                     rel="noreferrer"
                                     className="px-border flex-1 sm:flex-none"
                                     style={{
-                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
-                                        padding: '8px 16px', borderRadius: 8,
-                                        background: 'var(--px-bg)',
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12,
+                                        padding: '10px 18px',
+                                        background: 'transparent',
                                         color: 'var(--px-white)', textDecoration: 'none',
-                                        textAlign: 'center',
-                                        transition: 'border-color 0.15s ease, background 0.15s ease',
+                                        textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        transition: 'border-color 0.15s ease, color 0.15s ease',
                                     }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-bg2)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = 'var(--px-bg)'; }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-red)'; e.currentTarget.style.color = 'var(--px-red)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.color = 'var(--px-white)'; }}
                                 >
                                     {dash.visit}
                                 </a>
@@ -256,15 +275,18 @@ export default function Dashboard() {
                                             disabled={disabled}
                                             className="px-border flex-1 sm:flex-none"
                                             style={{
-                                                fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
-                                                padding: '8px 16px', borderRadius: 8,
-                                                background: 'var(--px-bg)',
+                                                fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12,
+                                                padding: '10px 18px',
+                                                background: 'transparent',
                                                 color: disabled ? 'var(--px-muted)' : 'var(--px-white)',
                                                 cursor: disabled ? 'not-allowed' : 'pointer',
                                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                transition: 'opacity 0.15s ease, border-color 0.15s ease',
+                                                textTransform: 'uppercase', letterSpacing: '0.06em',
+                                                transition: 'opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                                                 opacity: disabled ? 0.6 : 1,
                                             }}
+                                            onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = 'var(--px-red)'; e.currentTarget.style.color = 'var(--px-red)'; } }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.color = disabled ? 'var(--px-muted)' : 'var(--px-white)'; }}
                                         >
                                             {isRedeploying
                                                 ? dash.redeploying
@@ -279,16 +301,17 @@ export default function Dashboard() {
                                     disabled={deleting === deploy.subdomain}
                                     className="flex-1 sm:flex-none"
                                     style={{
-                                        fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 13,
-                                        padding: '8px 16px', borderRadius: 8,
-                                        background: 'rgba(255,60,60,0.08)',
-                                        border: '1px solid rgba(255,60,60,0.25)',
-                                        color: deleting === deploy.subdomain ? 'rgba(255,60,60,0.4)' : '#ff3c3c',
+                                        fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 12,
+                                        padding: '10px 18px',
+                                        background: 'transparent',
+                                        border: '1px solid var(--px-red)',
+                                        color: deleting === deploy.subdomain ? 'var(--px-muted)' : 'var(--px-red)',
                                         cursor: deleting === deploy.subdomain ? 'not-allowed' : 'pointer',
-                                        transition: 'background 0.15s ease, border-color 0.15s ease',
+                                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                                        transition: 'background 0.15s ease, color 0.15s ease',
                                     }}
-                                    onMouseEnter={e => { if (deleting !== deploy.subdomain) { e.currentTarget.style.background = 'rgba(255,60,60,0.15)'; e.currentTarget.style.borderColor = 'rgba(255,60,60,0.4)'; } }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,60,60,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,60,60,0.25)'; }}
+                                    onMouseEnter={e => { if (deleting !== deploy.subdomain) { e.currentTarget.style.background = 'var(--px-red)'; e.currentTarget.style.color = '#ffffff'; } }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = deleting === deploy.subdomain ? 'var(--px-muted)' : 'var(--px-red)'; }}
                                 >
                                     {deleting === deploy.subdomain ? dash.deleting : dash.delete}
                                 </button>

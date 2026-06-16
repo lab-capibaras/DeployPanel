@@ -4,7 +4,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
 import Dashboard from './pages/Dashboard';
-import { LogoMark } from './components/Icons';
 import { useAuth } from './hooks/useAuth';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
@@ -87,15 +86,13 @@ function PreferencesPanel({ inline = false }) {
   const pillBase = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
     flex: 1, padding: '6px 10px',
-    borderRadius: '7px', border: '1px solid transparent',
+    borderRadius: 0, border: '1px solid transparent',
     cursor: 'pointer', fontWeight: 700, fontSize: '12px',
     letterSpacing: '0.04em', lineHeight: 1,
     transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
     outline: 'none', whiteSpace: 'nowrap',
   };
-  const pillOn = isDark
-    ? { background: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.18)', color: '#fff' }
-    : { background: '#ffffff', borderColor: '#c4c4c4', color: '#0a0a0a', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' };
+  const pillOn = { background: 'var(--px-red)', borderColor: 'var(--px-red)', color: '#ffffff' };
 
   const pillOff = isDark
     ? { background: 'transparent', borderColor: 'transparent', color: 'rgba(255,255,255,0.4)' }
@@ -108,7 +105,7 @@ function PreferencesPanel({ inline = false }) {
   };
 
   const trackStyle = {
-    display: 'flex', gap: '3px', borderRadius: '9px', padding: '3px',
+    display: 'flex', gap: '3px', borderRadius: 0, padding: '3px',
     background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
   };
 
@@ -230,7 +227,7 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
           <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-black'}`}>{labelMenu}</span>
           <button
             onClick={onClose}
-            className={`flex items-center justify-center rounded-lg border transition ${isDark ? 'border-white/15 text-white/60 hover:text-white hover:bg-white/10' : 'border-black/10 text-black/60 hover:text-black hover:bg-black/5'}`}
+            className={`flex items-center justify-center rounded-none border transition ${isDark ? 'border-white/15 text-white/60 hover:text-white hover:bg-white/10' : 'border-black/10 text-black/60 hover:text-black hover:bg-black/5'}`}
             style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,14 +246,14 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
           {sections.map((section) => {
             const isOpen = openSection === section.id;
             return (
-              <div key={section.id} className="rounded-xl overflow-hidden">
+              <div key={section.id} className="rounded-none overflow-hidden">
                 <button
                   onClick={() => setOpenSection(isOpen ? null : section.id)}
-                  className={`w-full flex items-center justify-between px-4 rounded-xl transition group ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
+                  className={`w-full flex items-center justify-between px-4 rounded-none transition group ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
                   style={{ minHeight: '52px', cursor: 'pointer' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-lg border transition flex-shrink-0 ${isDark ? 'border-white/15 bg-white/5 text-white group-hover:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover:border-black/20'}`}>
+                    <div className={`w-8 h-8 flex items-center justify-center rounded-none border transition flex-shrink-0 ${isDark ? 'border-white/15 bg-white/5 text-white group-hover:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover:border-black/20'}`}>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
                     </div>
                     <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{section.label}</span>
@@ -270,9 +267,9 @@ function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
                   <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
                     {section.items.map((item) => (
                       <Link key={item.label} to={item.to} onClick={onClose}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition group/item ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
+                        className={`flex items-center gap-3 px-3 py-3 rounded-none transition group/item ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
                       >
-                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border transition ${isDark ? 'border-white/15 bg-white/5 text-white group-hover/item:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover/item:border-black/20'}`}>
+                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-none border transition ${isDark ? 'border-white/15 bg-white/5 text-white group-hover/item:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover/item:border-black/20'}`}>
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
                         </div>
                         <div>
@@ -307,7 +304,7 @@ function UserMobileMenu({ onClose }) {
   if (!user) {
     return (
       <Link to="/login" onClick={onClose}
-        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
+        className={`block w-full text-center py-3 border rounded-none transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
         style={{ textDecoration: 'none' }}
       >
         {t.nav.login}
@@ -317,7 +314,7 @@ function UserMobileMenu({ onClose }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <div className={`flex items-center gap-3 px-3 py-2 border rounded-xl ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
+      <div className={`flex items-center gap-3 px-3 py-2 border rounded-none ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
         {user.avatar ? (
           <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-white/30' : 'border-black/20'}`} />
         ) : (
@@ -345,7 +342,7 @@ function UserMobileMenu({ onClose }) {
           color: isDark ? '#f5f5f5' : '#0a0a0a',
           background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
           border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-          borderRadius: '8px',
+          borderRadius: 0,
           textDecoration: 'none',
         }}
       >
@@ -366,7 +363,7 @@ function UserMobileMenu({ onClose }) {
           color: isDark ? '#f5f5f5' : '#0a0a0a',
           background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
           border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-          borderRadius: '8px',
+          borderRadius: 0,
           textDecoration: 'none',
         }}
       >
@@ -375,8 +372,8 @@ function UserMobileMenu({ onClose }) {
 
       <button
         onClick={() => { logout(); onClose(); }}
-        className={`block w-full text-center py-3 border rounded-xl transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
-        style={{ background: 'transparent', borderRadius: '8px', marginTop: '4px' }}
+        className={`block w-full text-center py-3 border rounded-none transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
+        style={{ background: 'transparent', borderRadius: 0, marginTop: '4px' }}
       >
         {t.nav.logout}
       </button>
@@ -424,14 +421,15 @@ function UserMenu() {
           alignItems: 'center',
           touchAction: 'manipulation',
           fontFamily: "'Inter',sans-serif",
-          fontSize: 14,
-          fontWeight: 600,
-          color: textCyan,
-          border: `1px solid ${borderLogin}`,
-          borderRadius: '8px',
+          fontSize: 13,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          color: 'var(--px-red)',
+          border: '1px solid var(--px-red)',
+          borderRadius: 0,
           boxShadow: 'none',
-          background: bgLogin,
-          letterSpacing: '0.02em'
+          background: 'transparent',
+          letterSpacing: '0.06em'
         }}
       >
         {t.nav.login}
@@ -451,7 +449,7 @@ function UserMenu() {
           height: '44px',
           cursor: 'pointer',
           border: `1px solid ${borderLogin}`,
-          borderRadius: '8px',
+          borderRadius: 0,
           background: bgLogin,
           color: textMain,
           fontFamily: "'Inter', sans-serif",
@@ -483,7 +481,7 @@ function UserMenu() {
           right: 0,
           background: cardBg,
           border: `1px solid ${cardBorder}`,
-          borderRadius: '10px',
+          borderRadius: 0,
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
           padding: '8px',
           minWidth: '180px',
@@ -509,7 +507,7 @@ function UserMenu() {
             style={{
               display: 'block',
               padding: '8px 12px',
-              borderRadius: '6px',
+              borderRadius: 0,
               fontFamily: "'Inter',sans-serif",
               fontSize: 14,
               fontWeight: 500,
@@ -529,7 +527,7 @@ function UserMenu() {
             style={{
               display: 'block',
               padding: '8px 12px',
-              borderRadius: '6px',
+              borderRadius: 0,
               fontFamily: "'Inter',sans-serif",
               fontSize: 14,
               fontWeight: 500,
@@ -548,7 +546,7 @@ function UserMenu() {
             style={{
               width: '100%',
               padding: '10px 12px',
-              borderRadius: '6px',
+              borderRadius: 0,
               textAlign: 'left',
               background: 'none',
               border: 'none',
@@ -601,8 +599,8 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
           {/* LEFT: Logo + Herramientas */}
           <div className="flex items-center gap-6">
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 4px', touchAction: 'manipulation' }}>
-              <LogoMark size={26} style={{ color: textMain }} />
-              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 20, color: textMain, letterSpacing: '-0.01em' }}>StarDest</span>
+              <span style={{ width: 10, height: 10, background: 'var(--px-red)', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18, color: textMain, letterSpacing: '0.04em', textTransform: 'uppercase' }}>StarDest</span>
             </Link>
 
             {/* Desktop mega-menu — label switches via CSS [data-lang] */}
@@ -619,7 +617,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
               <div className="absolute top-full left-0 w-full h-3" />
               <div className="absolute top-[calc(100%+4px)] left-0 w-[420px] lg:w-[500px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
                 <div className="mega-menu-panel" style={{
-                  borderRadius: '16px',
+                  borderRadius: 0,
                   overflow: 'hidden',
                   background: isDark ? 'rgba(22,22,22,0.98)' : 'rgba(255,255,255,0.98)',
                   backdropFilter: 'blur(24px) saturate(160%)',
@@ -653,7 +651,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
             <button
               onClick={onHamburger}
               aria-label={document.documentElement.getAttribute('data-lang') === 'en' ? 'Open menu' : 'Abrir menú'}
-              className={`md:hidden flex flex-col justify-center items-center rounded-lg border transition gap-1.5 p-2 ${
+              className={`md:hidden flex flex-col justify-center items-center rounded-none border transition gap-1.5 p-2 ${
                 isDark
                   ? 'border-white/15 bg-white/5 hover:bg-white/10'
                   : 'border-black/10 bg-black/[0.03] hover:bg-black/5'
@@ -671,19 +669,18 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
   );
 });
 
-function ToolLink({ tool, isDark }) {
-  const restBg = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
-  const hoverBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+function ToolLink({ tool }) {
+  const restBg = 'transparent';
   return (
-    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: 10, border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.1s, background 0.1s' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = hoverBg; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = restBg; }}
+    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: 0, border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.1s, background 0.1s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-red)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; }}
     >
-      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
+      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 0, border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
         <svg style={{ width: 16, height: 16, color: 'var(--px-white)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
       </div>
       <div>
-        <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 14, color: 'var(--px-white)', marginBottom: 4 }}>{tool.label}</div>
+        <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--px-white)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{tool.label}</div>
         <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: 'var(--px-muted)', lineHeight: 1.4 }}>{tool.desc}</div>
       </div>
     </Link>

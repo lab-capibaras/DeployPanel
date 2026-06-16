@@ -1,20 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n';
-import { getPrefs, subscribePrefs } from '../store/prefs';
-import { LogoMark } from '../components/Icons';
 import { useAuth } from '../hooks/useAuth';
-
-function useTheme() {
-  const [prefs, setPrefs] = useState(getPrefs);
-  useEffect(() => subscribePrefs(setPrefs), []);
-  return prefs.theme === 'dark';
-}
 
 function Login() {
   const t = useTranslation();
   const l = t.login;
-  const isDark = useTheme();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -40,20 +31,21 @@ function Login() {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--px-bg)', overflow: 'hidden' }}>
-      <div className="px-glow-bg" />
 
       {/* Card */}
-      <div className="fade-up" style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 420 }}>
+      <div className="fade-up" style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 440 }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <LogoMark size={40} style={{ color: 'var(--px-white)' }} />
+        <div style={{ marginBottom: 32 }}>
+          <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ width: 12, height: 12, background: 'var(--px-red)', display: 'inline-block', flexShrink: 0 }} />
             <span style={{
               fontFamily: "'Inter',sans-serif",
-              fontWeight: 700,
-              fontSize: 22,
+              fontWeight: 800,
+              fontSize: 18,
               color: 'var(--px-white)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
             }}>
               StarDest
             </span>
@@ -61,19 +53,24 @@ function Login() {
         </div>
 
         {/* Main panel */}
-        <div className="px-card" style={{
+        <div style={{
           padding: '40px 36px',
-          boxShadow: 'var(--px-shadow-md)',
+          border: '1px solid var(--px-border)',
+          borderTop: '3px solid var(--px-red)',
+          background: 'var(--px-surface)',
         }}>
 
           {/* Heading */}
-          <div style={{ marginBottom: 28, textAlign: 'center' }}>
+          <div style={{ marginBottom: 28 }}>
             <h1 style={{
               fontFamily: "'Inter',sans-serif",
-              fontWeight: 800,
-              fontSize: 26,
+              fontWeight: 900,
+              fontSize: 'clamp(28px, 6vw, 38px)',
               color: 'var(--px-white)',
-              margin: '0 0 6px',
+              margin: '0 0 8px',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.01em',
+              lineHeight: 1.1,
             }}>
               {l.welcome || 'BIENVENIDO'}
             </h1>
@@ -92,91 +89,79 @@ function Login() {
             <div style={{
               marginBottom: 20,
               padding: '12px 16px',
-              border: '1px solid var(--px-border-glow)',
-              background: 'var(--px-bg2)',
+              border: '1px solid var(--px-red)',
+              background: 'transparent',
               color: 'var(--px-white)',
               fontFamily: "'Inter',sans-serif",
               fontSize: 14,
-              textAlign: 'center',
-              borderRadius: 8,
+              borderRadius: 0,
             }}>
               {l.error_login}
             </div>
           )}
 
           {/* Social login buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderTop: '1px solid var(--px-border)' }}>
             {/* Google */}
             <a
               href="/api/auth/google"
-              className="px-border"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                padding: '13px 20px',
-                background: 'var(--px-bg)',
+                gap: 14,
+                padding: '16px 4px',
+                background: 'transparent',
                 color: 'var(--px-white)',
                 textDecoration: 'none',
                 fontFamily: "'Inter',sans-serif",
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: 15,
-                borderRadius: 8,
-                transition: 'border-color 0.15s, background 0.15s',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                borderBottom: '1px solid var(--px-border)',
+                transition: 'color 0.15s, padding-left 0.15s',
                 cursor: 'pointer',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--px-border-glow)';
-                e.currentTarget.style.background = 'var(--px-bg2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--px-border)';
-                e.currentTarget.style.background = 'var(--px-bg)';
-              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--px-red)'; e.currentTarget.style.paddingLeft = '14px'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--px-white)'; e.currentTarget.style.paddingLeft = '4px'; }}
             >
               <GoogleIcon />
               {l.google}
+              <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono',monospace", fontSize: 14 }}>→</span>
             </a>
 
             {/* GitHub */}
             <a
               href="/api/auth/github"
-              className="px-border"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                padding: '13px 20px',
-                background: 'var(--px-bg)',
+                gap: 14,
+                padding: '16px 4px',
+                background: 'transparent',
                 color: 'var(--px-white)',
                 textDecoration: 'none',
                 fontFamily: "'Inter',sans-serif",
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: 15,
-                borderRadius: 8,
-                transition: 'border-color 0.15s, background 0.15s',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                borderBottom: '1px solid var(--px-border)',
+                transition: 'color 0.15s, padding-left 0.15s',
                 cursor: 'pointer',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--px-border-glow)';
-                e.currentTarget.style.background = 'var(--px-bg2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--px-border)';
-                e.currentTarget.style.background = 'var(--px-bg)';
-              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--px-red)'; e.currentTarget.style.paddingLeft = '14px'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--px-white)'; e.currentTarget.style.paddingLeft = '4px'; }}
             >
-              <GitHubIcon color="var(--px-white)" />
+              <GitHubIcon color="currentColor" />
               {l.github}
+              <span style={{ marginLeft: 'auto', fontFamily: "'JetBrains Mono',monospace", fontSize: 14 }}>→</span>
             </a>
           </div>
 
           {/* Footer inside card */}
           <p style={{
             marginTop: 24,
-            textAlign: 'center',
             fontFamily: "'Inter',sans-serif",
             fontSize: 13,
             color: 'var(--px-muted)',
@@ -187,13 +172,15 @@ function Login() {
         </div>
 
         {/* Back to home */}
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
+        <div style={{ marginTop: 24 }}>
           <Link
             to="/"
+            className="swiss-link"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontFamily: "'Inter',sans-serif",
-              fontSize: 14, color: 'var(--px-muted)', textDecoration: 'none',
+              fontFamily: "'Inter',sans-serif", fontWeight: 700,
+              fontSize: 13, color: 'var(--px-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
             }}
             onMouseEnter={e => { e.currentTarget.style.color = 'var(--px-white)'; }}
             onMouseLeave={e => { e.currentTarget.style.color = 'var(--px-muted)'; }}
