@@ -266,6 +266,155 @@ function getSubdomain(repoUrl, branch) {
 }
 
 // ==========================================
+// --- DETECCIÓN Y PROVISIÓN DE BASE DE DATOS ---
+// ==========================================
+function detectDatabase(repoPath) {
+    const filesToCheck = [
+        path.join(repoPath, '.env.example'),
+        path.join(repoPath, '.env.sample'),
+        path.join(repoPath, 'docker-compose.yml'),
+        path.join(repoPath, 'docker-compose.yaml'),
+        path.join(repoPath, 'railway.toml'),
+        path.join(repoPath, 'railway.json'),
+    ];
+
+    let content = '';
+    for (const f of filesToCheck) {
+        if (fs.existsSync(f)) {
+            content += fs.readFileSync(f, 'utf8').toLowerCase();
+        }
+    }
+
+    const pkgPath = path.join(repoPath, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
+            const mysqlDeps = ['mysql', 'mysql2', 'sequelize', 'typeorm', 'prisma', 'knex'];
+            const pgDeps = ['pg', 'postgres', 'sequelize', 'typeorm', 'prisma', 'knex'];
+            if (mysqlDeps.some(d => deps.includes(d))) content += ' mysql';
+            if (pgDeps.some(d => deps.includes(d))) content += ' postgres';
+        } catch (e) {
+            console.warn('[DB] No se pudo leer package.json para detección de DB:', e.message);
+        }
+    }
+
+    const reqPath = path.join(repoPath, 'requirements.txt');
+    if (fs.existsSync(reqPath)) {
+        const req = fs.readFileSync(reqPath, 'utf8').toLowerCase();
+        if (req.includes('mysqlclient') || req.includes('pymysql') || req.includes('mysql')) content += ' mysql';
+        if (req.includes('psycopg') || req.includes('asyncpg') || req.includes('postgres')) content += ' postgres';
+    }
+
+    const phpFiles = ['config/db.php', 'config/database.php', 'app/config/database.php'];
+    for (const phpFile of phpFiles) {
+        const phpPath = path.join(repoPath, phpFile);
+        if (fs.existsSync(phpPath)) {
+            const phpContent = fs.readFileSync(phpPath, 'utf8').toLowerCase();
+            if (phpContent.includes('mysql')) content += ' mysql';
+            if (phpContent.includes('pgsql') || phpContent.includes('postgres')) content += ' postgres';
+        }
+    }
+
+    if (content.includes('mysql') || content.includes('mariadb') ||
+        content.includes('mysqlhost') || content.includes('mysqldatabase')) {
+        return 'mysql';
+    }
+    if (content.includes('postgres') || content.includes('postgresql') ||
+        content.includes('pghost') || content.includes('database_url')) {
+        return 'postgres';
+    }
+    return null;
+}
+
+async function provisionDatabase(subdomain, dbType) {
+    const crypto = require('crypto');
+    const dbName = `db_${subdomain}`.replace(/-/g, '_');
+    const dbUser = `user_${subdomain}`.replace(/-/g, '_').substring(0, 16);
+    const dbPassword = crypto.randomBytes(12).toString('hex');
+    const containerName = `db-${subdomain}`;
+
+    const containers = await docker.listContainers({ all: true });
+    const existing = containers.find(c => c.Names.includes(`/${containerName}`));
+    if (existing) {
+        console.log(`[DB] Contenedor ${containerName} ya existe, reutilizando...`);
+        const labels = existing.Labels;
+        return {
+            containerName,
+            dbType,
+            dbName:     labels['db.name']     || dbName,
+            dbUser:     labels['db.user']     || dbUser,
+            dbPassword: labels['db.password'] || dbPassword,
+            dbHost:     containerName,
+            dbPort:     dbType === 'mysql' ? '3306' : '5432',
+        };
+    }
+
+    console.log(`[DB] Provisionando ${dbType} para ${subdomain}...`);
+
+    let dbContainer;
+    if (dbType === 'mysql') {
+        dbContainer = await docker.createContainer({
+            Image: 'mysql:8',
+            name: containerName,
+            Env: [
+                `MYSQL_ROOT_PASSWORD=${dbPassword}root`,
+                `MYSQL_DATABASE=${dbName}`,
+                `MYSQL_USER=${dbUser}`,
+                `MYSQL_PASSWORD=${dbPassword}`,
+            ],
+            Labels: {
+                'db.type':      'mysql',
+                'db.name':      dbName,
+                'db.user':      dbUser,
+                'db.password':  dbPassword,
+                'db.subdomain': subdomain,
+            },
+            HostConfig: {
+                NetworkMode:   'deploys_internal_network',
+                RestartPolicy: { Name: 'always' },
+            }
+        });
+    } else {
+        dbContainer = await docker.createContainer({
+            Image: 'postgres:16-alpine',
+            name: containerName,
+            Env: [
+                `POSTGRES_DB=${dbName}`,
+                `POSTGRES_USER=${dbUser}`,
+                `POSTGRES_PASSWORD=${dbPassword}`,
+            ],
+            Labels: {
+                'db.type':      'postgres',
+                'db.name':      dbName,
+                'db.user':      dbUser,
+                'db.password':  dbPassword,
+                'db.subdomain': subdomain,
+            },
+            HostConfig: {
+                NetworkMode:   'deploys_internal_network',
+                RestartPolicy: { Name: 'always' },
+            }
+        });
+    }
+
+    await dbContainer.start();
+    console.log(`[DB] ${dbType} iniciado: ${containerName}`);
+
+    await new Promise(resolve => setTimeout(resolve, dbType === 'mysql' ? 15000 : 8000));
+
+    return {
+        containerName,
+        dbType,
+        dbName,
+        dbUser,
+        dbPassword,
+        dbHost: containerName,
+        dbPort: dbType === 'mysql' ? '3306' : '5432',
+    };
+}
+
+// ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
 async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous') {
@@ -352,6 +501,16 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
                 resolve(outputRes);
             });
         });
+
+        // PASO 3 — Detectar y provisionar base de datos
+        const dbType = detectDatabase(repoPath);
+        let dbCredentials = null;
+
+        if (dbType) {
+            console.log(`[DB] Base de datos detectada: ${dbType}`);
+            dbCredentials = await provisionDatabase(subdomain, dbType);
+            console.log(`[DB] Credenciales listas para ${subdomain}`);
+        }
 
         if (hasDockerfile) {
             console.log(`Dockerfile detectado. Usando build tradicional...`);
@@ -615,9 +774,34 @@ EXPOSE 3000
         }
 
         console.log(`Lanzando contenedor en la red de Traefik...`);
+
+        let dbEnv = [];
+        if (dbCredentials) {
+            if (dbCredentials.dbType === 'mysql') {
+                dbEnv = [
+                    `MYSQLHOST=${dbCredentials.dbHost}`,
+                    `MYSQLPORT=${dbCredentials.dbPort}`,
+                    `MYSQLDATABASE=${dbCredentials.dbName}`,
+                    `MYSQLUSER=${dbCredentials.dbUser}`,
+                    `MYSQLPASSWORD=${dbCredentials.dbPassword}`,
+                    `DATABASE_URL=mysql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+                ];
+            } else {
+                dbEnv = [
+                    `PGHOST=${dbCredentials.dbHost}`,
+                    `PGPORT=${dbCredentials.dbPort}`,
+                    `PGDATABASE=${dbCredentials.dbName}`,
+                    `PGUSER=${dbCredentials.dbUser}`,
+                    `PGPASSWORD=${dbCredentials.dbPassword}`,
+                    `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+                ];
+            }
+        }
+
         const container = await docker.createContainer({
             Image: imageName,
             name: `container-${subdomain}`,
+            Env: dbEnv,
             Labels: {
                 "traefik.enable": "true",
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
@@ -627,7 +811,15 @@ EXPOSE 3000
                 "deploy.repo": repoUrl,
                 "deploy.timestamp": new Date().toISOString(),
                 "deploy.userId": userId,
-                "deploy.userEmail": userEmail
+                "deploy.userEmail": userEmail,
+                ...(dbCredentials ? {
+                    "deploy.db.type":     dbCredentials.dbType,
+                    "deploy.db.host":     dbCredentials.dbHost,
+                    "deploy.db.port":     dbCredentials.dbPort,
+                    "deploy.db.name":     dbCredentials.dbName,
+                    "deploy.db.user":     dbCredentials.dbUser,
+                    "deploy.db.password": dbCredentials.dbPassword,
+                } : {}),
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network",
@@ -805,7 +997,15 @@ app.get('/deploys', requireAuth, async (req, res) => {
                 repo: c.Labels['deploy.repo'] || 'unknown',
                 deployedAt: c.Labels['deploy.timestamp'] || 'unknown',
                 userId: c.Labels['deploy.userId'] || 'unknown',
-                userEmail: c.Labels['deploy.userEmail'] || 'unknown'
+                userEmail: c.Labels['deploy.userEmail'] || 'unknown',
+                database: c.Labels['deploy.db.type'] ? {
+                    type:     c.Labels['deploy.db.type'],
+                    host:     c.Labels['deploy.db.host'],
+                    port:     c.Labels['deploy.db.port'],
+                    name:     c.Labels['deploy.db.name'],
+                    user:     c.Labels['deploy.db.user'],
+                    password: c.Labels['deploy.db.password'],
+                } : null,
             }));
         res.json({ status: 'success', deploys });
     } catch (error) {

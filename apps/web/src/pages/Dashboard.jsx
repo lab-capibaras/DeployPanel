@@ -41,6 +41,7 @@ export default function Dashboard() {
     const [redeploying, setRedeploying] = useState({});
     const [cooldowns, setCooldowns] = useState({});
     const [now, setNow] = useState(Date.now());
+    const [showDb, setShowDb] = useState({});
 
     useEffect(() => {
         if (!authLoading && !user) navigate('/login');
@@ -316,6 +317,61 @@ export default function Dashboard() {
                                     {deleting === deploy.subdomain ? dash.deleting : dash.delete}
                                 </button>
                             </div>
+
+                            {/* DB Credentials */}
+                            {deploy.database && (
+                                <div style={{ width: '100%', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--px-border)' }}>
+                                    <button
+                                        onClick={() => setShowDb(prev => ({ ...prev, [deploy.subdomain]: !prev[deploy.subdomain] }))}
+                                        style={{
+                                            fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 11,
+                                            padding: '7px 14px',
+                                            background: 'transparent',
+                                            border: '1px solid #ffb400',
+                                            color: '#ffb400',
+                                            cursor: 'pointer',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.08em',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = '#ffb400'; e.currentTarget.style.color = '#000'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#ffb400'; }}
+                                    >
+                                        {showDb[deploy.subdomain] ? '− Ocultar DB' : '+ Ver credenciales DB'}
+                                    </button>
+
+                                    {showDb[deploy.subdomain] && (() => {
+                                        const db = deploy.database;
+                                        const url = db.type === 'mysql'
+                                            ? `mysql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`
+                                            : `postgresql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`;
+                                        const rows = [
+                                            ['Tipo', db.type.toUpperCase()],
+                                            ['Host', db.host],
+                                            ['Puerto', db.port],
+                                            ['Base de datos', db.name],
+                                            ['Usuario', db.user],
+                                            ['Contraseña', db.password],
+                                        ];
+                                        return (
+                                            <div style={{ marginTop: 10, border: '1px solid var(--px-border)', borderTop: '2px solid #ffb400' }}>
+                                                {rows.map(([label, value]) => (
+                                                    <div key={label} style={{
+                                                        display: 'grid', gridTemplateColumns: '140px 1fr',
+                                                        padding: '8px 14px', borderBottom: '1px solid var(--px-border)',
+                                                    }}>
+                                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+                                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-white)', wordBreak: 'break-all' }}>{value}</span>
+                                                    </div>
+                                                ))}
+                                                <div style={{ padding: '8px 14px' }}>
+                                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>DATABASE_URL</span>
+                                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#ffb400', wordBreak: 'break-all' }}>{url}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
