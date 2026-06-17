@@ -327,7 +327,108 @@ function detectDatabase(repoPath) {
     return null;
 }
 
-async function provisionDatabase(subdomain, dbType) {
+function findSqlFiles(repoPath) {
+    const priorityPatterns = [
+        /schema\.sql$/i,
+        /init\.sql$/i,
+        /create\.sql$/i,
+        /structure\.sql$/i,
+        /migration.*\.sql$/i,
+        /migrate.*\.sql$/i,
+        /.*\.sql$/i,
+    ];
+
+    const searchDirs = [
+        repoPath,
+        path.join(repoPath, 'database'),
+        path.join(repoPath, 'db'),
+        path.join(repoPath, 'sql'),
+        path.join(repoPath, 'migrations'),
+        path.join(repoPath, 'migrate'),
+        path.join(repoPath, 'schema'),
+    ];
+
+    const found = new Set();
+    for (const dir of searchDirs) {
+        if (!fs.existsSync(dir)) continue;
+        try {
+            for (const file of fs.readdirSync(dir)) {
+                if (!file.endsWith('.sql')) continue;
+                found.add(path.join(dir, file));
+            }
+        } catch (e) {}
+    }
+
+    return Array.from(found).sort((a, b) => {
+        const aName = path.basename(a).toLowerCase();
+        const bName = path.basename(b).toLowerCase();
+        for (let i = 0; i < priorityPatterns.length; i++) {
+            const aMatch = priorityPatterns[i].test(aName);
+            const bMatch = priorityPatterns[i].test(bName);
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+        }
+        return aName.localeCompare(bName);
+    });
+}
+
+async function importSqlFiles(sqlFiles, dbCredentials) {
+    if (sqlFiles.length === 0) {
+        console.log('[DB] No se encontraron archivos SQL para importar.');
+        return;
+    }
+
+    console.log(`[DB] Importando ${sqlFiles.length} archivo(s) SQL...`);
+
+    for (const sqlFile of sqlFiles) {
+        const fileName = path.basename(sqlFile);
+        console.log(`[DB] Importando: ${fileName}`);
+        try {
+            const sqlContent = fs.readFileSync(sqlFile, 'utf8');
+
+            if (dbCredentials.dbType === 'mysql') {
+                const execInstance = await docker.getContainer(dbCredentials.containerName).exec({
+                    Cmd: ['mysql', `-u${dbCredentials.dbUser}`, `-p${dbCredentials.dbPassword}`, '--force', dbCredentials.dbName],
+                    AttachStdin: true, AttachStdout: true, AttachStderr: true,
+                });
+                await new Promise((resolve, reject) => {
+                    execInstance.start({ hijack: true, stdin: true }, (err, stream) => {
+                        if (err) return reject(err);
+                        stream.write(sqlContent);
+                        stream.end();
+                        stream.on('end', resolve);
+                        stream.on('error', reject);
+                        setTimeout(resolve, 10000);
+                    });
+                });
+            } else {
+                const execInstance = await docker.getContainer(dbCredentials.containerName).exec({
+                    Cmd: ['psql', `-U${dbCredentials.dbUser}`, `-d${dbCredentials.dbName}`],
+                    AttachStdin: true, AttachStdout: true, AttachStderr: true,
+                    Env: [`PGPASSWORD=${dbCredentials.dbPassword}`],
+                });
+                await new Promise((resolve, reject) => {
+                    execInstance.start({ hijack: true, stdin: true }, (err, stream) => {
+                        if (err) return reject(err);
+                        stream.write(sqlContent);
+                        stream.end();
+                        stream.on('end', resolve);
+                        stream.on('error', reject);
+                        setTimeout(resolve, 10000);
+                    });
+                });
+            }
+
+            console.log(`[DB] ✓ ${fileName} importado`);
+        } catch (err) {
+            console.warn(`[DB] Warning al importar ${fileName}: ${err.message}`);
+        }
+    }
+
+    console.log('[DB] Importación SQL completada.');
+}
+
+async function provisionDatabase(subdomain, dbType, repoPath) {
     const crypto = require('crypto');
     const dbName = `db_${subdomain}`.replace(/-/g, '_');
     const dbUser = `user_${subdomain}`.replace(/-/g, '_').substring(0, 16);
@@ -403,7 +504,7 @@ async function provisionDatabase(subdomain, dbType) {
 
     await new Promise(resolve => setTimeout(resolve, dbType === 'mysql' ? 15000 : 8000));
 
-    return {
+    const credentials = {
         containerName,
         dbType,
         dbName,
@@ -412,6 +513,17 @@ async function provisionDatabase(subdomain, dbType) {
         dbHost: containerName,
         dbPort: dbType === 'mysql' ? '3306' : '5432',
     };
+
+    // Importar SQL solo en el primer deploy (no en redeploys que reusan el contenedor)
+    const sqlFiles = findSqlFiles(repoPath);
+    if (sqlFiles.length > 0) {
+        console.log(`[DB] Archivos SQL encontrados: ${sqlFiles.map(f => path.basename(f)).join(', ')}`);
+        await importSqlFiles(sqlFiles, credentials);
+    } else {
+        console.log('[DB] No se encontraron archivos SQL en el repo.');
+    }
+
+    return credentials;
 }
 
 // ==========================================
@@ -580,7 +692,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
 
         if (dbType) {
             console.log(`[DB] Base de datos detectada: ${dbType}`);
-            dbCredentials = await provisionDatabase(subdomain, dbType);
+            dbCredentials = await provisionDatabase(subdomain, dbType, repoPath);
             console.log(`[DB] Credenciales listas para ${subdomain}`);
         }
 
