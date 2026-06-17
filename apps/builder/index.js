@@ -415,6 +415,78 @@ async function provisionDatabase(subdomain, dbType) {
 }
 
 // ==========================================
+// --- DETECCIÓN DE PUERTO ---
+// ==========================================
+function detectPort(repoPath) {
+    // 1. Dockerfile EXPOSE / ENV PORT
+    const dockerfilePath = path.join(repoPath, 'Dockerfile');
+    if (fs.existsSync(dockerfilePath)) {
+        const content = fs.readFileSync(dockerfilePath, 'utf8');
+        const exposeMatch = content.match(/^EXPOSE\s+(\d+)/m);
+        if (exposeMatch) {
+            console.log(`[Port] Detectado en Dockerfile EXPOSE: ${exposeMatch[1]}`);
+            return exposeMatch[1];
+        }
+        const envPortMatch = content.match(/ENV\s+PORT[=\s]+(\d+)/);
+        if (envPortMatch) {
+            console.log(`[Port] Detectado en Dockerfile ENV PORT: ${envPortMatch[1]}`);
+            return envPortMatch[1];
+        }
+    }
+
+    // 2. .env.example / .env.sample / .env.defaults
+    for (const envFile of ['.env.example', '.env.sample', '.env.defaults']) {
+        const envPath = path.join(repoPath, envFile);
+        if (fs.existsSync(envPath)) {
+            const match = fs.readFileSync(envPath, 'utf8').match(/^PORT\s*=\s*(\d+)/m);
+            if (match) {
+                console.log(`[Port] Detectado en ${envFile}: ${match[1]}`);
+                return match[1];
+            }
+        }
+    }
+
+    // 3. package.json scripts.start --port / -p
+    const pkgPath = path.join(repoPath, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const startScript = pkg.scripts?.start || '';
+            const portMatch = startScript.match(/--port[=\s]+(\d+)|-p\s+(\d+)/);
+            if (portMatch) {
+                const port = portMatch[1] || portMatch[2];
+                console.log(`[Port] Detectado en package.json scripts.start: ${port}`);
+                return port;
+            }
+        } catch (e) {}
+    }
+
+    // 4. nginx.conf listen
+    for (const nginxFile of ['nginx.conf', 'docker/nginx.conf', 'config/nginx.conf']) {
+        const nginxPath = path.join(repoPath, nginxFile);
+        if (fs.existsSync(nginxPath)) {
+            const listenMatch = fs.readFileSync(nginxPath, 'utf8').match(/listen\s+(\d+)/);
+            if (listenMatch && listenMatch[1] !== '80' && listenMatch[1] !== '443') {
+                console.log(`[Port] Detectado en ${nginxFile}: ${listenMatch[1]}`);
+                return listenMatch[1];
+            }
+        }
+    }
+
+    // 5. docker-compose.yml ports mapping
+    const composePath = path.join(repoPath, 'docker-compose.yml');
+    if (fs.existsSync(composePath)) {
+        const portsMatch = fs.readFileSync(composePath, 'utf8').match(/["']?(\d+):(\d+)["']?/);
+        if (portsMatch) {
+            console.log(`[Port] Detectado en docker-compose.yml: ${portsMatch[2]}`);
+            return portsMatch[2];
+        }
+    }
+
+    return null;
+}
+
+// ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
 async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous') {
@@ -511,6 +583,17 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             dbCredentials = await provisionDatabase(subdomain, dbType);
             console.log(`[DB] Credenciales listas para ${subdomain}`);
         }
+
+        // Detectar puerto del repo
+        let appPort = detectPort(repoPath);
+        if (!appPort) {
+            if (isNextJs)      appPort = '3000';
+            else if (isVite)   appPort = '3000';
+            else if (isPython) appPort = '3000';
+            else if (isNode)   appPort = '3000';
+            else               appPort = '3000';
+        }
+        console.log(`[Port] Puerto final para ${subdomain}: ${appPort}`);
 
         if (hasDockerfile) {
             console.log(`Dockerfile detectado. Usando build tradicional...`);
@@ -637,9 +720,9 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
-RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+RUN echo 'server { listen ${appPort}; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
-EXPOSE 3000
+EXPOSE ${appPort}
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Nginx generado exitosamente.');
@@ -698,8 +781,8 @@ WORKDIR /app
 ${aptGetCommand}COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 3000
-CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "3000"]
+EXPOSE ${appPort}
+CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "${appPort}"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Python/FastAPI generado exitosamente.');
@@ -713,8 +796,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE ${appPort}
+ENV PORT=${appPort}
 CMD ["npm", "start"]
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
@@ -725,9 +808,9 @@ CMD ["npm", "start"]
         } else if (hasIndexHtml) {
             console.log(`Sitio estático detectado (index.html). Generando Dockerfile con Nginx...`);
             const dockerfile = `FROM nginx:alpine
-RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+RUN printf 'server {\\nlisten ${appPort};\\nroot /usr/share/nginx/html;\\nindex index.html;\\nlocation / {\\ntry_files $uri $uri/ /index.html;\\n}\\n}\\n' > /etc/nginx/conf.d/default.conf
 COPY . /usr/share/nginx/html
-EXPOSE 3000
+EXPOSE ${appPort}
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile estático de Nginx generado exitosamente.');
@@ -806,7 +889,8 @@ EXPOSE 3000
                 "traefik.enable": "true",
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
                 [`traefik.http.routers.${subdomain}.entrypoints`]: "web",
-                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: "3000",
+                [`traefik.http.services.${subdomain}.loadbalancer.server.port`]: appPort,
+                "deploy.port": appPort,
                 "deploy.branch": branch || "main",
                 "deploy.repo": repoUrl,
                 "deploy.timestamp": new Date().toISOString(),
