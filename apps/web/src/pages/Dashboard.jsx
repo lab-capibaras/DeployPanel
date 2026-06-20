@@ -132,7 +132,7 @@ export default function Dashboard() {
             {/* Header */}
             <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16, paddingBottom: 24 }}>
                 <div>
-                    <span className="swiss-index">{dash.title}</span>
+                    <span className="swiss-index" style={{ display: 'block', marginBottom: 4 }}>{dash.title}</span>
                     <h1 style={{
                         fontFamily: "'Inter',sans-serif", fontWeight: 900,
                         fontSize: 'clamp(32px, 7vw, 64px)', color: 'var(--px-white)',
@@ -156,7 +156,7 @@ export default function Dashboard() {
                     {dash.new_deploy}
                 </Link>
             </div>
-            <span className="swiss-line swiss-line-red" style={{ marginBottom: 40 }} />
+            <span className="swiss-line" style={{ marginBottom: 40 }} />
 
             {/* Lista vacía */}
             {deploys.length === 0 && (
@@ -177,7 +177,7 @@ export default function Dashboard() {
                     <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: 'var(--px-muted)', margin: '0 0 16px' }}>
                         {dash.empty}
                     </p>
-                    <Link to="/deploy" className="swiss-link" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--px-red)' }}>
+                    <Link to="/deploy" className="swiss-link" style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 14, color: 'var(--px-white)' }}>
                         {dash.create_first}
                     </Link>
                 </div>
@@ -308,7 +308,7 @@ export default function Dashboard() {
                                                 transition: 'opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
                                                 opacity: disabled ? 0.5 : 1,
                                             }}
-                                            onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = 'var(--px-red)'; e.currentTarget.style.color = 'var(--px-red)'; } }}
+                                            onMouseEnter={e => { if (!disabled) { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; } }}
                                             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.color = disabled ? 'var(--px-muted)' : 'var(--px-white)'; }}
                                         >
                                             {isRedeploying

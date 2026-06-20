@@ -406,7 +406,7 @@ export default function Deploy() {
             textTransform: 'uppercase',
             letterSpacing: '-0.02em',
           }}>
-            {d.title_1} <span style={{ color: 'var(--px-red)' }}>{d.title_2}</span>
+            {d.title_1} {d.title_2}
           </h1>
           <p style={{
             fontFamily: "'Inter',sans-serif",
@@ -420,7 +420,6 @@ export default function Deploy() {
           <div className="p-5 sm:p-8" style={{
             background: cardBg,
             border: `1px solid ${cardBorder}`,
-            borderTop: '3px solid var(--px-red)',
             borderRadius: 0,
             boxShadow: cardShadow,
           }}>
@@ -450,7 +449,7 @@ export default function Deploy() {
                         borderRadius: 0,
                         background: 'transparent',
                         border: 'none',
-                        borderBottom: `2px solid ${isActive ? 'var(--px-red)' : 'transparent'}`,
+                        borderBottom: `2px solid ${isActive ? 'var(--px-white)' : 'transparent'}`,
                         marginBottom: -1,
                         color: isActive ? 'var(--px-white)' : textMuted,
                         fontFamily: "'Inter',sans-serif",

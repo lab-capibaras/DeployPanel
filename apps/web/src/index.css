@@ -25,11 +25,11 @@ html[data-lang="en"] .nav-tools-es { display: none; }
 
   /* Brand */
   --px-red:         #ff2b00;
-  --px-accent:      var(--px-red);
-  --px-accent-fg:   #ffffff;
+  --px-accent:      #fafafa;
+  --px-accent-fg:   #09090b;
 
   /* Glow helpers */
-  --px-glow-blue:   rgba(255, 43, 0, 0.10);
+  --px-glow-blue:   rgba(255, 255, 255, 0.04);
   --px-glow-cyan:   rgba(255, 255, 255, 0.03);
 
   /* Typography */
@@ -45,7 +45,7 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   /* Shadows */
   --px-shadow-sm:   0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
   --px-shadow-md:   0 8px 32px rgba(0,0,0,0.5);
-  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,43,0,0.18);
+  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08);
 
   /* Nav */
   --nav-bg:         rgba(9, 9, 11, 0.82);
@@ -137,7 +137,7 @@ body {
   letter-spacing: 0.04em;
   transition: all 0.2s ease;
   text-transform: uppercase;
-  box-shadow: 0 2px 12px rgba(255,43,0,0.3);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
 }
 .px-btn:hover {
   background: transparent;
@@ -184,12 +184,12 @@ body {
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
-  background: rgba(255,43,0,0.10);
-  border: 1px solid rgba(255,43,0,0.25);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 999px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--px-red);
+  color: var(--px-white);
 }
 
 /* ─── Terminal card ─────────────────────────────────────────────── */
@@ -218,7 +218,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--px-red);
+  outline: 2px solid var(--px-border-glow);
   outline-offset: 2px;
   border-radius: var(--px-radius-sm);
 }
@@ -270,7 +270,7 @@ textarea:focus-visible {
   transform-origin: left center;
   animation: swiss-line-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.swiss-line.swiss-line-red { background: var(--px-red); height: 2px; }
+.swiss-line.swiss-line-red { background: var(--px-border-glow); height: 2px; }
 
 /* ─── Section index label ───────────────────────────────────────── */
 .swiss-index {
@@ -278,7 +278,7 @@ textarea:focus-visible {
   font-weight: 600;
   font-size: 12px;
   letter-spacing: 0.1em;
-  color: var(--px-red);
+  color: var(--px-muted);
   text-transform: uppercase;
 }
 
@@ -293,7 +293,7 @@ textarea:focus-visible {
   position: absolute;
   left: 0; bottom: -2px;
   width: 100%; height: 1px;
-  background: var(--px-red);
+  background: var(--px-white);
   transform: scaleX(0);
   transform-origin: right center;
   transition: transform 0.25s ease;
@@ -380,6 +380,40 @@ textarea:focus-visible {
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);
 }
 
+/* ─── Hero circle ───────────────────────────────────────────────── */
+.hero-circle-container {
+  position: absolute;
+  right: -5%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(320px, 44vw, 580px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ─── Hero text column width (responsive) ───────────────────────── */
+.hero-headline,
+.hero-lower {
+  max-width: 68%;
+}
+
+/* ─── Terminal section two-column grid ──────────────────────────── */
+.terminal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+/* ─── Responsive breakpoints ────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-circle-container { display: none; }
+  .hero-headline,
+  .hero-lower { max-width: 100%; }
+  .terminal-grid { grid-template-columns: 1fr; gap: 40px; }
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4,
@@ -403,15 +437,15 @@ html.light-mode {
   --px-border:      #e4e4e7;
   --px-border-glow: #d4d4d8;
   --px-red:         #ff2b00;
-  --px-accent:      var(--px-red);
+  --px-accent:      #09090b;
   --px-accent-fg:   #ffffff;
-  --px-glow-blue:   rgba(255, 43, 0, 0.06);
+  --px-glow-blue:   rgba(0, 0, 0, 0.04);
   --px-glow-cyan:   rgba(0, 0, 0, 0.02);
   --nav-bg:         rgba(250, 250, 250, 0.85);
   --drawer-bg:      rgba(250, 250, 250, 0.98);
   --px-shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --px-shadow-md:   0 8px 32px rgba(0,0,0,0.08);
-  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,43,0,0.15);
+  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.1);
 }
 
 html.light-mode body {
@@ -465,6 +499,7 @@ html.light-mode select {
 
 html.light-mode .noise-overlay  { opacity: 0.015; }
 html.light-mode .grid-overlay   { opacity: 0.15; }
-html.light-mode .px-btn { box-shadow: 0 2px 8px rgba(255,43,0,0.2); }
+html.light-mode .px-btn { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+html.light-mode .px-badge { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.12); }
 
 html.light-mode .hero-blob { opacity: 0.5; }

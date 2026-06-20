@@ -92,7 +92,9 @@ function PreferencesPanel({ inline = false }) {
     transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
     outline: 'none', whiteSpace: 'nowrap',
   };
-  const pillOn = { background: 'var(--px-red)', borderColor: 'var(--px-red)', color: '#ffffff' };
+  const pillOn = isDark
+    ? { background: '#fafafa', borderColor: '#fafafa', color: '#09090b' }
+    : { background: '#09090b', borderColor: '#09090b', color: '#ffffff' };
 
   const pillOff = isDark
     ? { background: 'transparent', borderColor: 'transparent', color: 'rgba(255,255,255,0.4)' }
@@ -424,9 +426,9 @@ function UserMenu() {
           fontSize: 13,
           fontWeight: 700,
           textTransform: 'uppercase',
-          color: 'var(--px-red)',
-          border: '1px solid var(--px-red)',
-          borderRadius: 0,
+          color: textMain,
+          border: `1px solid ${borderLogin}`,
+          borderRadius: 999,
           boxShadow: 'none',
           background: 'transparent',
           letterSpacing: '0.06em'
@@ -599,7 +601,7 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
           {/* LEFT: Logo + Herramientas */}
           <div className="flex items-center gap-6">
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 4px', touchAction: 'manipulation' }}>
-              <span style={{ width: 10, height: 10, background: 'var(--px-red)', display: 'inline-block', flexShrink: 0 }} />
+              <span style={{ width: 10, height: 10, background: textMain, display: 'inline-block', flexShrink: 0 }} />
               <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18, color: textMain, letterSpacing: '0.04em', textTransform: 'uppercase' }}>StarDest</span>
             </Link>
 
@@ -673,7 +675,7 @@ function ToolLink({ tool }) {
   const restBg = 'transparent';
   return (
     <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: '8px', border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.18s, background 0.18s' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-red)'; e.currentTarget.style.background = 'rgba(255,43,0,0.04)'; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-bg2)'; }}
       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = restBg; }}
     >
       <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>

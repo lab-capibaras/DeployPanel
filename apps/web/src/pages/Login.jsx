@@ -39,7 +39,7 @@ function Login() {
       {/* Background glow */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,43,0,0.08) 0%, transparent 65%)',
+        background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 65%)',
       }} />
 
       <div className="fade-up" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>
@@ -47,7 +47,7 @@ function Login() {
         {/* Logo */}
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 8, height: 8, background: 'var(--px-red)', borderRadius: '50%', boxShadow: '0 0 8px var(--px-red)' }} />
+            <span style={{ width: 8, height: 8, background: 'var(--px-white)', display: 'inline-block' }} />
             <span style={{
               fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18,
               color: 'var(--px-white)', textTransform: 'uppercase', letterSpacing: '0.05em',
