@@ -448,6 +448,7 @@ async function provisionDatabase(subdomain, dbType, repoPath) {
             dbPassword: labels['db.password'] || dbPassword,
             dbHost:     containerName,
             dbPort:     dbType === 'mysql' ? '3306' : '5432',
+            adminerUrl: `https://db-${subdomain}.stardest.com`,
         };
     }
 
@@ -504,6 +505,38 @@ async function provisionDatabase(subdomain, dbType, repoPath) {
 
     await new Promise(resolve => setTimeout(resolve, dbType === 'mysql' ? 15000 : 8000));
 
+    // Crear contenedor Adminer para administración web
+    const adminerContainerName = `adminer-${subdomain}`;
+    const existingAdminer = (await docker.listContainers({ all: true }))
+        .find(c => c.Names.includes(`/${adminerContainerName}`));
+
+    if (!existingAdminer) {
+        console.log(`[DB] Creando Adminer para ${subdomain}...`);
+        const adminerContainer = await docker.createContainer({
+            Image: 'adminer:latest',
+            name: adminerContainerName,
+            Env: [
+                `ADMINER_DEFAULT_SERVER=${containerName}`,
+            ],
+            Labels: {
+                "traefik.enable": "true",
+                [`traefik.http.routers.${adminerContainerName}.rule`]: `Host(\`db-${subdomain}.stardest.com\`)`,
+                [`traefik.http.routers.${adminerContainerName}.entrypoints`]: "web",
+                [`traefik.http.services.${adminerContainerName}.loadbalancer.server.port`]: "8080",
+                "db.subdomain": subdomain,
+                "adminer.for": subdomain,
+            },
+            HostConfig: {
+                NetworkMode: 'deploys_internal_network',
+                RestartPolicy: { Name: 'always' },
+            }
+        });
+        await adminerContainer.start();
+        console.log(`[DB] Adminer disponible en: https://db-${subdomain}.stardest.com`);
+    } else {
+        console.log(`[DB] Adminer ya existe para ${subdomain}, reutilizando...`);
+    }
+
     const credentials = {
         containerName,
         dbType,
@@ -512,6 +545,7 @@ async function provisionDatabase(subdomain, dbType, repoPath) {
         dbPassword,
         dbHost: containerName,
         dbPort: dbType === 'mysql' ? '3306' : '5432',
+        adminerUrl: `https://db-${subdomain}.stardest.com`,
     };
 
     // Importar SQL solo en el primer deploy (no en redeploys que reusan el contenedor)
@@ -1009,12 +1043,13 @@ EXPOSE ${appPort}
                 "deploy.userId": userId,
                 "deploy.userEmail": userEmail,
                 ...(dbCredentials ? {
-                    "deploy.db.type":     dbCredentials.dbType,
-                    "deploy.db.host":     dbCredentials.dbHost,
-                    "deploy.db.port":     dbCredentials.dbPort,
-                    "deploy.db.name":     dbCredentials.dbName,
-                    "deploy.db.user":     dbCredentials.dbUser,
-                    "deploy.db.password": dbCredentials.dbPassword,
+                    "deploy.db.type":       dbCredentials.dbType,
+                    "deploy.db.host":       dbCredentials.dbHost,
+                    "deploy.db.port":       dbCredentials.dbPort,
+                    "deploy.db.name":       dbCredentials.dbName,
+                    "deploy.db.user":       dbCredentials.dbUser,
+                    "deploy.db.password":   dbCredentials.dbPassword,
+                    "deploy.db.adminerUrl": dbCredentials.adminerUrl,
                 } : {}),
             },
             HostConfig: {
@@ -1164,6 +1199,14 @@ app.delete('/deploy/:subdomain', async (req, res) => {
         if (existing) {
             await docker.getContainer(existing.Id).remove({ force: true });
             console.log(`Contenedor container-${subdomain} eliminado.`);
+
+            // Eliminar Adminer si existe
+            const existingAdminer = containers.find(c => c.Names.includes(`/adminer-${subdomain}`));
+            if (existingAdminer) {
+                await docker.getContainer(existingAdminer.Id).remove({ force: true });
+                console.log(`Contenedor adminer-${subdomain} eliminado.`);
+            }
+
             res.json({ status: 'success', message: `Proyecto ${subdomain} eliminado correctamente.` });
         } else {
             res.status(404).json({ status: 'warning', message: `No se encontró el proyecto.` });
@@ -1195,12 +1238,13 @@ app.get('/deploys', requireAuth, async (req, res) => {
                 userId: c.Labels['deploy.userId'] || 'unknown',
                 userEmail: c.Labels['deploy.userEmail'] || 'unknown',
                 database: c.Labels['deploy.db.type'] ? {
-                    type:     c.Labels['deploy.db.type'],
-                    host:     c.Labels['deploy.db.host'],
-                    port:     c.Labels['deploy.db.port'],
-                    name:     c.Labels['deploy.db.name'],
-                    user:     c.Labels['deploy.db.user'],
-                    password: c.Labels['deploy.db.password'],
+                    type:       c.Labels['deploy.db.type'],
+                    host:       c.Labels['deploy.db.host'],
+                    port:       c.Labels['deploy.db.port'],
+                    name:       c.Labels['deploy.db.name'],
+                    user:       c.Labels['deploy.db.user'],
+                    password:   c.Labels['deploy.db.password'],
+                    adminerUrl: c.Labels['deploy.db.adminerUrl'] || null,
                 } : null,
             }));
         res.json({ status: 'success', deploys });

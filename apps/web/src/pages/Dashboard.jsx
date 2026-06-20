@@ -367,6 +367,38 @@ export default function Dashboard() {
                                                     <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>DATABASE_URL</span>
                                                     <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#ffb400', wordBreak: 'break-all' }}>{url}</span>
                                                 </div>
+                                                {db.adminerUrl && (
+                                                    <div style={{ padding: '12px 14px', borderTop: '1px solid var(--px-border)' }}>
+                                                        <a
+                                                            href={db.adminerUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 8,
+                                                                fontFamily: "'Inter',sans-serif",
+                                                                fontWeight: 700,
+                                                                fontSize: 12,
+                                                                padding: '9px 16px',
+                                                                background: 'transparent',
+                                                                border: '1px solid #00c8ff',
+                                                                color: '#00c8ff',
+                                                                textDecoration: 'none',
+                                                                textTransform: 'uppercase',
+                                                                letterSpacing: '0.06em',
+                                                                transition: 'background 0.15s ease, color 0.15s ease',
+                                                            }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = '#00c8ff'; e.currentTarget.style.color = '#000'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#00c8ff'; }}
+                                                        >
+                                                            Abrir Adminer →
+                                                        </a>
+                                                        <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', margin: '8px 0 0' }}>
+                                                            Usa el usuario y contraseña de arriba. Sistema: {db.type === 'mysql' ? 'MySQL' : 'PostgreSQL'}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })()}
