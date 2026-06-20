@@ -333,11 +333,12 @@ export default function Home() {
           </h1>
 
           {/* Subtitle + CTAs */}
-          <div className="fade-up fade-up-2 hero-lower" style={{ display: 'flex', flexWrap: 'wrap', gap: 28, alignItems: 'flex-start', justifyContent: 'space-between', borderTop: `1px solid ${border}`, paddingTop: 28 }}>
+          <div className="fade-up fade-up-2 hero-lower" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start', justifyContent: 'space-between', borderTop: `1px solid ${border}`, paddingTop: 28 }}>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: '#71717a', maxWidth: 420, margin: 0, lineHeight: 1.65, fontWeight: 400 }}>{h.subtitle}</p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 }}>
+            <div className="flex flex-col sm:flex-row w-full sm:w-auto" style={{ gap: 10 }}>
               <Link to="/deploy"
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s', letterSpacing: '0.01em' }}
+                className="justify-center"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
@@ -345,7 +346,8 @@ export default function Home() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </Link>
               <a href="#como-funciona"
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, background: 'transparent', color: main, border: `1px solid ${border}`, borderRadius: 999, transition: 'border-color 0.2s', letterSpacing: '0.01em' }}
+                className="justify-center"
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, background: 'transparent', color: main, border: `1px solid ${border}`, borderRadius: 999, transition: 'border-color 0.2s', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.32)' : 'rgba(0,0,0,0.3)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = border}
               >

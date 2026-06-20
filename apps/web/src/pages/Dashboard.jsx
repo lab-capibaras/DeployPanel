@@ -362,7 +362,7 @@ export default function Dashboard() {
                                         onMouseEnter={e => { e.currentTarget.style.background = '#ffb400'; e.currentTarget.style.color = '#000'; }}
                                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,180,0,0.08)'; e.currentTarget.style.color = '#ffb400'; }}
                                     >
-                                        {showDb[deploy.subdomain] ? '− Ocultar DB' : '+ Ver credenciales DB'}
+                                        {showDb[deploy.subdomain] ? dash.db_hide : dash.db_show}
                                     </button>
 
                                     {showDb[deploy.subdomain] && (() => {
@@ -371,12 +371,12 @@ export default function Dashboard() {
                                             ? `mysql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`
                                             : `postgresql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`;
                                         const rows = [
-                                            ['Tipo', db.type.toUpperCase()],
-                                            ['Host', db.host],
-                                            ['Puerto', db.port],
-                                            ['Base de datos', db.name],
-                                            ['Usuario', db.user],
-                                            ['Contraseña', db.password],
+                                            [dash.db_type, db.type.toUpperCase()],
+                                            [dash.db_host, db.host],
+                                            [dash.db_port, db.port],
+                                            [dash.db_name, db.name],
+                                            [dash.db_user, db.user],
+                                            [dash.db_pass, db.password],
                                         ];
                                         return (
                                             <div style={{ marginTop: 10, border: '1px solid var(--px-border)', borderTop: '2px solid #ffb400', borderRadius: 'var(--px-radius)' }}>
@@ -418,10 +418,10 @@ export default function Dashboard() {
                                                             onMouseEnter={e => { e.currentTarget.style.background = '#00c8ff'; e.currentTarget.style.color = '#000'; }}
                                                             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#00c8ff'; }}
                                                         >
-                                                            Abrir Adminer →
+                                                            {dash.db_adminer}
                                                         </a>
                                                         <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', margin: '8px 0 0' }}>
-                                                            Usa el usuario y contraseña de arriba. Sistema: {db.type === 'mysql' ? 'MySQL' : 'PostgreSQL'}
+                                                            {dash.db_hint(db.type === 'mysql' ? 'MySQL' : 'PostgreSQL')}
                                                         </p>
                                                     </div>
                                                 )}

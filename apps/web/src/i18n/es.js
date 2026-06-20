@@ -279,6 +279,16 @@ const es = {
       restarting: 'Reiniciando',
       exited:     'Detenido',
     },
+    db_show:     '+ Ver credenciales DB',
+    db_hide:     '− Ocultar DB',
+    db_type:     'Tipo',
+    db_host:     'Host',
+    db_port:     'Puerto',
+    db_name:     'Base de datos',
+    db_user:     'Usuario',
+    db_pass:     'Contraseña',
+    db_adminer:  'Abrir Adminer →',
+    db_hint:     (type) => `Usa el usuario y contraseña de arriba. Sistema: ${type}`,
   },
 
   // ── Webhook Instructions ─────────────────────────────────

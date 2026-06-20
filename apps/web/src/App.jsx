@@ -102,41 +102,100 @@ function BottomNavItem({ to, icon, label, active, isDark, onClick }) {
 
 function MobileBottomNav() {
   const { theme, lang } = usePrefs();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const isDark = theme === 'dark';
   const loc = useLocation();
-  const [showPrefs, setShowPrefs] = useState(false);
+  const [showPrefs, setShowPrefs]   = useState(false);
+  const [showUser, setShowUser]     = useState(false);
   const wrapRef = useRef(null);
 
+  const closeAll = () => { setShowPrefs(false); setShowUser(false); };
+
   useEffect(() => {
-    if (!showPrefs) return;
-    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowPrefs(false); };
+    const anyOpen = showPrefs || showUser;
+    if (!anyOpen) return;
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) closeAll(); };
     document.addEventListener('mousedown', h);
     document.addEventListener('touchstart', h, { passive: true });
     return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
-  }, [showPrefs]);
+  }, [showPrefs, showUser]);
 
-  useEffect(() => { setShowPrefs(false); }, [loc.pathname]);
+  useEffect(() => { closeAll(); }, [loc.pathname]);
 
   const bg     = isDark ? 'rgba(10,10,10,0.65)' : 'rgba(255,255,255,0.65)';
   const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
   const shadow = isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)';
+  const main   = isDark ? '#fafafa' : '#09090b';
+  const muted  = isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
   const isEs   = lang === 'es';
 
   if (loading) return null;
 
+  const popupStyle = {
+    position: 'absolute', bottom: 'calc(100% + 10px)',
+    background: bg, border: `1px solid ${border}`, borderRadius: 14,
+    backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+    boxShadow: shadow, overflow: 'hidden',
+  };
+
   return (
     <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 14, left: 14, right: 14 }}>
+
+      {/* Prefs popup */}
       {showPrefs && (
-        <div style={{
-          position: 'absolute', bottom: 'calc(100% + 10px)', right: 0,
-          background: bg, border: `1px solid ${border}`, borderRadius: 14,
-          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: shadow, overflow: 'hidden',
-        }}>
+        <div style={{ ...popupStyle, right: 0 }}>
           <PreferencesPanel />
         </div>
       )}
+
+      {/* User popup */}
+      {showUser && user && (
+        <div style={{ ...popupStyle, right: 0, minWidth: 200 }}>
+          {/* User info header */}
+          <div style={{ padding: '14px 16px 10px', borderBottom: `1px solid ${border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {user.avatar
+                ? <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0 }} />
+                : <div style={{ width: 32, height: 32, borderRadius: '50%', background: main, color: isDark ? '#09090b' : '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 'bold', flexShrink: 0 }}>{user.name?.charAt(0).toUpperCase()}</div>
+              }
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontWeight: 700, fontSize: 13, color: main, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+                {user.email && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Menu items */}
+          <Link to="/dashboard" onClick={closeAll} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
+            textDecoration: 'none', color: main,
+            fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 500,
+            borderBottom: `1px solid ${border}`,
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <GridNavIcon />
+            Dashboard
+          </Link>
+
+          <button onClick={() => { closeAll(); logout(); }} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
+            width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--px-red)',
+            fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600,
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,43,0,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            {isEs ? 'Cerrar sesión' : 'Log out'}
+          </button>
+        </div>
+      )}
+
       <nav style={{
         background: bg, border: `1px solid ${border}`, borderRadius: 20,
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
@@ -148,13 +207,15 @@ function MobileBottomNav() {
         <BottomNavItem
           icon={<ContrastIcon size={20} />} label={isEs ? 'Tema' : 'Theme'}
           active={showPrefs} isDark={isDark}
-          onClick={() => setShowPrefs(o => !o)}
+          onClick={() => { setShowUser(false); setShowPrefs(o => !o); }}
         />
         {user ? (
-          <BottomNavItem to="/dashboard" active={false} isDark={isDark}
+          <BottomNavItem
+            active={showUser} isDark={isDark}
             label={(user.name?.split(' ')[0] || '').slice(0, 8)}
+            onClick={() => { setShowPrefs(false); setShowUser(o => !o); }}
             icon={user.avatar
-              ? <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
+              ? <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%', border: showUser ? `1.5px solid ${main}` : '1.5px solid transparent', transition: 'border-color 0.15s' }} />
               : <div style={{ width: 22, height: 22, borderRadius: '50%', background: isDark ? '#fafafa' : '#09090b', color: isDark ? '#09090b' : '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 'bold' }}>{user.name?.charAt(0).toUpperCase()}</div>
             }
           />

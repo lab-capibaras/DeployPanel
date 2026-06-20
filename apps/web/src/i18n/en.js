@@ -281,6 +281,16 @@ const en = {
       restarting: 'Restarting',
       exited:     'Stopped',
     },
+    db_show:     '+ View DB credentials',
+    db_hide:     '− Hide DB',
+    db_type:     'Type',
+    db_host:     'Host',
+    db_port:     'Port',
+    db_name:     'Database',
+    db_user:     'User',
+    db_pass:     'Password',
+    db_adminer:  'Open Adminer →',
+    db_hint:     (type) => `Use the username and password above. System: ${type}`,
   },
 
   // ── Webhook Instructions ─────────────────────────────────
