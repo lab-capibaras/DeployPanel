@@ -81,6 +81,31 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--px-border); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--px-border-glow); }
 
+/* ─── Theme switch transition ───────────────────────────────────── */
+/* View Transition API (Chrome 111+, Safari 18+) */
+::view-transition-old(root) {
+  animation: theme-vt-out 0.3s ease-out;
+}
+::view-transition-new(root) {
+  animation: theme-vt-in 0.3s ease-in;
+}
+@keyframes theme-vt-out {
+  from { opacity: 1; filter: blur(0px); }
+  to   { opacity: 0; filter: blur(5px); }
+}
+@keyframes theme-vt-in {
+  from { opacity: 0; filter: blur(5px); }
+  to   { opacity: 1; filter: blur(0px); }
+}
+/* Fallback for older browsers */
+html.theme-transitioning * {
+  transition:
+    background-color 0.35s ease,
+    color 0.28s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease !important;
+}
+
 /* ─── Border utilities ──────────────────────────────────────────── */
 .px-border      { border: 1px solid var(--px-border); }
 .px-border-glow { border: 1px solid var(--px-border-glow); }

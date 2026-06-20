@@ -74,18 +74,24 @@ const PersonNavIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill
 
 function BottomNavItem({ to, icon, label, active, isDark, onClick }) {
   const main  = isDark ? '#fafafa' : '#09090b';
-  const muted = isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.32)';
+  const muted = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.28)';
   const s = {
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    gap: 3, padding: '7px 14px', borderRadius: 12, border: 'none',
-    background: active ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)') : 'transparent',
+    gap: 3, padding: '8px 4px', border: 'none', flex: 1,
+    background: 'transparent', position: 'relative',
     color: active ? main : muted, cursor: 'pointer',
-    transition: 'background 0.15s, color 0.15s',
-    textDecoration: 'none', flexShrink: 0, outline: 'none',
+    transition: 'color 0.2s',
+    textDecoration: 'none', outline: 'none',
     WebkitTapHighlightColor: 'transparent',
   };
   const inner = (
     <>
+      <span style={{
+        position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+        width: active ? 20 : 0, height: 2, borderRadius: 999,
+        background: active ? main : 'transparent',
+        transition: 'width 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+      }} />
       {icon}
       {label && <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1 }}>{label}</span>}
     </>
@@ -134,12 +140,11 @@ function MobileBottomNav() {
       <nav style={{
         background: bg, border: `1px solid ${border}`, borderRadius: 20,
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-        boxShadow: shadow, display: 'flex', alignItems: 'center', padding: '6px 6px',
+        boxShadow: shadow, display: 'flex', alignItems: 'stretch', padding: '4px 6px',
       }}>
         <BottomNavItem to="/" icon={<HomeNavIcon />} label={isEs ? 'Inicio' : 'Home'} active={loc.pathname === '/'} isDark={isDark} />
         <BottomNavItem to="/deploy" icon={<DeployNavIcon />} label="Deploy" active={loc.pathname === '/deploy'} isDark={isDark} />
         {user && <BottomNavItem to="/dashboard" icon={<GridNavIcon />} label="Dashboard" active={loc.pathname === '/dashboard'} isDark={isDark} />}
-        <div style={{ flex: 1 }} />
         <BottomNavItem
           icon={<ContrastIcon size={20} />} label={isEs ? 'Tema' : 'Theme'}
           active={showPrefs} isDark={isDark}
@@ -168,6 +173,17 @@ function PreferencesPanel({ inline = false }) {
   const { theme, lang, setTheme, setLang } = usePrefs();
   const t = useTranslation();
   const isDark = theme === 'dark';
+
+  const handleTheme = (newTheme) => {
+    if (newTheme === theme) return;
+    if (document.startViewTransition) {
+      document.startViewTransition(() => setTheme(newTheme));
+    } else {
+      document.documentElement.classList.add('theme-transitioning');
+      setTheme(newTheme);
+      setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 500);
+    }
+  };
 
   // Icon animation: active → normal, inactive → rotated+faded
   const iconAnim = (active) => ({
@@ -212,11 +228,11 @@ function PreferencesPanel({ inline = false }) {
       <div>
         <p style={sectionLabel}>{t.nav.appearance}</p>
         <div style={trackStyle}>
-          <button onClick={() => isDark && setTheme('light')} style={{ ...pillBase, ...(isDark ? pillOff : pillOn) }}>
+          <button onClick={() => handleTheme('light')} style={{ ...pillBase, ...(isDark ? pillOff : pillOn) }}>
             <SunIcon animStyle={iconAnim(!isDark)} />
             {t.nav.light}
           </button>
-          <button onClick={() => !isDark && setTheme('dark')} style={{ ...pillBase, ...(isDark ? pillOn : pillOff) }}>
+          <button onClick={() => handleTheme('dark')} style={{ ...pillBase, ...(isDark ? pillOn : pillOff) }}>
             <MoonIcon animStyle={iconAnim(isDark)} />
             {t.nav.dark}
           </button>
@@ -595,7 +611,7 @@ function App() {
     <>
       <Navbar />
       <MobileBottomNav />
-      <div className="pt-14 pb-28 md:pb-0 min-h-screen">
+      <div className="pt-0 md:pt-14 pb-28 md:pb-0 min-h-screen">
         <Routes>
           <Route path="/"          element={<Home />} />
           <Route path="/login"     element={<Login />} />
