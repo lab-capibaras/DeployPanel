@@ -67,6 +67,100 @@ const MoonIcon = ({ size = 15, animStyle }) => (
   </svg>
 );
 
+const HomeNavIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
+const DeployNavIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>;
+const GridNavIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+const PersonNavIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
+
+function BottomNavItem({ to, icon, label, active, isDark, onClick }) {
+  const main  = isDark ? '#fafafa' : '#09090b';
+  const muted = isDark ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.32)';
+  const s = {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: 3, padding: '7px 14px', borderRadius: 12, border: 'none',
+    background: active ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)') : 'transparent',
+    color: active ? main : muted, cursor: 'pointer',
+    transition: 'background 0.15s, color 0.15s',
+    textDecoration: 'none', flexShrink: 0, outline: 'none',
+    WebkitTapHighlightColor: 'transparent',
+  };
+  const inner = (
+    <>
+      {icon}
+      {label && <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', lineHeight: 1 }}>{label}</span>}
+    </>
+  );
+  if (onClick) return <button onClick={onClick} style={s}>{inner}</button>;
+  return <Link to={to} style={s}>{inner}</Link>;
+}
+
+function MobileBottomNav() {
+  const { theme, lang } = usePrefs();
+  const { user, loading } = useAuth();
+  const isDark = theme === 'dark';
+  const loc = useLocation();
+  const [showPrefs, setShowPrefs] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!showPrefs) return;
+    const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowPrefs(false); };
+    document.addEventListener('mousedown', h);
+    document.addEventListener('touchstart', h, { passive: true });
+    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
+  }, [showPrefs]);
+
+  useEffect(() => { setShowPrefs(false); }, [loc.pathname]);
+
+  const bg     = isDark ? 'rgba(10,10,10,0.65)' : 'rgba(255,255,255,0.65)';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+  const shadow = isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)';
+  const isEs   = lang === 'es';
+
+  if (loading) return null;
+
+  return (
+    <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 14, left: 14, right: 14 }}>
+      {showPrefs && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 10px)', right: 0,
+          background: bg, border: `1px solid ${border}`, borderRadius: 14,
+          backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+          boxShadow: shadow, overflow: 'hidden',
+        }}>
+          <PreferencesPanel />
+        </div>
+      )}
+      <nav style={{
+        background: bg, border: `1px solid ${border}`, borderRadius: 20,
+        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
+        boxShadow: shadow, display: 'flex', alignItems: 'center', padding: '6px 6px',
+      }}>
+        <BottomNavItem to="/" icon={<HomeNavIcon />} label={isEs ? 'Inicio' : 'Home'} active={loc.pathname === '/'} isDark={isDark} />
+        <BottomNavItem to="/deploy" icon={<DeployNavIcon />} label="Deploy" active={loc.pathname === '/deploy'} isDark={isDark} />
+        {user && <BottomNavItem to="/dashboard" icon={<GridNavIcon />} label="Dashboard" active={loc.pathname === '/dashboard'} isDark={isDark} />}
+        <div style={{ flex: 1 }} />
+        <BottomNavItem
+          icon={<ContrastIcon size={20} />} label={isEs ? 'Tema' : 'Theme'}
+          active={showPrefs} isDark={isDark}
+          onClick={() => setShowPrefs(o => !o)}
+        />
+        {user ? (
+          <BottomNavItem to="/dashboard" active={false} isDark={isDark}
+            label={(user.name?.split(' ')[0] || '').slice(0, 8)}
+            icon={user.avatar
+              ? <img src={user.avatar} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
+              : <div style={{ width: 22, height: 22, borderRadius: '50%', background: isDark ? '#fafafa' : '#09090b', color: isDark ? '#09090b' : '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 'bold' }}>{user.name?.charAt(0).toUpperCase()}</div>
+            }
+          />
+        ) : (
+          <BottomNavItem to="/login" icon={<PersonNavIcon />} label={isEs ? 'Entrar' : 'Login'} active={loc.pathname === '/login'} isDark={isDark} />
+        )}
+      </nav>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    PREFERENCES PANEL (only this component re-renders on prefs change)
 ═══════════════════════════════════════════════════════════ */
@@ -187,201 +281,6 @@ function PreferencesDropdown() {
   );
 }
 
-
-/* ═══════════════════════════════════════════════════════════
-   MOBILE DRAWER — reads lang from DOM to avoid re-render
-   (only re-renders when mobileOpen changes)
-═══════════════════════════════════════════════════════════ */
-function MobileDrawer({ open, onClose, openSection, setOpenSection }) {
-  const { user } = useAuth();
-  const { theme } = usePrefs();
-  const isDark = theme === 'dark';
-  // Read lang directly from DOM attribute — no subscription needed here
-  // since the drawer re-renders on open anyway
-  const lang = document.documentElement.getAttribute('data-lang') || 'es';
-  const baseTools = NAV_TOOLS[lang] || NAV_TOOLS.es;
-  const TOOLS = user ? [
-    {
-      to: '/dashboard',
-      label: 'Dashboard',
-      desc: lang === 'es' ? 'Gestiona tus deploys activos' : 'Manage your active deployments',
-      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
-    },
-    ...baseTools
-  ] : baseTools;
-  
-  const labelMenu         = lang === 'es' ? 'Menú' : 'Menu';
-  const labelHerramientas = lang === 'es' ? 'Herramientas' : 'Tools';
-
-  const sections = [{
-    id: 'herramientas',
-    label: labelHerramientas,
-    icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z" />,
-    items: TOOLS,
-  }];
-
-  return (
-    <div className={`fixed top-0 right-0 h-full w-72 max-w-[85vw] z-50 md:hidden transform transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className={`h-full backdrop-blur-xl border-l flex flex-col ${isDark ? 'bg-[#0a0a0a]/95 border-white/10' : 'bg-white/95 border-black/10'}`}>
-
-        {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-          <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-black'}`}>{labelMenu}</span>
-          <button
-            onClick={onClose}
-            className={`flex items-center justify-center rounded-none border transition ${isDark ? 'border-white/15 text-white/60 hover:text-white hover:bg-white/10' : 'border-black/10 text-black/60 hover:text-black hover:bg-black/5'}`}
-            style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Preferences inline */}
-        <div className={`px-4 py-2 border-b ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-          <PreferencesPanel inline />
-        </div>
-
-        {/* Accordion */}
-        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
-          {sections.map((section) => {
-            const isOpen = openSection === section.id;
-            return (
-              <div key={section.id} className="rounded-none overflow-hidden">
-                <button
-                  onClick={() => setOpenSection(isOpen ? null : section.id)}
-                  className={`w-full flex items-center justify-between px-4 rounded-none transition group ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
-                  style={{ minHeight: '52px', cursor: 'pointer' }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 flex items-center justify-center rounded-none border transition flex-shrink-0 ${isDark ? 'border-white/15 bg-white/5 text-white group-hover:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover:border-black/20'}`}>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{section.icon}</svg>
-                    </div>
-                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-black'}`}>{section.label}</span>
-                  </div>
-                  <svg className={`w-4 h-4 transition-transform duration-300 ${isDark ? 'text-white/60' : 'text-black/60'} ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="pl-3 pr-1 pb-2 pt-1 space-y-0.5">
-                    {section.items.map((item) => (
-                      <Link key={item.label} to={item.to} onClick={onClose}
-                        className={`flex items-center gap-3 px-3 py-3 rounded-none transition group/item ${isDark ? 'hover:bg-white/5 active:bg-white/10' : 'hover:bg-black/5 active:bg-black/10'}`}
-                      >
-                        <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-none border transition ${isDark ? 'border-white/15 bg-white/5 text-white group-hover/item:border-white/30' : 'border-black/10 bg-black/5 text-black group-hover/item:border-black/20'}`}>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{item.icon}</svg>
-                        </div>
-                        <div>
-                          <p className={`text-sm font-semibold leading-tight ${isDark ? 'text-white' : 'text-black'}`}>{item.label}</p>
-                          <p className={`text-xs mt-0.5 leading-tight ${isDark ? 'text-white/60' : 'text-black/60'}`}>{item.desc}</p>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className={`px-5 py-5 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}>
-          <UserMobileMenu onClose={onClose} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UserMobileMenu({ onClose }) {
-  const { user, loading, logout } = useAuth();
-  const { theme } = usePrefs();
-  const isDark = theme === 'dark';
-  const t = useTranslation();
-  if (loading) return null;
-
-  if (!user) {
-    return (
-      <Link to="/login" onClick={onClose}
-        className={`block w-full text-center py-3 border rounded-none transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
-        style={{ textDecoration: 'none' }}
-      >
-        {t.nav.login}
-      </Link>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className={`flex items-center gap-3 px-3 py-2 border rounded-none ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5'}`}>
-        {user.avatar ? (
-          <img src={user.avatar} alt="" className={`w-8 h-8 rounded-full border ${isDark ? 'border-white/30' : 'border-black/20'}`} />
-        ) : (
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}>
-            {user.name?.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="overflow-hidden">
-          <p className={`text-sm font-bold leading-tight truncate ${isDark ? 'text-white' : 'text-black'}`}>{user.name}</p>
-          <p className={`text-xs leading-tight truncate ${isDark ? 'text-white/50' : 'text-black/50'}`}>{user.email || user.provider}</p>
-        </div>
-      </div>
-
-      <Link
-        to="/dashboard"
-        onClick={onClose}
-        style={{
-          display: 'block',
-          width: '100%',
-          textAlign: 'center',
-          padding: '10px 12px',
-          fontFamily: "'Inter',sans-serif",
-          fontSize: 14,
-          fontWeight: 600,
-          color: isDark ? '#f5f5f5' : '#0a0a0a',
-          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-          borderRadius: 0,
-          textDecoration: 'none',
-        }}
-      >
-        Dashboard
-      </Link>
-
-      <Link
-        to="/deploy"
-        onClick={onClose}
-        style={{
-          display: 'block',
-          width: '100%',
-          textAlign: 'center',
-          padding: '10px 12px',
-          fontFamily: "'Inter',sans-serif",
-          fontSize: 14,
-          fontWeight: 600,
-          color: isDark ? '#f5f5f5' : '#0a0a0a',
-          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-          borderRadius: 0,
-          textDecoration: 'none',
-        }}
-      >
-        {t.nav.new_deploy}
-      </Link>
-
-      <button
-        onClick={() => { logout(); onClose(); }}
-        className={`block w-full text-center py-3 border rounded-none transition text-sm font-medium cursor-pointer ${isDark ? 'border-white/15 text-white/70 hover:text-white hover:bg-white/10' : 'border-black/15 text-black/70 hover:text-black hover:bg-black/5'}`}
-        style={{ background: 'transparent', borderRadius: 0, marginTop: '4px' }}
-      >
-        {t.nav.logout}
-      </button>
-    </div>
-  );
-}
 
 function UserMenu() {
   const { user, loading, logout } = useAuth();
@@ -576,7 +475,7 @@ function UserMenu() {
    NAVBAR (pure static shell — NEVER re-renders on prefs change)
    Language labels toggle via CSS [data-lang] attribute on <html>
 ═══════════════════════════════════════════════════════════ */
-const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger }) {
+const Navbar = React.memo(function Navbar() {
   const { theme } = usePrefs();
   const isDark = theme === 'dark';
   const [scrolled, setScrolled] = useState(false);
@@ -589,12 +488,12 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger }) {
 
   const textMain   = isDark ? '#f5f5f5'                  : '#0a0a0a';
   const textMuted  = isDark ? 'rgba(255,255,255,0.6)'    : '#6b6b6b';
-  const navBg = isDark ? 'rgba(10, 10, 10, 0.88)' : 'rgba(255, 255, 255, 0.88)';
+  const navBg = isDark ? 'rgba(10, 10, 10, 0.58)' : 'rgba(255, 255, 255, 0.60)';
   const navBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <nav
-      className="fixed z-50"
+      className="fixed z-50 hidden md:block"
       style={{
         top: scrolled ? 10 : 0,
         left: scrolled ? 14 : 0,
@@ -661,24 +560,8 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger }) {
 
           {/* RIGHT */}
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center">
-              <PreferencesDropdown />
-            </div>
+            <PreferencesDropdown />
             <UserMenu />
-            <button
-              onClick={onHamburger}
-              aria-label={document.documentElement.getAttribute('data-lang') === 'en' ? 'Open menu' : 'Abrir menú'}
-              className={`md:hidden flex flex-col justify-center items-center rounded-none border transition gap-1.5 p-2 ${
-                isDark
-                  ? 'border-white/15 bg-white/5 hover:bg-white/10'
-                  : 'border-black/10 bg-black/[0.03] hover:bg-black/5'
-              }`}
-              style={{ minWidth: '44px', minHeight: '44px', cursor: 'pointer' }}
-            >
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? 'opacity-0' : ''}`} />
-              <span className={`block w-full h-0.5 rounded transition-all duration-300 ${isDark ? 'bg-white' : 'bg-black'} ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-            </button>
           </div>
         </div>
       </div>
@@ -708,48 +591,15 @@ function ToolLink({ tool }) {
    APP ROOT
 ═══════════════════════════════════════════════════════════ */
 function App() {
-  const location = useLocation();
-  const [mobileOpen,  setMobileOpen]  = useState(false);
-  const [openSection, setOpenSection] = useState('herramientas');
-  const drawerRef = useRef(null);
-
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
-
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const h = (e) => { if (drawerRef.current && !drawerRef.current.contains(e.target)) setMobileOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [mobileOpen]);
-
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [mobileOpen]);
-
   return (
     <>
-      <Navbar
-        mobileOpen={mobileOpen}
-        onHamburger={() => setMobileOpen(o => !o)}
-      />
-
-      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" aria-hidden="true" />}
-
-      <div ref={drawerRef}>
-        <MobileDrawer
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          openSection={openSection}
-          setOpenSection={setOpenSection}
-        />
-      </div>
-
-      <div className="pt-14 min-h-screen">
+      <Navbar />
+      <MobileBottomNav />
+      <div className="pt-14 pb-28 md:pb-0 min-h-screen">
         <Routes>
-          <Route path="/"       element={<Home />} />
-          <Route path="/login"  element={<Login />} />
-          <Route path="/deploy" element={<Deploy />} />
+          <Route path="/"          element={<Home />} />
+          <Route path="/login"     element={<Login />} />
+          <Route path="/deploy"    element={<Deploy />} />
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </div>
