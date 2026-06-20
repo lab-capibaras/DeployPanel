@@ -481,10 +481,10 @@ function UserMenu() {
           right: 0,
           background: cardBg,
           border: `1px solid ${cardBorder}`,
-          borderRadius: 0,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-          padding: '8px',
-          minWidth: '180px',
+          borderRadius: '10px',
+          boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)' : '0 16px 40px rgba(0,0,0,0.1)',
+          padding: '6px',
+          minWidth: '190px',
           zIndex: 200,
         }}>
           {user.email && (
@@ -589,9 +589,9 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
     <nav className="fixed top-0 left-0 right-0 w-full z-50" style={{
       background: navBg,
       borderBottom: `1px solid ${navBorder}`,
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      boxShadow: 'none',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      boxShadow: isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)',
     }}>
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
@@ -617,13 +617,13 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
               <div className="absolute top-full left-0 w-full h-3" />
               <div className="absolute top-[calc(100%+4px)] left-0 w-[420px] lg:w-[500px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
                 <div className="mega-menu-panel" style={{
-                  borderRadius: 0,
+                  borderRadius: '10px',
                   overflow: 'hidden',
-                  background: isDark ? 'rgba(22,22,22,0.98)' : 'rgba(255,255,255,0.98)',
-                  backdropFilter: 'blur(24px) saturate(160%)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-                  border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.08)',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                  background: isDark ? 'rgba(24,24,27,0.98)' : 'rgba(255,255,255,0.98)',
+                  backdropFilter: 'blur(24px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                  border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)',
+                  boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.1)',
                 }}>
                   <div className="p-4">
                     <div className="grid grid-cols-2 gap-2 nav-tools-es">
@@ -672,11 +672,11 @@ const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location })
 function ToolLink({ tool }) {
   const restBg = 'transparent';
   return (
-    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: 0, border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.1s, background 0.1s' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-red)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; }}
+    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: '8px', border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.18s, background 0.18s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-red)'; e.currentTarget.style.background = 'rgba(255,43,0,0.04)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = restBg; }}
     >
-      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 0, border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
+      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
         <svg style={{ width: 16, height: 16, color: 'var(--px-white)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
       </div>
       <div>
