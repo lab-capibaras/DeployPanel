@@ -185,7 +185,7 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
   const bgHov     = isDark ? '#1f1f23' : '#f8f8f9';
   const main      = isDark ? '#fafafa' : '#09090b';
   return (
-    <Reveal delay={delay}>
+    <Reveal delay={delay} style={{ height: '100%' }}>
       <div
         onMouseEnter={() => setHov(true)}
         onMouseLeave={() => setHov(false)}
@@ -196,6 +196,7 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
           boxShadow: hov ? (isDark ? '0 12px 40px rgba(0,0,0,0.5)' : '0 12px 40px rgba(0,0,0,0.08)') : 'none',
           transform: hov ? 'translateY(-3px)' : 'none',
           transition: 'all 0.25s ease', position: 'relative', overflow: 'hidden',
+          height: '100%', boxSizing: 'border-box',
         }}
       >
         <span style={{ position: 'absolute', top: 20, right: 20, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: hov ? (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)') : border, transition: 'color 0.25s ease' }}>{String(num).padStart(2,'0')}</span>

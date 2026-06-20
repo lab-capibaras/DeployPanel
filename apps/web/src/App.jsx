@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
@@ -576,25 +576,40 @@ function UserMenu() {
    NAVBAR (pure static shell — NEVER re-renders on prefs change)
    Language labels toggle via CSS [data-lang] attribute on <html>
 ═══════════════════════════════════════════════════════════ */
-const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger, location }) {
+const Navbar = React.memo(function Navbar({ mobileOpen, onHamburger }) {
   const { theme } = usePrefs();
-  const { user } = useAuth();
   const isDark = theme === 'dark';
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const textMain   = isDark ? '#f5f5f5'                  : '#0a0a0a';
   const textMuted  = isDark ? 'rgba(255,255,255,0.6)'    : '#6b6b6b';
-  // Static tools for the desktop mega-menu — rendered once per open
-  // The mega-menu content updates via CSS [data-lang] class toggling
-  const navBg = isDark ? 'rgba(10, 10, 10, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+  const navBg = isDark ? 'rgba(10, 10, 10, 0.88)' : 'rgba(255, 255, 255, 0.88)';
   const navBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
-    <nav className="fixed top-0 left-0 right-0 w-full z-50" style={{
-      background: navBg,
-      borderBottom: `1px solid ${navBorder}`,
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      boxShadow: isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)',
-    }}>
+    <nav
+      className="fixed z-50"
+      style={{
+        top: scrolled ? 10 : 0,
+        left: scrolled ? 14 : 0,
+        right: scrolled ? 14 : 0,
+        background: navBg,
+        border: `1px solid ${navBorder}`,
+        borderRadius: scrolled ? 16 : 0,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: scrolled
+          ? (isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)')
+          : (isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)'),
+        transition: 'top 0.4s cubic-bezier(0.16,1,0.3,1), left 0.4s cubic-bezier(0.16,1,0.3,1), right 0.4s cubic-bezier(0.16,1,0.3,1), border-radius 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease',
+      }}
+    >
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
 
@@ -717,7 +732,6 @@ function App() {
       <Navbar
         mobileOpen={mobileOpen}
         onHamburger={() => setMobileOpen(o => !o)}
-        location={location}
       />
 
       {mobileOpen && <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" aria-hidden="true" />}
