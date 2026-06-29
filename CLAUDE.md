@@ -38,6 +38,8 @@ docker-compose up
 
 No test suite is currently configured.
 
+**Note**: `apps/api` exists in the workspace but is an empty scaffold (`controllers/`, `routes/`, `services/` each contain only `.gitkeep`). The root `package.json` `start` script (`node apps/api/src/index.js`) does not currently work — `apps/builder/index.js` is the real, running backend.
+
 ## Architecture
 
 ### Frontend (apps/web)

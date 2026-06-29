@@ -633,6 +633,124 @@ function detectPort(repoPath) {
 }
 
 // ==========================================
+// --- SOPORTE PARA MONOREPOS (docker-compose.yml en la raíz) ---
+// ==========================================
+const yaml = require('js-yaml');
+
+function parseDockerCompose(repoPath) {
+    const composeNames = ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'];
+    for (const name of composeNames) {
+        const composePath = path.join(repoPath, name);
+        if (fs.existsSync(composePath)) {
+            try {
+                const content = fs.readFileSync(composePath, 'utf8');
+                return yaml.load(content);
+            } catch (e) {
+                console.warn(`[Compose] Error parseando ${name}: ${e.message}`);
+                return null;
+            }
+        }
+    }
+    return null;
+}
+
+const INFRA_IMAGE_PATTERNS = [
+    'mysql', 'mariadb', 'postgres', 'postgresql', 'mongo', 'redis',
+    'phpmyadmin', 'adminer', 'pgadmin', 'mailhog', 'rabbitmq',
+    'elasticsearch', 'memcached', 'nginx-proxy', 'traefik',
+];
+
+function isInfraService(serviceName, serviceConfig) {
+    const image = (serviceConfig.image || '').toLowerCase();
+    const name = serviceName.toLowerCase();
+    return INFRA_IMAGE_PATTERNS.some(pattern => image.includes(pattern) || name.includes(pattern));
+}
+
+function findAppService(compose) {
+    if (!compose || !compose.services) return null;
+
+    const services = compose.services;
+    const serviceNames = Object.keys(services);
+
+    // 1. Buscar el servicio que tenga 'build' y no sea infra conocida
+    for (const name of serviceNames) {
+        const svc = services[name];
+        if (svc.build && !isInfraService(name, svc)) {
+            return { name, config: svc };
+        }
+    }
+
+    // 2. Si ninguno tiene 'build' explícito, buscar el primero que no sea infra
+    for (const name of serviceNames) {
+        const svc = services[name];
+        if (!isInfraService(name, svc)) {
+            return { name, config: svc };
+        }
+    }
+
+    return null;
+}
+
+function resolveAppServicePort(serviceConfig) {
+    if (!serviceConfig.ports || serviceConfig.ports.length === 0) return null;
+
+    for (const portEntry of serviceConfig.ports) {
+        // Formatos posibles: "8080:80", "80", { target: 80, published: 8080 }
+        if (typeof portEntry === 'string') {
+            const parts = portEntry.split(':');
+            const containerPort = parts.length > 1 ? parts[1] : parts[0];
+            const cleanPort = containerPort.replace(/\/(tcp|udp)$/, '');
+            if (cleanPort && !isNaN(cleanPort)) return cleanPort;
+        } else if (typeof portEntry === 'object' && portEntry.target) {
+            return portEntry.target.toString();
+        }
+    }
+    return null;
+}
+
+function mapAppEnvToDbCredentials(serviceConfig, dbServiceName, dbCredentials) {
+    const envOverrides = [];
+    const rawEnv = serviceConfig.environment;
+
+    if (!rawEnv) return envOverrides;
+
+    // environment puede ser array ["KEY=value"] o objeto { KEY: value }
+    const envEntries = Array.isArray(rawEnv)
+        ? rawEnv.map(e => {
+              const [key, ...rest] = e.split('=');
+              return [key, rest.join('=')];
+          })
+        : Object.entries(rawEnv);
+
+    for (const [key, value] of envEntries) {
+        const valStr = String(value).toLowerCase();
+        const keyUpper = key.toUpperCase();
+
+        // Si el valor original apuntaba al nombre del servicio de DB (ej. "db")
+        if (dbServiceName && valStr === dbServiceName.toLowerCase()) {
+            envOverrides.push(`${key}=${dbCredentials.dbHost}`);
+            continue;
+        }
+
+        // Mapear por patrón en el nombre de la variable
+        if (/HOST$/.test(keyUpper)) {
+            envOverrides.push(`${key}=${dbCredentials.dbHost}`);
+        } else if (/PORT$/.test(keyUpper) && !/^APP_PORT|^PORT$/.test(keyUpper)) {
+            envOverrides.push(`${key}=${dbCredentials.dbPort}`);
+        } else if (/(DB_NAME|DATABASE)$/.test(keyUpper)) {
+            envOverrides.push(`${key}=${dbCredentials.dbName}`);
+        } else if (/(DB_USER|USERNAME|^DB_USER$)/.test(keyUpper) && /USER/.test(keyUpper)) {
+            envOverrides.push(`${key}=${dbCredentials.dbUser}`);
+        } else if (/(PASS|PASSWORD)$/.test(keyUpper)) {
+            envOverrides.push(`${key}=${dbCredentials.dbPassword}`);
+        }
+        // Si no matchea ningún patrón conocido, no se sobreescribe (se ignora ese env var del compose)
+    }
+
+    return envOverrides;
+}
+
+// ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
 async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous') {
@@ -655,7 +773,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             fs.rmSync(repoPath, { recursive: true, force: true });
         }
 
-        const cloneOptions = ['--depth', '1'];
+        const cloneOptions = ['--depth', '1', '--recurse-submodules'];
         if (branch) {
             cloneOptions.push('--branch', branch);
             console.log(`Descargando la rama específica: ${branch}`);
@@ -720,6 +838,35 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             });
         });
 
+        // Detectar si hay un docker-compose.yml en la raíz con un servicio de app en subcarpeta
+        const compose = parseDockerCompose(repoPath);
+        let monorepoApp = null;
+
+        if (compose) {
+            const appService = findAppService(compose);
+            if (appService && appService.config.build) {
+                const buildConfig = appService.config.build;
+                const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
+                const dockerfileRelative = typeof buildConfig === 'object' ? (buildConfig.dockerfile || 'Dockerfile') : 'Dockerfile';
+
+                const absoluteContext = path.join(repoPath, buildContext);
+                const absoluteDockerfile = path.join(absoluteContext, dockerfileRelative);
+
+                if (fs.existsSync(absoluteDockerfile)) {
+                    console.log(`[Compose] App detectada en docker-compose.yml: servicio "${appService.name}"`);
+                    console.log(`[Compose] Build context: ${buildContext}, Dockerfile: ${dockerfileRelative}`);
+
+                    monorepoApp = {
+                        serviceName: appService.name,
+                        buildContext: absoluteContext,
+                        dockerfilePath: absoluteDockerfile,
+                        port: resolveAppServicePort(appService.config),
+                        serviceConfig: appService.config,
+                    };
+                }
+            }
+        }
+
         // PASO 3 — Detectar y provisionar base de datos
         const dbType = detectDatabase(repoPath);
         let dbCredentials = null;
@@ -731,7 +878,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         }
 
         // Detectar puerto del repo
-        let appPort = detectPort(repoPath);
+        let appPort = monorepoApp?.port || detectPort(repoPath);
         if (!appPort) {
             if (isNextJs)      appPort = '3000';
             else if (isVite)   appPort = '3000';
@@ -741,9 +888,18 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         }
         console.log(`[Port] Puerto final para ${subdomain}: ${appPort}`);
 
-        if (hasDockerfile) {
-            console.log(`Dockerfile detectado. Usando build tradicional...`);
-            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+        if (hasDockerfile || monorepoApp) {
+            console.log(monorepoApp
+                ? `Monorepo detectado. Usando Dockerfile en ${monorepoApp.buildContext}...`
+                : `Dockerfile detectado. Usando build tradicional...`);
+
+            const buildContext = monorepoApp ? monorepoApp.buildContext : repoPath;
+            const dockerfileName = monorepoApp ? path.basename(monorepoApp.dockerfilePath) : 'Dockerfile';
+
+            const stream = await docker.buildImage(
+                { context: buildContext, src: ['.'] },
+                { t: imageName, dockerfile: dockerfileName }
+            );
             await runDockerBuild(stream);
 
         } else if (isNextJs) {
@@ -1024,6 +1180,17 @@ EXPOSE ${appPort}
                     `PGPASSWORD=${dbCredentials.dbPassword}`,
                     `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
                 ];
+            }
+
+            // Variables específicas detectadas del docker-compose.yml original del repo
+            if (monorepoApp) {
+                const dbServiceName = Object.keys(compose.services).find(name => {
+                    const svc = compose.services[name];
+                    return isInfraService(name, svc) && (svc.image || '').toLowerCase().includes(dbCredentials.dbType);
+                });
+                const mappedEnv = mapAppEnvToDbCredentials(monorepoApp.serviceConfig, dbServiceName, dbCredentials);
+                dbEnv = [...dbEnv, ...mappedEnv];
+                console.log(`[Compose] Variables de entorno mapeadas: ${mappedEnv.join(', ')}`);
             }
         }
 
