@@ -703,17 +703,64 @@ function classifyService(serviceName, serviceConfig, dockerfileContent) {
     return 'unknown';
 }
 
+const IGNORED_DIRS = new Set([
+    'node_modules', '.git', '.github', 'database', 'db', 'sql',
+    'migrations', 'docs', 'scripts', '.vscode', '.idea', 'dist', 'build',
+]);
+
+function getComposeBuildContexts(compose) {
+    const contexts = new Set();
+    if (!compose || !compose.services) return contexts;
+
+    for (const name of Object.keys(compose.services)) {
+        const svc = compose.services[name];
+        if (svc.build) {
+            const ctx = typeof svc.build === 'string' ? svc.build : (svc.build.context || '.');
+            contexts.add(path.normalize(ctx).replace(/^\.\//, ''));
+        }
+    }
+    return contexts;
+}
+
+function findOrphanServiceDirs(repoPath, compose) {
+    const usedContexts = getComposeBuildContexts(compose);
+    const orphans = [];
+
+    let entries;
+    try {
+        entries = fs.readdirSync(repoPath, { withFileTypes: true });
+    } catch (e) {
+        return orphans;
+    }
+
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const dirName = entry.name;
+
+        if (IGNORED_DIRS.has(dirName.toLowerCase())) continue;
+        if (usedContexts.has(dirName)) continue; // ya está en el compose
+
+        const dockerfilePath = path.join(repoPath, dirName, 'Dockerfile');
+        if (fs.existsSync(dockerfilePath)) {
+            orphans.push({ dirName, dockerfilePath });
+            console.log(`[Compose] Carpeta huérfana con Dockerfile encontrada: ${dirName}/`);
+        }
+    }
+
+    return orphans;
+}
+
+function detectPortFromDockerfile(dockerfilePath) {
+    if (!fs.existsSync(dockerfilePath)) return null;
+    const content = fs.readFileSync(dockerfilePath, 'utf8');
+    const match = content.match(/^EXPOSE\s+(\d+)/m);
+    return match ? match[1] : null;
+}
+
 function resolveMultiServiceDeploy(repoPath, compose) {
     const appServices = findAppServices(compose);
 
-    if (appServices.length === 0) return null;
-
-    if (appServices.length === 1) {
-        // Comportamiento ya existente de monorepo-compose.md (un solo servicio)
-        return { mode: 'single', services: appServices };
-    }
-
-    // Clasificar cada servicio
+    // Clasificar los servicios que sí están en el compose
     const classified = appServices.map(svc => {
         const buildConfig = svc.config.build;
         const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
@@ -727,25 +774,50 @@ function resolveMultiServiceDeploy(repoPath, compose) {
         }
 
         return {
-            ...svc,
+            name: svc.name,
+            config: svc.config,
             role: classifyService(svc.name, svc.config, dockerfileContent),
             buildContext: absoluteContext,
             dockerfilePath: absoluteDockerfile,
             port: resolveAppServicePort(svc.config),
+            fromCompose: true,
         };
     });
+
+    // Buscar carpetas huérfanas con Dockerfile que no estén en el compose
+    const orphanDirs = findOrphanServiceDirs(repoPath, compose);
+    for (const orphan of orphanDirs) {
+        const dockerfileContent = fs.readFileSync(orphan.dockerfilePath, 'utf8');
+        const role = classifyService(orphan.dirName, {}, dockerfileContent);
+
+        classified.push({
+            name: orphan.dirName,
+            config: {}, // no tiene environment/ports definidos en compose
+            role,
+            buildContext: path.join(repoPath, orphan.dirName),
+            dockerfilePath: orphan.dockerfilePath,
+            port: detectPortFromDockerfile(orphan.dockerfilePath),
+            fromCompose: false,
+        });
+    }
+
+    if (classified.length === 0) return null;
+
+    if (classified.length === 1) {
+        return { mode: 'single', services: [classified[0]] };
+    }
 
     const backend = classified.find(s => s.role === 'backend');
     const frontend = classified.find(s => s.role === 'frontend');
 
     if (backend && frontend) {
-        console.log(`[Compose] Doble servicio detectado: backend="${backend.name}", frontend="${frontend.name}"`);
+        console.log(`[Compose] Doble servicio detectado: backend="${backend.name}" (${backend.fromCompose ? 'compose' : 'huérfano'}), frontend="${frontend.name}" (${frontend.fromCompose ? 'compose' : 'huérfano'})`);
         return { mode: 'dual', backend, frontend };
     }
 
-    // No se pudo clasificar claramente — usar el primero como single (fallback seguro)
-    console.warn('[Compose] Múltiples servicios detectados pero no se pudo clasificar frontend/backend. Usando el primero.');
-    return { mode: 'single', services: [appServices[0]] };
+    console.warn('[Compose] Múltiples servicios detectados pero no se pudo clasificar frontend/backend claramente. Usando el primero del compose.');
+    const fallback = classified.find(s => s.fromCompose) || classified[0];
+    return { mode: 'single', services: [fallback] };
 }
 
 function resolveAppServicePort(serviceConfig) {
@@ -1065,12 +1137,9 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         };
 
         // Detectar si hay un docker-compose.yml en la raíz con uno o más servicios de app
+        // (compose puede ser null — resolveMultiServiceDeploy también busca carpetas huérfanas sin él)
         const compose = parseDockerCompose(repoPath);
-        let deployPlan = null;
-
-        if (compose) {
-            deployPlan = resolveMultiServiceDeploy(repoPath, compose);
-        }
+        const deployPlan = resolveMultiServiceDeploy(repoPath, compose);
 
         // PASO 3 — Detectar base de datos (la provisión ocurre más abajo, salvo en modo dual)
         const dbType = detectDatabase(repoPath);
@@ -1083,21 +1152,16 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         let monorepoApp = null;
         if (deployPlan && deployPlan.mode === 'single' && deployPlan.services[0]) {
             const svc = deployPlan.services[0];
-            const buildConfig = svc.config.build;
-            const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
-            const dockerfileRelative = typeof buildConfig === 'object' ? (buildConfig.dockerfile || 'Dockerfile') : 'Dockerfile';
-            const absoluteContext = path.join(repoPath, buildContext);
-            const absoluteDockerfile = path.join(absoluteContext, dockerfileRelative);
 
-            if (fs.existsSync(absoluteDockerfile)) {
-                console.log(`[Compose] App detectada en docker-compose.yml: servicio "${svc.name}"`);
-                console.log(`[Compose] Build context: ${buildContext}, Dockerfile: ${dockerfileRelative}`);
+            if (fs.existsSync(svc.dockerfilePath)) {
+                console.log(`[Compose] App detectada: servicio "${svc.name}" (${svc.fromCompose ? 'compose' : 'huérfano'})`);
+                console.log(`[Compose] Build context: ${svc.buildContext}, Dockerfile: ${path.basename(svc.dockerfilePath)}`);
 
                 monorepoApp = {
                     serviceName: svc.name,
-                    buildContext: absoluteContext,
-                    dockerfilePath: absoluteDockerfile,
-                    port: resolveAppServicePort(svc.config),
+                    buildContext: svc.buildContext,
+                    dockerfilePath: svc.dockerfilePath,
+                    port: svc.port,
                     serviceConfig: svc.config,
                 };
             }
