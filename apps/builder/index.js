@@ -983,7 +983,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     // 1. Provisionar DB si aplica (solo se conecta al backend)
     let dbCredentials = null;
     if (dbType) {
-        dbCredentials = await provisionDatabase(subdomain, dbType, repoPath);
+        dbCredentials = await provisionDatabase(subdomain, dbType, backend.buildContext);
     }
 
     // 2. Parchar y construir imagen del BACKEND
@@ -1217,7 +1217,8 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
 
         if (dbType) {
             console.log(`[DB] Base de datos detectada: ${dbType}`);
-            dbCredentials = await provisionDatabase(subdomain, dbType, repoPath);
+            const sqlSearchPath = monorepoApp ? monorepoApp.buildContext : repoPath;
+            dbCredentials = await provisionDatabase(subdomain, dbType, sqlSearchPath);
             console.log(`[DB] Credenciales listas para ${subdomain}`);
         }
 
