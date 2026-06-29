@@ -438,18 +438,41 @@ async function provisionDatabase(subdomain, dbType, repoPath) {
     const containers = await docker.listContainers({ all: true });
     const existing = containers.find(c => c.Names.includes(`/${containerName}`));
     if (existing) {
-        console.log(`[DB] Contenedor ${containerName} ya existe, reutilizando...`);
-        const labels = existing.Labels;
-        return {
-            containerName,
-            dbType,
-            dbName:     labels['db.name']     || dbName,
-            dbUser:     labels['db.user']     || dbUser,
-            dbPassword: labels['db.password'] || dbPassword,
-            dbHost:     containerName,
-            dbPort:     dbType === 'mysql' ? '3306' : '5432',
-            adminerUrl: `https://db-${subdomain}.stardest.com`,
-        };
+        // Verificar si hay un contenedor de app vivo asociado a este subdominio.
+        // Si no hay ninguno, esta DB es huérfana de un deploy que nunca terminó con éxito.
+        const hasLiveApp = containers.some(c =>
+            c.Names.includes(`/container-${subdomain}`) ||
+            c.Names.includes(`/container-${subdomain}-backend`) ||
+            c.Names.includes(`/container-${subdomain}-frontend`)
+        );
+
+        if (!hasLiveApp) {
+            console.warn(`[DB] Contenedor ${containerName} existe pero no hay app asociada — es residuo de un deploy fallido. Recreando limpio...`);
+
+            // Borrar la DB huérfana
+            await docker.getContainer(existing.Id).remove({ force: true });
+
+            // Borrar también su Adminer huérfano, si existe
+            const orphanAdminer = containers.find(c => c.Names.includes(`/adminer-${subdomain}`));
+            if (orphanAdminer) {
+                await docker.getContainer(orphanAdminer.Id).remove({ force: true });
+            }
+
+            // No retornar aquí — continuar el flujo normal de creación, más abajo
+        } else {
+            console.log(`[DB] Contenedor ${containerName} ya existe y hay una app asociada, reutilizando...`);
+            const labels = existing.Labels;
+            return {
+                containerName,
+                dbType,
+                dbName:     labels['db.name']     || dbName,
+                dbUser:     labels['db.user']     || dbUser,
+                dbPassword: labels['db.password'] || dbPassword,
+                dbHost:     containerName,
+                dbPort:     dbType === 'mysql' ? '3306' : '5432',
+                adminerUrl: `https://db-${subdomain}.stardest.com`,
+            };
+        }
     }
 
     console.log(`[DB] Provisionando ${dbType} para ${subdomain}...`);
