@@ -666,29 +666,86 @@ function isInfraService(serviceName, serviceConfig) {
     return INFRA_IMAGE_PATTERNS.some(pattern => image.includes(pattern) || name.includes(pattern));
 }
 
-function findAppService(compose) {
-    if (!compose || !compose.services) return null;
+function findAppServices(compose) {
+    if (!compose || !compose.services) return [];
 
     const services = compose.services;
-    const serviceNames = Object.keys(services);
+    const appServices = [];
 
-    // 1. Buscar el servicio que tenga 'build' y no sea infra conocida
-    for (const name of serviceNames) {
+    for (const name of Object.keys(services)) {
         const svc = services[name];
         if (svc.build && !isInfraService(name, svc)) {
-            return { name, config: svc };
+            appServices.push({ name, config: svc });
         }
     }
 
-    // 2. Si ninguno tiene 'build' explícito, buscar el primero que no sea infra
-    for (const name of serviceNames) {
-        const svc = services[name];
-        if (!isInfraService(name, svc)) {
-            return { name, config: svc };
+    return appServices;
+}
+
+function classifyService(serviceName, serviceConfig, dockerfileContent) {
+    const name = serviceName.toLowerCase();
+
+    // 1. Por nombre del servicio
+    if (/front|client|web|ui|app$/i.test(name)) return 'frontend';
+    if (/back|api|server/i.test(name)) return 'backend';
+
+    // 2. Por imagen base del Dockerfile, si se pudo leer
+    if (dockerfileContent) {
+        const content = dockerfileContent.toLowerCase();
+        if (/from\s+(node|nginx)/.test(content) && /(vite|react|vue|npm run build|next)/.test(content)) {
+            return 'frontend';
+        }
+        if (/from\s+(php|python|.*-slim)/.test(content)) {
+            return 'backend';
         }
     }
 
-    return null;
+    return 'unknown';
+}
+
+function resolveMultiServiceDeploy(repoPath, compose) {
+    const appServices = findAppServices(compose);
+
+    if (appServices.length === 0) return null;
+
+    if (appServices.length === 1) {
+        // Comportamiento ya existente de monorepo-compose.md (un solo servicio)
+        return { mode: 'single', services: appServices };
+    }
+
+    // Clasificar cada servicio
+    const classified = appServices.map(svc => {
+        const buildConfig = svc.config.build;
+        const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
+        const dockerfileRelative = typeof buildConfig === 'object' ? (buildConfig.dockerfile || 'Dockerfile') : 'Dockerfile';
+        const absoluteContext = path.join(repoPath, buildContext);
+        const absoluteDockerfile = path.join(absoluteContext, dockerfileRelative);
+
+        let dockerfileContent = null;
+        if (fs.existsSync(absoluteDockerfile)) {
+            dockerfileContent = fs.readFileSync(absoluteDockerfile, 'utf8');
+        }
+
+        return {
+            ...svc,
+            role: classifyService(svc.name, svc.config, dockerfileContent),
+            buildContext: absoluteContext,
+            dockerfilePath: absoluteDockerfile,
+            port: resolveAppServicePort(svc.config),
+        };
+    });
+
+    const backend = classified.find(s => s.role === 'backend');
+    const frontend = classified.find(s => s.role === 'frontend');
+
+    if (backend && frontend) {
+        console.log(`[Compose] Doble servicio detectado: backend="${backend.name}", frontend="${frontend.name}"`);
+        return { mode: 'dual', backend, frontend };
+    }
+
+    // No se pudo clasificar claramente — usar el primero como single (fallback seguro)
+    console.warn('[Compose] Múltiples servicios detectados pero no se pudo clasificar frontend/backend. Usando el primero.');
+    return { mode: 'single', services: [appServices[0]] };
 }
 
 function resolveAppServicePort(serviceConfig) {
@@ -783,6 +840,157 @@ function ensureDockerfileCopiesSource(dockerfilePath) {
     console.log('[Dockerfile] COPY . . inyectado correctamente.');
 }
 
+const runDockerBuild = (stream) => new Promise((resolve, reject) => {
+    docker.modem.followProgress(stream, (err, outputRes) => {
+        if (err) return reject(err);
+        outputRes.forEach(line => {
+            if (line.stream) process.stdout.write(line.stream);
+            if (line.error) process.stderr.write(line.error);
+        });
+        const errorLine = outputRes.find(l => l.error);
+        if (errorLine) {
+            return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
+        }
+        resolve(outputRes);
+    });
+});
+
+async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath) {
+    const { backend, frontend } = deployPlan;
+    const backendImageName = `user-app-${subdomain.toLowerCase()}-backend`;
+    const frontendImageName = `user-app-${subdomain.toLowerCase()}-frontend`;
+
+    console.log(`[Dual] Iniciando deploy dual para ${subdomain}`);
+
+    // 1. Provisionar DB si aplica (solo se conecta al backend)
+    let dbCredentials = null;
+    if (dbType) {
+        dbCredentials = await provisionDatabase(subdomain, dbType, repoPath);
+    }
+
+    // 2. Parchar y construir imagen del BACKEND
+    ensureDockerfileCopiesSource(backend.dockerfilePath);
+    console.log(`[Dual] Construyendo backend desde ${backend.buildContext}...`);
+    let stream = await docker.buildImage(
+        { context: backend.buildContext, src: ['.'] },
+        { t: backendImageName, dockerfile: path.basename(backend.dockerfilePath) }
+    );
+    await runDockerBuild(stream);
+
+    // 3. Parchar y construir imagen del FRONTEND
+    ensureDockerfileCopiesSource(frontend.dockerfilePath);
+    console.log(`[Dual] Construyendo frontend desde ${frontend.buildContext}...`);
+    stream = await docker.buildImage(
+        { context: frontend.buildContext, src: ['.'] },
+        { t: frontendImageName, dockerfile: path.basename(frontend.dockerfilePath) }
+    );
+    await runDockerBuild(stream);
+
+    // 4. Limpiar contenedores anteriores (backend, frontend, y el legacy single si existía)
+    const containers = await docker.listContainers({ all: true });
+    for (const suffix of ['-backend', '-frontend', '']) {
+        const existing = containers.find(c => c.Names.includes(`/container-${subdomain}${suffix}`));
+        if (existing) {
+            await docker.getContainer(existing.Id).remove({ force: true });
+        }
+    }
+
+    // 5. Variables de entorno del backend (incluye mapeo de DB si aplica)
+    let backendEnv = [];
+    if (dbCredentials) {
+        backendEnv = dbCredentials.dbType === 'mysql' ? [
+            `MYSQLHOST=${dbCredentials.dbHost}`,
+            `MYSQLPORT=${dbCredentials.dbPort}`,
+            `MYSQLDATABASE=${dbCredentials.dbName}`,
+            `MYSQLUSER=${dbCredentials.dbUser}`,
+            `MYSQLPASSWORD=${dbCredentials.dbPassword}`,
+            `DATABASE_URL=mysql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+        ] : [
+            `PGHOST=${dbCredentials.dbHost}`,
+            `PGPORT=${dbCredentials.dbPort}`,
+            `PGDATABASE=${dbCredentials.dbName}`,
+            `PGUSER=${dbCredentials.dbUser}`,
+            `PGPASSWORD=${dbCredentials.dbPassword}`,
+            `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+        ];
+
+        const dbServiceName = Object.keys(deployPlan.backend.config).length
+            ? Object.keys((await parseDockerCompose(repoPath)).services).find(name =>
+                isInfraService(name, (parseDockerCompose(repoPath)).services[name])
+              )
+            : null;
+        const mappedEnv = mapAppEnvToDbCredentials(backend.config, dbServiceName, dbCredentials);
+        backendEnv = [...backendEnv, ...mappedEnv];
+    }
+
+    // 6. Lanzar contenedor BACKEND con PathPrefix /api
+    const backendPort = backend.port || '80';
+    const backendContainer = await docker.createContainer({
+        Image: backendImageName,
+        name: `container-${subdomain}-backend`,
+        Env: backendEnv,
+        Labels: {
+            "traefik.enable": "true",
+            [`traefik.http.routers.${subdomain}-backend.rule`]: `Host(\`${subdomain}.stardest.com\`) && PathPrefix(\`/api\`)`,
+            [`traefik.http.routers.${subdomain}-backend.entrypoints`]: "web",
+            [`traefik.http.routers.${subdomain}-backend.priority`]: "10",
+            [`traefik.http.services.${subdomain}-backend.loadbalancer.server.port`]: backendPort,
+            "deploy.subdomain": subdomain,
+            "deploy.role": "backend",
+            "deploy.branch": branch || "main",
+            "deploy.repo": repoUrl,
+            "deploy.timestamp": new Date().toISOString(),
+            "deploy.userId": userId || 'anonymous',
+            "deploy.userEmail": userEmail || 'anonymous',
+            ...(dbCredentials ? {
+                "deploy.db.type":       dbCredentials.dbType,
+                "deploy.db.host":       dbCredentials.dbHost,
+                "deploy.db.port":       dbCredentials.dbPort,
+                "deploy.db.name":       dbCredentials.dbName,
+                "deploy.db.user":       dbCredentials.dbUser,
+                "deploy.db.password":   dbCredentials.dbPassword,
+                "deploy.db.adminerUrl": dbCredentials.adminerUrl || '',
+            } : {}),
+        },
+        HostConfig: {
+            NetworkMode: "deploys_internal_network",
+            RestartPolicy: { Name: "always" },
+            Privileged: true,
+        }
+    });
+    await backendContainer.start();
+    console.log(`[Dual] ✓ Backend desplegado en ${subdomain}.stardest.com/api`);
+
+    // 7. Lanzar contenedor FRONTEND como catch-all
+    const frontendPort = frontend.port || '80';
+    const frontendContainer = await docker.createContainer({
+        Image: frontendImageName,
+        name: `container-${subdomain}-frontend`,
+        Labels: {
+            "traefik.enable": "true",
+            [`traefik.http.routers.${subdomain}-frontend.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
+            [`traefik.http.routers.${subdomain}-frontend.entrypoints`]: "web",
+            [`traefik.http.routers.${subdomain}-frontend.priority`]: "1",
+            [`traefik.http.services.${subdomain}-frontend.loadbalancer.server.port`]: frontendPort,
+            "deploy.subdomain": subdomain,
+            "deploy.role": "frontend",
+            "deploy.branch": branch || "main",
+            "deploy.repo": repoUrl,
+            "deploy.timestamp": new Date().toISOString(),
+            "deploy.userId": userId || 'anonymous',
+            "deploy.userEmail": userEmail || 'anonymous',
+        },
+        HostConfig: {
+            NetworkMode: "deploys_internal_network",
+            RestartPolicy: { Name: "always" },
+        }
+    });
+    await frontendContainer.start();
+    console.log(`[Dual] ✓ Frontend desplegado en ${subdomain}.stardest.com`);
+
+    return `https://${subdomain}.stardest.com`;
+}
+
 // ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
@@ -856,52 +1064,45 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             }
         };
 
-        const runDockerBuild = (stream) => new Promise((resolve, reject) => {
-            docker.modem.followProgress(stream, (err, outputRes) => {
-                if (err) return reject(err);
-                outputRes.forEach(line => {
-                    if (line.stream) process.stdout.write(line.stream);
-                    if (line.error) process.stderr.write(line.error);
-                });
-                const errorLine = outputRes.find(l => l.error);
-                if (errorLine) {
-                    return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
-                }
-                resolve(outputRes);
-            });
-        });
-
-        // Detectar si hay un docker-compose.yml en la raíz con un servicio de app en subcarpeta
+        // Detectar si hay un docker-compose.yml en la raíz con uno o más servicios de app
         const compose = parseDockerCompose(repoPath);
-        let monorepoApp = null;
+        let deployPlan = null;
 
         if (compose) {
-            const appService = findAppService(compose);
-            if (appService && appService.config.build) {
-                const buildConfig = appService.config.build;
-                const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
-                const dockerfileRelative = typeof buildConfig === 'object' ? (buildConfig.dockerfile || 'Dockerfile') : 'Dockerfile';
+            deployPlan = resolveMultiServiceDeploy(repoPath, compose);
+        }
 
-                const absoluteContext = path.join(repoPath, buildContext);
-                const absoluteDockerfile = path.join(absoluteContext, dockerfileRelative);
+        // PASO 3 — Detectar base de datos (la provisión ocurre más abajo, salvo en modo dual)
+        const dbType = detectDatabase(repoPath);
 
-                if (fs.existsSync(absoluteDockerfile)) {
-                    console.log(`[Compose] App detectada en docker-compose.yml: servicio "${appService.name}"`);
-                    console.log(`[Compose] Build context: ${buildContext}, Dockerfile: ${dockerfileRelative}`);
+        if (deployPlan && deployPlan.mode === 'dual') {
+            return await deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath);
+        }
 
-                    monorepoApp = {
-                        serviceName: appService.name,
-                        buildContext: absoluteContext,
-                        dockerfilePath: absoluteDockerfile,
-                        port: resolveAppServicePort(appService.config),
-                        serviceConfig: appService.config,
-                    };
-                }
+        // Si es modo 'single', adaptar a la variable monorepoApp existente para no romper monorepo-compose.md
+        let monorepoApp = null;
+        if (deployPlan && deployPlan.mode === 'single' && deployPlan.services[0]) {
+            const svc = deployPlan.services[0];
+            const buildConfig = svc.config.build;
+            const buildContext = typeof buildConfig === 'string' ? buildConfig : (buildConfig.context || '.');
+            const dockerfileRelative = typeof buildConfig === 'object' ? (buildConfig.dockerfile || 'Dockerfile') : 'Dockerfile';
+            const absoluteContext = path.join(repoPath, buildContext);
+            const absoluteDockerfile = path.join(absoluteContext, dockerfileRelative);
+
+            if (fs.existsSync(absoluteDockerfile)) {
+                console.log(`[Compose] App detectada en docker-compose.yml: servicio "${svc.name}"`);
+                console.log(`[Compose] Build context: ${buildContext}, Dockerfile: ${dockerfileRelative}`);
+
+                monorepoApp = {
+                    serviceName: svc.name,
+                    buildContext: absoluteContext,
+                    dockerfilePath: absoluteDockerfile,
+                    port: resolveAppServicePort(svc.config),
+                    serviceConfig: svc.config,
+                };
             }
         }
 
-        // PASO 3 — Detectar y provisionar base de datos
-        const dbType = detectDatabase(repoPath);
         let dbCredentials = null;
 
         if (dbType) {
@@ -1399,18 +1600,25 @@ app.delete('/deploy/:subdomain', async (req, res) => {
     try {
         console.log(`Solicitud para eliminar el proyecto: ${subdomain}`);
         const containers = await docker.listContainers({ all: true });
-        const existing = containers.find(c => c.Names.includes(`/container-${subdomain}`));
-        if (existing) {
-            await docker.getContainer(existing.Id).remove({ force: true });
-            console.log(`Contenedor container-${subdomain} eliminado.`);
+        const possibleNames = [
+            `/container-${subdomain}`,
+            `/container-${subdomain}-backend`,
+            `/container-${subdomain}-frontend`,
+            `/db-${subdomain}`,
+            `/adminer-${subdomain}`,
+        ];
 
-            // Eliminar Adminer si existe
-            const existingAdminer = containers.find(c => c.Names.includes(`/adminer-${subdomain}`));
-            if (existingAdminer) {
-                await docker.getContainer(existingAdminer.Id).remove({ force: true });
-                console.log(`Contenedor adminer-${subdomain} eliminado.`);
+        let removedAny = false;
+        for (const name of possibleNames) {
+            const existing = containers.find(c => c.Names.includes(name));
+            if (existing) {
+                await docker.getContainer(existing.Id).remove({ force: true });
+                console.log(`Contenedor ${name} eliminado.`);
+                removedAny = true;
             }
+        }
 
+        if (removedAny) {
             res.json({ status: 'success', message: `Proyecto ${subdomain} eliminado correctamente.` });
         } else {
             res.status(404).json({ status: 'warning', message: `No se encontró el proyecto.` });
@@ -1426,32 +1634,48 @@ app.get('/deploys', requireAuth, async (req, res) => {
         const filterUserId = req.user.id || null;
 
         const containers = await docker.listContainers({ all: true });
-        const deploys = containers
+        const appContainers = containers
             .filter(c => c.Names.some(name => name.includes('container-')))
             .filter(c => {
                 // Si hay usuario autenticado, filtrar por su ID
                 if (!filterUserId) return true;
                 return c.Labels['deploy.userId'] === filterUserId;
-            })
-            .map(c => ({
-                subdomain: c.Names[0].replace('/container-', ''),
-                status: c.State,
-                branch: c.Labels['deploy.branch'] || 'unknown',
-                repo: c.Labels['deploy.repo'] || 'unknown',
-                deployedAt: c.Labels['deploy.timestamp'] || 'unknown',
-                userId: c.Labels['deploy.userId'] || 'unknown',
-                userEmail: c.Labels['deploy.userEmail'] || 'unknown',
-                database: c.Labels['deploy.db.type'] ? {
-                    type:       c.Labels['deploy.db.type'],
-                    host:       c.Labels['deploy.db.host'],
-                    port:       c.Labels['deploy.db.port'],
-                    name:       c.Labels['deploy.db.name'],
-                    user:       c.Labels['deploy.db.user'],
-                    password:   c.Labels['deploy.db.password'],
-                    adminerUrl: c.Labels['deploy.db.adminerUrl'] || null,
-                } : null,
-            }));
-        res.json({ status: 'success', deploys });
+            });
+
+        // Agrupar por subdominio (usando el label deploy.subdomain si existe, o el nombre)
+        const grouped = {};
+        for (const c of appContainers) {
+            const labels = c.Labels;
+            const subdomain = labels['deploy.subdomain'] || c.Names[0].replace('/container-', '').replace(/-backend$|-frontend$/, '');
+
+            if (!grouped[subdomain]) {
+                grouped[subdomain] = {
+                    subdomain,
+                    status: c.State,
+                    branch: labels['deploy.branch'] || 'unknown',
+                    repo: labels['deploy.repo'] || 'unknown',
+                    deployedAt: labels['deploy.timestamp'] || 'unknown',
+                    userId: labels['deploy.userId'] || 'unknown',
+                    userEmail: labels['deploy.userEmail'] || 'unknown',
+                    roles: [],
+                    database: labels['deploy.db.type'] ? {
+                        type: labels['deploy.db.type'],
+                        host: labels['deploy.db.host'],
+                        port: labels['deploy.db.port'],
+                        name: labels['deploy.db.name'],
+                        user: labels['deploy.db.user'],
+                        password: labels['deploy.db.password'],
+                        adminerUrl: labels['deploy.db.adminerUrl'] || null,
+                    } : null,
+                };
+            }
+
+            grouped[subdomain].roles.push(labels['deploy.role'] || 'app');
+            // Si cualquiera de los componentes no está 'running', reflejarlo
+            if (c.State !== 'running') grouped[subdomain].status = c.State;
+        }
+
+        res.json({ status: 'success', deploys: Object.values(grouped) });
     } catch (error) {
         res.status(500).json({ status: 'error', details: error.message });
     }
