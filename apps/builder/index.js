@@ -1768,21 +1768,31 @@ app.get('/deploys', requireAuth, async (req, res) => {
                     userId: labels['deploy.userId'] || 'unknown',
                     userEmail: labels['deploy.userEmail'] || 'unknown',
                     roles: [],
-                    database: labels['deploy.db.type'] ? {
-                        type: labels['deploy.db.type'],
-                        host: labels['deploy.db.host'],
-                        port: labels['deploy.db.port'],
-                        name: labels['deploy.db.name'],
-                        user: labels['deploy.db.user'],
-                        password: labels['deploy.db.password'],
-                        adminerUrl: labels['deploy.db.adminerUrl'] || null,
-                    } : null,
+                    database: null,
                 };
             }
 
             grouped[subdomain].roles.push(labels['deploy.role'] || 'app');
             // Si cualquiera de los componentes no está 'running', reflejarlo
             if (c.State !== 'running') grouped[subdomain].status = c.State;
+
+            // Actualizar database en cada iteración, sin importar el orden de los contenedores
+            if (labels['deploy.db.type'] && !grouped[subdomain].database) {
+                grouped[subdomain].database = {
+                    type:       labels['deploy.db.type'],
+                    host:       labels['deploy.db.host'],
+                    port:       labels['deploy.db.port'],
+                    name:       labels['deploy.db.name'],
+                    user:       labels['deploy.db.user'],
+                    password:   labels['deploy.db.password'],
+                    adminerUrl: labels['deploy.db.adminerUrl'] || null,
+                };
+            }
+
+            // Mantener el deployedAt más reciente entre los componentes del grupo
+            if (labels['deploy.timestamp'] && labels['deploy.timestamp'] > grouped[subdomain].deployedAt) {
+                grouped[subdomain].deployedAt = labels['deploy.timestamp'];
+            }
         }
 
         res.json({ status: 'success', deploys: Object.values(grouped) });
