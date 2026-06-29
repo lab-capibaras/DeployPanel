@@ -722,6 +722,39 @@ function getComposeBuildContexts(compose) {
     return contexts;
 }
 
+function detectViteLikePackage(dirPath) {
+    const pkgPath = path.join(dirPath, 'package.json');
+    if (!fs.existsSync(pkgPath)) return false;
+
+    try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        return !!(deps.vite || deps.react || deps['react-dom'] || deps.next || deps.vue);
+    } catch (e) {
+        return false;
+    }
+}
+
+function generateFrontendDockerfile(dirPath) {
+    const dockerfileContent = `FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+RUN echo 'server { listen 3000; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+EXPOSE 3000
+`;
+
+    const dockerfilePath = path.join(dirPath, 'Dockerfile');
+    fs.writeFileSync(dockerfilePath, dockerfileContent);
+    console.log(`[Compose] Dockerfile auto-generado para frontend Vite/React/Next en ${path.basename(dirPath)}/`);
+    return dockerfilePath;
+}
+
 function findOrphanServiceDirs(repoPath, compose) {
     const usedContexts = getComposeBuildContexts(compose);
     const orphans = [];
@@ -738,13 +771,25 @@ function findOrphanServiceDirs(repoPath, compose) {
         const dirName = entry.name;
 
         if (IGNORED_DIRS.has(dirName.toLowerCase())) continue;
-        if (usedContexts.has(dirName)) continue; // ya está en el compose
+        if (usedContexts.has(dirName)) continue;
 
-        const dockerfilePath = path.join(repoPath, dirName, 'Dockerfile');
+        const dirFullPath = path.join(repoPath, dirName);
+        let dockerfilePath = path.join(dirFullPath, 'Dockerfile');
+
         if (fs.existsSync(dockerfilePath)) {
             orphans.push({ dirName, dockerfilePath });
             console.log(`[Compose] Carpeta huérfana con Dockerfile encontrada: ${dirName}/`);
+            continue;
         }
+
+        // No tiene Dockerfile — verificar si es un proyecto Vite/React/Next sin contenerizar
+        if (detectViteLikePackage(dirFullPath)) {
+            dockerfilePath = generateFrontendDockerfile(dirFullPath);
+            orphans.push({ dirName, dockerfilePath });
+            continue;
+        }
+
+        // No es candidato válido (ni tiene Dockerfile ni es un proyecto frontend reconocible)
     }
 
     return orphans;
