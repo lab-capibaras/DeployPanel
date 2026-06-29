@@ -750,6 +750,39 @@ function mapAppEnvToDbCredentials(serviceConfig, dbServiceName, dbCredentials) {
     return envOverrides;
 }
 
+function ensureDockerfileCopiesSource(dockerfilePath) {
+    let content = fs.readFileSync(dockerfilePath, 'utf8');
+
+    // Si ya existe una línea "COPY . <algo>" (copia del contexto completo), no tocar nada
+    const hasFullCopy = /^\s*COPY\s+\.\s+\S+/m.test(content);
+
+    if (hasFullCopy) {
+        console.log('[Dockerfile] Ya copia el código fuente, no se modifica.');
+        return;
+    }
+
+    console.log('[Dockerfile] No copia el código fuente (probablemente depende de volumes). Inyectando COPY . . automáticamente...');
+
+    const lines = content.split('\n');
+
+    // Insertar antes de la primera línea EXPOSE, CMD o ENTRYPOINT
+    let insertIndex = lines.findIndex(l => /^\s*(EXPOSE|CMD|ENTRYPOINT)\s+/i.test(l));
+    if (insertIndex === -1) insertIndex = lines.length; // si no hay ninguna, al final
+
+    lines.splice(
+        insertIndex,
+        0,
+        '',
+        '# Auto-inyectado por StarDest: este Dockerfile dependía de volumes que',
+        '# solo existen en desarrollo local. Se copia el código fuente para producción.',
+        'COPY . .',
+        ''
+    );
+
+    fs.writeFileSync(dockerfilePath, lines.join('\n'));
+    console.log('[Dockerfile] COPY . . inyectado correctamente.');
+}
+
 // ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
@@ -894,7 +927,11 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
                 : `Dockerfile detectado. Usando build tradicional...`);
 
             const buildContext = monorepoApp ? monorepoApp.buildContext : repoPath;
-            const dockerfileName = monorepoApp ? path.basename(monorepoApp.dockerfilePath) : 'Dockerfile';
+            const dockerfileFullPath = monorepoApp ? monorepoApp.dockerfilePath : path.join(repoPath, 'Dockerfile');
+            const dockerfileName = path.basename(dockerfileFullPath);
+
+            // Asegurar que el Dockerfile copie el código fuente antes de buildear
+            ensureDockerfileCopiesSource(dockerfileFullPath);
 
             const stream = await docker.buildImage(
                 { context: buildContext, src: ['.'] },
