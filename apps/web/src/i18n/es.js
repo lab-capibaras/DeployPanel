@@ -289,6 +289,8 @@ const es = {
     db_pass:     'Contraseña',
     db_adminer:  'Abrir Adminer →',
     db_hint:     (type) => `Usa el usuario y contraseña de arriba. Sistema: ${type}`,
+    db_copy:     'Copiar',
+    db_copied:   '✓ Copiado',
   },
 
   // ── Webhook Instructions ─────────────────────────────────

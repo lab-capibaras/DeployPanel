@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../i18n';
+import { CopyIcon, CheckIcon } from '../components/Icons';
 
 function timeAgo(dateStr, dash) {
     if (!dateStr || dateStr === 'unknown') return dash.unknown_date;
@@ -42,6 +43,13 @@ export default function Dashboard() {
     const [cooldowns, setCooldowns] = useState({});
     const [now, setNow] = useState(Date.now());
     const [showDb, setShowDb] = useState({});
+    const [copiedField, setCopiedField] = useState(null);
+
+    function copyField(fieldKey, value) {
+        navigator.clipboard.writeText(String(value));
+        setCopiedField(fieldKey);
+        setTimeout(() => setCopiedField(prev => (prev === fieldKey ? null : prev)), 2000);
+    }
 
     useEffect(() => {
         if (!authLoading && !user) navigate('/login');
@@ -378,20 +386,56 @@ export default function Dashboard() {
                                             [dash.db_user, db.user],
                                             [dash.db_pass, db.password],
                                         ];
+                                        const copyBtnStyle = (active) => ({
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                            fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 10,
+                                            padding: '4px 8px',
+                                            background: active ? 'rgba(16,185,129,0.12)' : 'transparent',
+                                            border: `1px solid ${active ? 'rgba(16,185,129,0.4)' : 'var(--px-border)'}`,
+                                            borderRadius: 'var(--px-radius-sm)',
+                                            color: active ? '#10b981' : 'var(--px-muted)',
+                                            cursor: 'pointer',
+                                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+                                        });
                                         return (
                                             <div style={{ marginTop: 10, border: '1px solid var(--px-border)', borderTop: '2px solid #ffb400', borderRadius: 'var(--px-radius)' }}>
-                                                {rows.map(([label, value]) => (
-                                                    <div key={label} style={{
-                                                        display: 'grid', gridTemplateColumns: '140px 1fr',
-                                                        padding: '8px 14px', borderBottom: '1px solid var(--px-border)',
-                                                    }}>
-                                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-                                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-white)', wordBreak: 'break-all' }}>{value}</span>
-                                                    </div>
-                                                ))}
+                                                {rows.map(([label, value]) => {
+                                                    const fieldKey = `${deploy.subdomain}-${label}`;
+                                                    const isCopied = copiedField === fieldKey;
+                                                    return (
+                                                        <div key={label} style={{
+                                                            display: 'grid', gridTemplateColumns: '140px 1fr auto',
+                                                            alignItems: 'center', gap: 8,
+                                                            padding: '8px 14px', borderBottom: '1px solid var(--px-border)',
+                                                        }}>
+                                                            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+                                                            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: 'var(--px-white)', wordBreak: 'break-all' }}>{value}</span>
+                                                            <button
+                                                                onClick={() => copyField(fieldKey, value)}
+                                                                style={copyBtnStyle(isCopied)}
+                                                                title={dash.db_copy}
+                                                            >
+                                                                {isCopied ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
+                                                                {isCopied ? dash.db_copied : dash.db_copy}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
                                                 <div style={{ padding: '8px 14px' }}>
                                                     <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: 'var(--px-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>DATABASE_URL</span>
-                                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#ffb400', wordBreak: 'break-all' }}>{url}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#ffb400', wordBreak: 'break-all', flex: 1 }}>{url}</span>
+                                                        <button
+                                                            onClick={() => copyField(`${deploy.subdomain}-DATABASE_URL`, url)}
+                                                            style={copyBtnStyle(copiedField === `${deploy.subdomain}-DATABASE_URL`)}
+                                                            title={dash.db_copy}
+                                                        >
+                                                            {copiedField === `${deploy.subdomain}-DATABASE_URL` ? <CheckIcon size={11} /> : <CopyIcon size={11} />}
+                                                            {copiedField === `${deploy.subdomain}-DATABASE_URL` ? dash.db_copied : dash.db_copy}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 {db.adminerUrl && (
                                                     <div style={{ padding: '12px 14px', borderTop: '1px solid var(--px-border)' }}>
