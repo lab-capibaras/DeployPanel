@@ -1102,6 +1102,12 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     await backendContainer.start();
     console.log(`[Dual] ✓ Backend desplegado en ${subdomain}.stardest.com/api`);
 
+    // Correr migraciones en el backend si aplica
+    const migrationCmd = detectMigrationCommand(repoPath, backend.buildContext);
+    if (migrationCmd && dbCredentials) {
+        await runMigrations(`container-${subdomain}-backend`, migrationCmd.cmd);
+    }
+
     // 7. Lanzar contenedor FRONTEND como catch-all
     const frontendPort = frontend.port || '80';
     const frontendContainer = await docker.createContainer({
@@ -1130,6 +1136,161 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     console.log(`[Dual] ✓ Frontend desplegado en ${subdomain}.stardest.com`);
 
     return `https://${subdomain}.stardest.com`;
+}
+
+// ==========================================
+// --- DETECCIÓN Y EJECUCIÓN DE MIGRACIONES ---
+// ==========================================
+
+function detectMigrationCommand(repoPath, appDirPath) {
+    const searchPath = appDirPath || repoPath;
+
+    const pkgPath = path.join(searchPath, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const scripts = pkg.scripts || {};
+            const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+            const migrationScriptKeys = [
+                'migration:run', 'migrate', 'db:migrate', 'migration:run:prod',
+                'typeorm:migrate', 'prisma:migrate', 'migrate:deploy',
+                'db:migrate:deploy', 'migration', 'migrations:run',
+            ];
+            for (const key of migrationScriptKeys) {
+                if (scripts[key]) {
+                    console.log(`[Migration] Script encontrado en package.json: npm run ${key}`);
+                    return { cmd: `npm run ${key}`, type: 'npm' };
+                }
+            }
+
+            if (deps.prisma || deps['@prisma/client']) {
+                console.log('[Migration] Prisma detectado');
+                return { cmd: 'npx prisma migrate deploy', type: 'prisma' };
+            }
+            if (deps.typeorm || deps['@nestjs/typeorm']) {
+                const dataSources = [
+                    'src/data-source.ts', 'src/database/data-source.ts',
+                    'src/config/data-source.ts', 'src/typeorm.config.ts',
+                    'dist/data-source.js', 'data-source.ts',
+                ];
+                const found = dataSources.find(ds => fs.existsSync(path.join(searchPath, ds)));
+                if (found) {
+                    const isDist = found.startsWith('dist/');
+                    const dsPath = isDist ? found : `dist/${found.replace('.ts', '.js')}`;
+                    console.log(`[Migration] TypeORM detectado con data-source: ${found}`);
+                    return {
+                        cmd: `npm run build 2>/dev/null; npx typeorm migration:run -d ${dsPath}`,
+                        type: 'typeorm'
+                    };
+                }
+                console.log('[Migration] TypeORM detectado sin data-source explícito, intentando npm run migration:run');
+                return { cmd: 'npm run build 2>/dev/null; npx typeorm migration:run', type: 'typeorm' };
+            }
+            if (deps['sequelize-cli'] || deps.sequelize) {
+                console.log('[Migration] Sequelize detectado');
+                return { cmd: 'npx sequelize-cli db:migrate', type: 'sequelize' };
+            }
+            if (deps.knex) {
+                console.log('[Migration] Knex detectado');
+                return { cmd: 'npx knex migrate:latest', type: 'knex' };
+            }
+        } catch (e) {
+            console.warn('[Migration] Error leyendo package.json:', e.message);
+        }
+    }
+
+    const reqPath = path.join(searchPath, 'requirements.txt');
+    if (fs.existsSync(reqPath)) {
+        const req = fs.readFileSync(reqPath, 'utf8').toLowerCase();
+        if (req.includes('alembic')) {
+            console.log('[Migration] Alembic detectado');
+            return { cmd: 'alembic upgrade head', type: 'alembic' };
+        }
+        if (req.includes('flask-migrate') || req.includes('flask_migrate')) {
+            console.log('[Migration] Flask-Migrate detectado');
+            return { cmd: 'flask db upgrade', type: 'flask-migrate' };
+        }
+    }
+
+    const composerPath = path.join(searchPath, 'composer.json');
+    if (fs.existsSync(composerPath)) {
+        try {
+            const composer = JSON.parse(fs.readFileSync(composerPath, 'utf8'));
+            const require = { ...composer.require, ...composer['require-dev'] };
+            if (require['laravel/framework'] || require['laravel/laravel']) {
+                console.log('[Migration] Laravel detectado');
+                return { cmd: 'php artisan migrate --force', type: 'laravel' };
+            }
+            if (require['doctrine/migrations']) {
+                console.log('[Migration] Doctrine detectado');
+                return { cmd: 'php bin/console doctrine:migrations:migrate --no-interaction', type: 'doctrine' };
+            }
+        } catch (e) {}
+    }
+
+    if (fs.existsSync(path.join(searchPath, 'flyway.conf')) || fs.existsSync(path.join(searchPath, 'flyway.toml'))) {
+        console.log('[Migration] Flyway detectado');
+        return { cmd: 'flyway migrate', type: 'flyway' };
+    }
+
+    if (fs.existsSync(path.join(searchPath, 'liquibase.properties'))) {
+        console.log('[Migration] Liquibase detectado');
+        return { cmd: 'liquibase update', type: 'liquibase' };
+    }
+
+    console.log('[Migration] No se detectó ningún ORM con migraciones.');
+    return null;
+}
+
+async function runMigrations(containerName, migrationCmd, maxWait = 30000) {
+    console.log(`[Migration] Esperando que la app esté lista antes de migrar...`);
+
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+        try {
+            const info = await docker.getContainer(containerName).inspect();
+            if (info.State.Running) break;
+        } catch (e) {}
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    console.log(`[Migration] Corriendo: ${migrationCmd}`);
+
+    try {
+        const execInstance = await docker.getContainer(containerName).exec({
+            Cmd: ['sh', '-c', migrationCmd],
+            AttachStdout: true,
+            AttachStderr: true,
+            WorkingDir: '/app',
+        });
+
+        const output = await new Promise((resolve, reject) => {
+            execInstance.start({ hijack: true }, (err, stream) => {
+                if (err) return reject(err);
+                let stdout = '';
+                let stderr = '';
+                stream.on('data', chunk => {
+                    const str = chunk.toString();
+                    stdout += str;
+                    process.stdout.write(`[Migration] ${str}`);
+                });
+                stream.on('error', chunk => {
+                    stderr += chunk.toString();
+                });
+                stream.on('end', () => resolve({ stdout, stderr }));
+                setTimeout(() => resolve({ stdout, stderr: 'timeout' }), 60000);
+            });
+        });
+
+        if (output.stderr && output.stderr !== 'timeout' && output.stderr.includes('error')) {
+            console.warn(`[Migration] Advertencia en migración: ${output.stderr}`);
+        } else {
+            console.log(`[Migration] ✓ Migraciones completadas`);
+        }
+    } catch (err) {
+        console.warn(`[Migration] Error al correr migraciones (el deploy sigue): ${err.message}`);
+    }
 }
 
 // ==========================================
@@ -1599,6 +1760,14 @@ EXPOSE ${appPort}
         });
 
         await container.start();
+
+        // Correr migraciones si el repo tiene ORM
+        const migrationSearchPath = monorepoApp ? monorepoApp.buildContext : repoPath;
+        const migrationCmd = detectMigrationCommand(repoPath, migrationSearchPath);
+        if (migrationCmd && dbCredentials) {
+            await runMigrations(`container-${subdomain}`, migrationCmd.cmd);
+        }
+
         console.log(`✓ Despliegue exitoso: ${subdomain}.stardest.com`);
         return `http://${subdomain}.stardest.com`;
 
