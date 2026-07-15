@@ -290,8 +290,8 @@ function detectDatabase(repoPath) {
         try {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
             const deps = Object.keys({ ...pkg.dependencies, ...pkg.devDependencies });
-            const mysqlDeps = ['mysql', 'mysql2', 'sequelize', 'typeorm', 'prisma', 'knex'];
-            const pgDeps = ['pg', 'postgres', 'sequelize', 'typeorm', 'prisma', 'knex'];
+            const mysqlDeps = ['mysql', 'mysql2'];
+            const pgDeps = ['pg', 'pg-pool', 'postgres'];
             if (mysqlDeps.some(d => deps.includes(d))) content += ' mysql';
             if (pgDeps.some(d => deps.includes(d))) content += ' postgres';
         } catch (e) {
