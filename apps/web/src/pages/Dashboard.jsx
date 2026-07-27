@@ -31,6 +31,130 @@ const STATUS_COLOR = {
 
 const REDEPLOY_COOLDOWN_MS = 60000;
 
+function GitHubTokenSection() {
+    const [status, setStatus]   = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [token, setToken]     = useState('');
+    const [saving, setSaving]   = useState(false);
+    const [error, setError]     = useState('');
+    const [success, setSuccess] = useState('');
+
+    useEffect(() => {
+        fetch('/api/github-token/status', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => setStatus(data.connected ? 'connected' : 'disconnected'))
+            .catch(() => setStatus('disconnected'))
+            .finally(() => setLoading(false));
+    }, []);
+
+    async function handleSave() {
+        if (!token.trim()) return;
+        setSaving(true);
+        setError('');
+        setSuccess('');
+        try {
+            const res = await fetch('/api/github-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ githubToken: token.trim() }),
+            });
+            const data = await res.json();
+            if (data.ok) {
+                setStatus('connected');
+                setToken('');
+                setSuccess(data.githubUsername ? `Conectado como @${data.githubUsername}` : 'Token guardado correctamente');
+            } else {
+                setError(data.error || 'Error guardando el token');
+            }
+        } catch (e) {
+            setError('Error de red');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleDisconnect() {
+        await fetch('/api/github-token', { method: 'DELETE', credentials: 'include' });
+        setStatus('disconnected');
+        setSuccess('');
+    }
+
+    if (loading) return null;
+
+    return (
+        <div style={{
+            padding: 24, borderRadius: 'var(--px-radius-lg)',
+            border: '1px solid var(--px-border)', background: 'var(--px-surface)',
+            marginBottom: 32,
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--px-white)', margin: 0 }}>
+                        Repositorios privados de GitHub
+                    </h3>
+                    <p style={{ fontSize: 13, color: 'var(--px-muted)', margin: '4px 0 0' }}>
+                        Conecta tu cuenta para desplegar repos privados automáticamente.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: status === 'connected' ? '#22c55e' : 'var(--px-muted)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : 'var(--px-border)', flexShrink: 0 }} />
+                    {status === 'connected' ? 'Conectado' : 'No conectado'}
+                </div>
+            </div>
+
+            {status === 'connected' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 13, color: 'var(--px-muted)' }}>
+                        Token guardado. Tus deploys usarán este token automáticamente.
+                    </span>
+                    <button onClick={handleDisconnect} style={{
+                        padding: '6px 14px', fontSize: 13, cursor: 'pointer',
+                        border: '1px solid var(--px-border)', borderRadius: 8,
+                        background: 'transparent', color: 'var(--px-muted)',
+                    }}>
+                        Desconectar
+                    </button>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                            type="password"
+                            value={token}
+                            onChange={e => setToken(e.target.value)}
+                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                            style={{
+                                flex: 1, padding: '10px 14px', fontSize: 14,
+                                border: '1px solid var(--px-border)', borderRadius: 8,
+                                background: 'var(--px-bg)', color: 'var(--px-white)', outline: 'none',
+                            }}
+                        />
+                        <button onClick={handleSave} disabled={saving || !token.trim()} style={{
+                            padding: '10px 20px', fontSize: 14, fontWeight: 600,
+                            background: 'var(--px-blue)', color: '#fff',
+                            border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer',
+                            opacity: saving || !token.trim() ? 0.5 : 1,
+                        }}>
+                            {saving ? 'Guardando...' : 'Guardar token'}
+                        </button>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--px-faint)', margin: 0 }}>
+                        Genera tu token en{' '}
+                        <a href="https://github.com/settings/tokens/new?scopes=repo&description=StarDest"
+                            target="_blank" rel="noreferrer" style={{ color: 'var(--px-blue)' }}>
+                            github.com/settings/tokens
+                        </a>
+                        {' '}con el permiso <code>repo</code> activado.
+                    </p>
+                    {error && <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>}
+                </div>
+            )}
+            {success && <p style={{ fontSize: 13, color: '#22c55e', margin: '8px 0 0' }}>{success}</p>}
+        </div>
+    );
+}
+
 export default function Dashboard() {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
@@ -165,6 +289,8 @@ export default function Dashboard() {
                 </Link>
             </div>
             <span className="swiss-line" style={{ marginBottom: 40 }} />
+
+            <GitHubTokenSection />
 
             {/* Lista vacía */}
             {deploys.length === 0 && (

@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
+const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -228,10 +229,100 @@ app.post('/auth/logout', (req, res) => {
     res.json({ ok: true });
 });
 
+// POST /github-token — guardar o actualizar el token del usuario
+app.post('/github-token', requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    const { githubToken } = req.body;
+    if (!githubToken || typeof githubToken !== 'string' || githubToken.trim().length < 10) {
+        return res.status(400).json({ ok: false, error: 'Token de GitHub inválido' });
+    }
+    try {
+        const ghRes = await fetch('https://api.github.com/user', {
+            headers: { Authorization: `token ${githubToken.trim()}` }
+        });
+        if (!ghRes.ok) {
+            return res.status(400).json({ ok: false, error: 'El token de GitHub no es válido o no tiene los permisos necesarios' });
+        }
+        const ghUser = await ghRes.json();
+        saveUserToken(userId, githubToken.trim());
+        console.log(`[Token] Token de GitHub guardado para userId ${userId} (GitHub: ${ghUser.login})`);
+        res.json({ ok: true, githubUsername: ghUser.login });
+    } catch (e) {
+        saveUserToken(userId, githubToken.trim());
+        res.json({ ok: true, githubUsername: null });
+    }
+});
+
+// GET /github-token/status — verificar si el usuario tiene token guardado
+app.get('/github-token/status', requireAuth, (req, res) => {
+    const token = getUserToken(req.user.id);
+    res.json({ connected: !!token });
+});
+
+// DELETE /github-token — eliminar el token del usuario
+app.delete('/github-token', requireAuth, (req, res) => {
+    deleteUserToken(req.user.id);
+    res.json({ ok: true });
+});
+
 // ==========================================
 // --- SISTEMA DE MEMORIA PARA WEBHOOKS ---
 // ==========================================
 const DB_FILE = path.join(__dirname, 'deployments.json');
+
+// ==========================================
+// --- TOKENS DE GITHUB POR USUARIO ---
+// ==========================================
+const TOKENS_FILE = path.join(process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..'), 'user_tokens.json');
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(process.env.SESSION_SECRET || 'dev-secret').digest();
+
+function encryptToken(plaintext) {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+function decryptToken(ciphertext) {
+    const [ivHex, tagHex, encryptedHex] = ciphertext.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const tag = Buffer.from(tagHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+}
+
+function saveUserToken(userId, token) {
+    let tokens = {};
+    if (fs.existsSync(TOKENS_FILE)) {
+        try { tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8')); } catch (e) {}
+    }
+    tokens[userId] = encryptToken(token);
+    fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+}
+
+function getUserToken(userId) {
+    if (!userId || !fs.existsSync(TOKENS_FILE)) return null;
+    try {
+        const tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
+        if (!tokens[userId]) return null;
+        return decryptToken(tokens[userId]);
+    } catch (e) {
+        console.warn('[Token] Error descifrando token:', e.message);
+        return null;
+    }
+}
+
+function deleteUserToken(userId) {
+    if (!fs.existsSync(TOKENS_FILE)) return;
+    try {
+        const tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
+        delete tokens[userId];
+        fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+    } catch (e) {}
+}
 
 function normalizeUrl(url) {
     return url.trim().replace(/\.git$/, '').toLowerCase();
@@ -1324,7 +1415,20 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             console.log(`Descargando la rama por defecto (main/master)`);
         }
 
-        await git.clone(repoUrl, repoPath, cloneOptions);
+        let cloneUrl = repoUrl;
+        const userGithubToken = getUserToken(userId);
+        if (userGithubToken) {
+            try {
+                const urlObj = new URL(repoUrl);
+                if (urlObj.hostname === 'github.com') {
+                    urlObj.username = userGithubToken;
+                    cloneUrl = urlObj.toString();
+                    console.log(`[Clone] Usando token de GitHub para clone privado`);
+                }
+            } catch (e) {}
+        }
+
+        await git.clone(cloneUrl, repoPath, cloneOptions);
 
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
         const nextConfigFileNames = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
