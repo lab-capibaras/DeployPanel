@@ -1933,15 +1933,21 @@ app.post('/deploy', requireAuth, async (req, res) => {
 });
 
 // 1b. Listar ramas de un repositorio de GitHub (proxy server-side para evitar
-// problemas de CORS/conectividad del navegador hacia api.github.com)
+// problemas de CORS/conectividad del navegador hacia api.github.com).
+// Si el usuario tiene un token de GitHub guardado, se usa para poder listar
+// ramas de repos privados a los que tenga acceso.
 app.get('/github/branches', requireAuth, async (req, res) => {
     const { owner, repo } = req.query;
     if (!owner || !repo) {
         return res.status(400).json({ status: 'error', message: 'Faltan owner o repo' });
     }
+    const githubToken = getUserToken(req.user.id);
     try {
         const ghRes = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`, {
-            headers: { 'User-Agent': 'StarDest' }
+            headers: {
+                'User-Agent': 'StarDest',
+                ...(githubToken ? { Authorization: `token ${githubToken}` } : {})
+            }
         });
         if (!ghRes.ok) {
             return res.status(ghRes.status).json({ status: 'error', message: 'Repositorio no encontrado o privado' });
