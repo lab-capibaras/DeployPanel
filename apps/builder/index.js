@@ -1959,6 +1959,66 @@ app.get('/github/branches', requireAuth, async (req, res) => {
     }
 });
 
+// 1c. Listar los repositorios personales del usuario autenticado (para el panel
+// de repos en el Dashboard). Usa el token de GitHub guardado si existe para
+// incluir repos privados; si no, cae a la API pública con el username del
+// login de GitHub (solo disponible si el usuario inició sesión con GitHub).
+app.get('/github-repos', requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    const userLogin = req.user.username;
+    const githubToken = getUserToken(userId);
+
+    if (!githubToken && !userLogin) {
+        return res.json({ repos: [], hasToken: false });
+    }
+
+    try {
+        let repos = [];
+        const headers = {
+            'User-Agent': 'StarDest',
+            Accept: 'application/vnd.github.v3+json',
+            ...(githubToken ? { Authorization: `token ${githubToken}` } : {})
+        };
+
+        // Paginar para obtener todos los repos (GitHub devuelve máx 100 por página)
+        let page = 1;
+        while (true) {
+            const url = githubToken
+                ? `https://api.github.com/user/repos?per_page=100&page=${page}&affiliation=owner&sort=pushed`
+                : `https://api.github.com/users/${encodeURIComponent(userLogin)}/repos?per_page=100&page=${page}&sort=pushed`;
+
+            const ghRes = await fetch(url, { headers });
+            if (!ghRes.ok) break;
+
+            const batch = await ghRes.json();
+            if (!Array.isArray(batch) || batch.length === 0) break;
+
+            // Filtrar solo repos del propio usuario (no de organizaciones)
+            repos = repos.concat(batch.filter(r => r.owner.type === 'User'));
+
+            if (batch.length < 100) break; // última página
+            page++;
+        }
+
+        const formatted = repos.map(r => ({
+            id:            r.id,
+            name:          r.name,
+            fullName:      r.full_name,
+            url:           r.html_url,
+            description:   r.description || '',
+            private:       r.private,
+            language:      r.language || null,
+            pushedAt:      r.pushed_at,
+            defaultBranch: r.default_branch,
+            stars:         r.stargazers_count,
+        }));
+
+        res.json({ repos: formatted, hasToken: !!githubToken });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 2. Webhook Automático (Vercel Style)
 app.post('/webhook', async (req, res) => {
     const payload = req.body;

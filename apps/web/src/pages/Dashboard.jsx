@@ -1,9 +1,10 @@
 // Dashboard.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../i18n';
 import { CopyIcon, CheckIcon } from '../components/Icons';
+import GitHubReposPanel from '../components/GitHubReposPanel';
 
 function timeAgo(dateStr, dash) {
     if (!dateStr || dateStr === 'unknown') return dash.unknown_date;
@@ -172,6 +173,10 @@ export default function Dashboard() {
     const [showDb, setShowDb] = useState({});
     const [copiedField, setCopiedField] = useState(null);
 
+    const deployedRepoUrls = useMemo(() => {
+        return deploys.map(d => d.repo).filter(r => r && r !== 'unknown' && r !== 'zip-upload');
+    }, [deploys]);
+
     function copyField(fieldKey, value) {
         navigator.clipboard.writeText(String(value));
         setCopiedField(fieldKey);
@@ -294,6 +299,8 @@ export default function Dashboard() {
             <span className="swiss-line" style={{ marginBottom: 40 }} />
 
             <GitHubTokenSection />
+
+            <GitHubReposPanel deployedRepos={deployedRepoUrls} />
 
             {/* Lista vacía */}
             {deploys.length === 0 && (

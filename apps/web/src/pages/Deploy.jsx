@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 import { CheckCircleIcon } from '../components/Icons';
@@ -67,16 +67,13 @@ export default function Deploy() {
 
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
       if (!loading && !user) {
           navigate('/login');
       }
   }, [user, loading, navigate]);
-
-  // CRÍTICO: no renderizar nada mientras carga
-  if (loading) return null;
-  if (!user) return null;
 
   const showToast = (message, type = 'info') => {
     const id = toastIdRef.current++;
@@ -90,6 +87,45 @@ export default function Deploy() {
     return match ? { owner: match[1], repo: match[2] } : null;
   };
 
+  const loadBranches = async (urlOverride, preferredBranch) => {
+    const repoUrl = urlOverride ?? formData.repoUrl;
+    if (!repoUrl.trim()) { showToast(d.validation.no_repo, 'warning'); return; }
+    const parsed = parseGithubUrl(repoUrl);
+    if (!parsed) { showToast(d.validation.invalid_url, 'error'); return; }
+    setLoadingBranches(true);
+    try {
+      const res = await fetch(`/api/github/branches?owner=${encodeURIComponent(parsed.owner)}&repo=${encodeURIComponent(parsed.repo)}`, {
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok || data.status !== 'success') throw new Error(data.message || 'Repositorio no encontrado o privado');
+      const names = data.branches;
+      setBranches(names);
+      setFormData(f => ({ ...f, branch: (preferredBranch && names.includes(preferredBranch)) ? preferredBranch : (names[0] || '') }));
+      showToast(d.toasts.branches_loaded(names.length), 'success');
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
+  // Prellenar el formulario cuando se llega desde el panel de repos del Dashboard
+  // (botón "Desplegar" en GitHubReposPanel) con { repoUrl, branch } en el state de navegación.
+  // Debe declararse antes del early-return de abajo: los hooks no pueden llamarse condicionalmente.
+  useEffect(() => {
+      const prefill = location.state;
+      if (!prefill?.repoUrl) return;
+      setMode('git');
+      setFormData(f => ({ ...f, repoUrl: prefill.repoUrl }));
+      loadBranches(prefill.repoUrl, prefill.branch);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  // CRÍTICO: no renderizar nada mientras carga
+  if (loading) return null;
+  if (!user) return null;
+
   const validateSubdomain = (value) => {
     if (!value) return d.validation.required;
     if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(value)) return d.validation.invalid;
@@ -101,28 +137,6 @@ export default function Deploy() {
     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
     setFormData(f => ({ ...f, subdomain: val }));
     setSubdomainError(validateSubdomain(val));
-  };
-
-  const loadBranches = async () => {
-    if (!formData.repoUrl.trim()) { showToast(d.validation.no_repo, 'warning'); return; }
-    const parsed = parseGithubUrl(formData.repoUrl);
-    if (!parsed) { showToast(d.validation.invalid_url, 'error'); return; }
-    setLoadingBranches(true);
-    try {
-      const res = await fetch(`/api/github/branches?owner=${encodeURIComponent(parsed.owner)}&repo=${encodeURIComponent(parsed.repo)}`, {
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok || data.status !== 'success') throw new Error(data.message || 'Repositorio no encontrado o privado');
-      const names = data.branches;
-      setBranches(names);
-      setFormData(f => ({ ...f, branch: names[0] || '' }));
-      showToast(d.toasts.branches_loaded(names.length), 'success');
-    } catch (err) {
-      showToast('Error: ' + err.message, 'error');
-    } finally {
-      setLoadingBranches(false);
-    }
   };
 
   const handleFormSubmit = (e) => {
@@ -517,7 +531,7 @@ export default function Deploy() {
                     />
                     <button
                       type="button"
-                      onClick={loadBranches}
+                      onClick={() => loadBranches()}
                       disabled={loadingBranches}
                       onMouseEnter={(e) => {
                         if (!loadingBranches) {
