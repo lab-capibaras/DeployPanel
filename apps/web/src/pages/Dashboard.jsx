@@ -32,6 +32,7 @@ const STATUS_COLOR = {
 const REDEPLOY_COOLDOWN_MS = 60000;
 
 function GitHubTokenSection() {
+    const dash = useTranslation().dashboard;
     const [status, setStatus]   = useState(null);
     const [loading, setLoading] = useState(true);
     const [token, setToken]     = useState('');
@@ -63,12 +64,12 @@ function GitHubTokenSection() {
             if (data.ok) {
                 setStatus('connected');
                 setToken('');
-                setSuccess(data.githubUsername ? `Conectado como @${data.githubUsername}` : 'Token guardado correctamente');
+                setSuccess(data.githubUsername ? dash.gh_connected_as(data.githubUsername) : dash.gh_saved_ok);
             } else {
-                setError(data.error || 'Error guardando el token');
+                setError(data.error || dash.gh_err_save);
             }
         } catch (e) {
-            setError('Error de red');
+            setError(dash.gh_err_network);
         } finally {
             setSaving(false);
         }
@@ -91,29 +92,29 @@ function GitHubTokenSection() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div>
                     <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--px-white)', margin: 0 }}>
-                        Repositorios privados de GitHub
+                        {dash.gh_title}
                     </h3>
                     <p style={{ fontSize: 13, color: 'var(--px-muted)', margin: '4px 0 0' }}>
-                        Conecta tu cuenta para desplegar repos privados automáticamente.
+                        {dash.gh_subtitle}
                     </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: status === 'connected' ? '#22c55e' : 'var(--px-muted)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'connected' ? '#22c55e' : 'var(--px-border)', flexShrink: 0 }} />
-                    {status === 'connected' ? 'Conectado' : 'No conectado'}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: status === 'connected' ? '#10b981' : 'var(--px-muted)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: status === 'connected' ? '#10b981' : 'var(--px-border)', flexShrink: 0 }} />
+                    {status === 'connected' ? dash.gh_connected : dash.gh_disconnected}
                 </div>
             </div>
 
             {status === 'connected' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ fontSize: 13, color: 'var(--px-muted)' }}>
-                        Token guardado. Tus deploys usarán este token automáticamente.
+                        {dash.gh_saved_hint}
                     </span>
                     <button onClick={handleDisconnect} style={{
                         padding: '6px 14px', fontSize: 13, cursor: 'pointer',
-                        border: '1px solid var(--px-border)', borderRadius: 8,
+                        border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
                         background: 'transparent', color: 'var(--px-muted)',
                     }}>
-                        Desconectar
+                        {dash.gh_disconnect}
                     </button>
                 </div>
             ) : (
@@ -123,34 +124,36 @@ function GitHubTokenSection() {
                             type="password"
                             value={token}
                             onChange={e => setToken(e.target.value)}
-                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                            placeholder={dash.gh_placeholder}
                             style={{
                                 flex: 1, padding: '10px 14px', fontSize: 14,
-                                border: '1px solid var(--px-border)', borderRadius: 8,
+                                border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
                                 background: 'var(--px-bg)', color: 'var(--px-white)', outline: 'none',
                             }}
                         />
                         <button onClick={handleSave} disabled={saving || !token.trim()} style={{
                             padding: '10px 20px', fontSize: 14, fontWeight: 600,
-                            background: 'var(--px-blue)', color: '#fff',
-                            border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer',
+                            background: 'var(--px-accent)', color: 'var(--px-accent-fg)',
+                            border: 'none', borderRadius: 'var(--px-radius-sm)', cursor: saving ? 'not-allowed' : 'pointer',
                             opacity: saving || !token.trim() ? 0.5 : 1,
                         }}>
-                            {saving ? 'Guardando...' : 'Guardar token'}
+                            {saving ? dash.gh_saving : dash.gh_save}
                         </button>
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--px-faint)', margin: 0 }}>
-                        Genera tu token en{' '}
+                    <p style={{ fontSize: 12, color: 'var(--px-muted)', margin: 0 }}>
+                        {dash.gh_generate_pre}{' '}
                         <a href="https://github.com/settings/tokens/new?scopes=repo&description=StarDest"
-                            target="_blank" rel="noreferrer" style={{ color: 'var(--px-blue)' }}>
-                            github.com/settings/tokens
+                            target="_blank" rel="noreferrer" style={{ color: 'var(--px-muted)' }}
+                            onMouseEnter={e => e.target.style.color = 'var(--px-white)'}
+                            onMouseLeave={e => e.target.style.color = 'var(--px-muted)'}>
+                            {dash.gh_generate_link}
                         </a>
-                        {' '}con el permiso <code>repo</code> activado.
+                        {' '}{dash.gh_generate_post} <code style={{ fontFamily: "'JetBrains Mono',monospace", background: 'var(--px-bg)', padding: '1px 5px', borderRadius: 'var(--px-radius-sm)' }}>repo</code> {dash.gh_generate_end}
                     </p>
                     {error && <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>}
                 </div>
             )}
-            {success && <p style={{ fontSize: 13, color: '#22c55e', margin: '8px 0 0' }}>{success}</p>}
+            {success && <p style={{ fontSize: 13, color: '#10b981', margin: '8px 0 0' }}>{success}</p>}
         </div>
     );
 }
