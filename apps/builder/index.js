@@ -2019,6 +2019,112 @@ app.get('/github-repos', requireAuth, async (req, res) => {
     }
 });
 
+// 1d. Listar las organizaciones del usuario autenticado. Con token guardado
+// incluye organizaciones privadas; sin token, solo las públicas (requiere
+// que el usuario haya iniciado sesión con GitHub para conocer su username).
+app.get('/github-orgs', requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    const userLogin = req.user.username;
+    const githubToken = getUserToken(userId);
+
+    if (!githubToken && !userLogin) {
+        return res.json({ orgs: [], hasToken: false });
+    }
+
+    const headers = {
+        'User-Agent': 'StarDest',
+        Accept: 'application/vnd.github.v3+json',
+        ...(githubToken ? { Authorization: `token ${githubToken}` } : {})
+    };
+
+    try {
+        // Con token: /user/orgs devuelve todas (públicas + privadas)
+        // Sin token: /users/:login/orgs devuelve solo públicas
+        const url = githubToken
+            ? 'https://api.github.com/user/orgs?per_page=100'
+            : `https://api.github.com/users/${encodeURIComponent(userLogin)}/orgs?per_page=100`;
+
+        const orgsRes = await fetch(url, { headers });
+        if (!orgsRes.ok) return res.status(orgsRes.status).json({ error: `GitHub API error: ${orgsRes.status}` });
+
+        const orgs = await orgsRes.json();
+
+        // Para cada org, obtener info detallada (avatar, descripción, etc.)
+        const detailed = await Promise.all(orgs.map(async org => {
+            try {
+                const orgRes = await fetch(`https://api.github.com/orgs/${encodeURIComponent(org.login)}`, { headers });
+                if (!orgRes.ok) {
+                    return { login: org.login, name: org.login, avatarUrl: org.avatar_url, description: '', publicRepos: 0, url: `https://github.com/${org.login}` };
+                }
+                const orgData = await orgRes.json();
+                return {
+                    login:       orgData.login,
+                    name:        orgData.name || orgData.login,
+                    avatarUrl:   orgData.avatar_url,
+                    description: orgData.description || '',
+                    publicRepos: orgData.public_repos || 0,
+                    url:         orgData.html_url,
+                };
+            } catch (e) {
+                return { login: org.login, name: org.login, avatarUrl: org.avatar_url, description: '', publicRepos: 0, url: `https://github.com/${org.login}` };
+            }
+        }));
+
+        res.json({ orgs: detailed, hasToken: !!githubToken });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 1e. Listar los repos de una organización específica.
+app.get('/github-org-repos', requireAuth, async (req, res) => {
+    const { org } = req.query;
+    if (!org || !/^[a-zA-Z0-9._-]+$/.test(org)) {
+        return res.status(400).json({ error: 'Nombre de organización inválido' });
+    }
+
+    const githubToken = getUserToken(req.user.id);
+    const headers = {
+        'User-Agent': 'StarDest',
+        Accept: 'application/vnd.github.v3+json',
+        ...(githubToken ? { Authorization: `token ${githubToken}` } : {})
+    };
+
+    try {
+        let repos = [];
+        let page = 1;
+        while (true) {
+            const url = `https://api.github.com/orgs/${encodeURIComponent(org)}/repos?per_page=100&page=${page}&sort=pushed&type=all`;
+            const ghRes = await fetch(url, { headers });
+            if (!ghRes.ok) break;
+
+            const batch = await ghRes.json();
+            if (!Array.isArray(batch) || batch.length === 0) break;
+
+            repos = repos.concat(batch);
+            if (batch.length < 100) break;
+            page++;
+        }
+
+        const formatted = repos.map(r => ({
+            id:            r.id,
+            name:          r.name,
+            fullName:      r.full_name,
+            url:           r.html_url,
+            description:   r.description || '',
+            private:       r.private,
+            language:      r.language || null,
+            pushedAt:      r.pushed_at,
+            defaultBranch: r.default_branch,
+            stars:         r.stargazers_count,
+        }));
+
+        res.json({ repos: formatted });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 2. Webhook Automático (Vercel Style)
 app.post('/webhook', async (req, res) => {
     const payload = req.body;
