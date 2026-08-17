@@ -407,6 +407,16 @@ function detectDatabase(repoPath) {
         }
     }
 
+    // PHP plano (sin Composer, sin Dockerfile): el Dockerfile generado para este caso
+    // solo instala las extensiones mysqli/pdo_mysql, así que aquí solo se detecta mysql.
+    const plainPhpFiles = fs.readdirSync(repoPath).filter(f => f.endsWith('.php'));
+    for (const f of plainPhpFiles) {
+        const phpContent = fs.readFileSync(path.join(repoPath, f), 'utf8').toLowerCase();
+        if (phpContent.includes('mysqli') || phpContent.includes('pdo_mysql') || phpContent.includes('mysql_connect')) {
+            content += ' mysql';
+        }
+    }
+
     if (content.includes('mysql') || content.includes('mariadb') ||
         content.includes('mysqlhost') || content.includes('mysqldatabase')) {
         return 'mysql';
@@ -1448,6 +1458,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         let isPython = !!requirementsPath;
         let isNode = fs.existsSync(packageJsonPath);
         const hasIndexHtml = fs.existsSync(path.join(repoPath, 'index.html'));
+        const hasPhpFiles = fs.readdirSync(repoPath).some(f => f.endsWith('.php'));
 
         if (!isNextJs && isNode) {
             try {
@@ -1753,6 +1764,19 @@ EXPOSE ${appPort}
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile estático de Nginx generado exitosamente.');
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+            await runDockerBuild(stream);
+
+        } else if (hasPhpFiles) {
+            console.log('Proyecto PHP plano detectado. Generando Dockerfile con Apache...');
+            const dockerfile = `FROM php:8.2-apache
+RUN docker-php-ext-install pdo pdo_mysql mysqli
+RUN sed -i "s/80/${appPort}/g" /etc/apache2/ports.conf /etc/apache2/sites-enabled/000-default.conf
+COPY . /var/www/html/
+EXPOSE ${appPort}
+`;
+            fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
+            console.log('Dockerfile PHP/Apache generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             await runDockerBuild(stream);
 
