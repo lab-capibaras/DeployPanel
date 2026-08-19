@@ -123,6 +123,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                         return (
                             <div
                                 key={repo.id}
+                                className="card-hover"
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 16,
                                     padding: '16px 20px',
@@ -130,7 +131,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                                     borderRadius: 'var(--px-radius)',
                                     background: 'var(--px-surface)',
                                     flexWrap: 'wrap',
-                                    transition: 'border-color 0.2s ease',
+                                    transition: 'transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease',
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; }}
                                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; }}

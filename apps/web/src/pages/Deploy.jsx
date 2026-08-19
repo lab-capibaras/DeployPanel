@@ -403,7 +403,7 @@ export default function Deploy() {
 
   // ===== RENDER =====
   return (
-    <div className="relative min-h-screen overflow-x-hidden" style={{ backgroundColor: pageBg, color: pageTextColor }}>
+    <div className="relative min-h-screen overflow-x-hidden page-transition" style={{ backgroundColor: pageBg, color: pageTextColor }}>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 pt-28 pb-20">
 

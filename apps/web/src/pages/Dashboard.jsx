@@ -267,7 +267,7 @@ export default function Dashboard() {
     if (!user) return null;
 
     return (
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+        <div className="page-transition" style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
             {/* Header */}
             <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16, paddingBottom: 24 }}>
@@ -336,7 +336,7 @@ export default function Dashboard() {
                     return (
                         <div
                             key={deploy.subdomain}
-                            className={`fade-up fade-up-${Math.min(idx + 1, 4)}`}
+                            className={`fade-up fade-up-${Math.min(idx + 1, 4)} card-hover`}
                             style={{
                                 padding: '24px 28px',
                                 border: '1px solid var(--px-border)',
@@ -347,7 +347,7 @@ export default function Dashboard() {
                                 alignItems: 'center',
                                 gap: 20,
                                 flexWrap: 'wrap',
-                                transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                                transition: 'transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease, box-shadow 0.2s ease',
                             }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.boxShadow = 'var(--px-shadow-md)'; }}
                             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.boxShadow = 'var(--px-shadow-sm)'; }}

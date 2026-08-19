@@ -140,69 +140,102 @@ function HeroCircle({ isDark }) {
   );
 }
 
-/* ─── Stats ticker ─── */
-function StatTicker({ isDark }) {
-  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const muted  = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(0,0,0,0.42)';
-  const main   = isDark ? '#fafafa' : '#09090b';
-  const lang   = getPrefs().lang;
+/* ─── Count-up number ─── */
+function CountUp({ end, suffix = '', decimals = 0, duration = 1400 }) {
+  const [val, setVal] = useState(0);
+  const ref = useRef(null);
+  const started = useRef(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true;
+        const t0 = performance.now();
+        const tick = (now) => {
+          const p = Math.min((now - t0) / duration, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          setVal(end * ease);
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+    }, { threshold: 0.4 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [end, duration]);
+  return <span ref={ref}>{val.toFixed(decimals)}{suffix}</span>;
+}
 
-  const stats = lang === 'es' ? [
-    { value: '1000+', label: 'deploys realizados',   tag: 'STARDEST' },
-    { value: '60s',   label: 'tiempo de deploy',     tag: 'PROMEDIO' },
-    { value: '99.9%', label: 'uptime garantizado',   tag: 'SLA' },
-    { value: '5+',    label: 'lenguajes soportados', tag: 'RUNTIMES' },
-  ] : [
-    { value: '1000+', label: 'deployments done',     tag: 'STARDEST' },
-    { value: '60s',   label: 'avg deploy time',      tag: 'AVERAGE'  },
-    { value: '99.9%', label: 'guaranteed uptime',    tag: 'SLA'      },
-    { value: '5+',    label: 'supported languages',  tag: 'RUNTIMES' },
-  ];
-
-  const items = [...stats, ...stats, ...stats];
-  return (
-    <div style={{ borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}`, padding: '14px 0', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-      <div style={{ display: 'flex', width: 'max-content', animation: 'swiss-marquee 40s linear infinite' }}>
-        {items.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '0 44px', whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 'clamp(22px, 2.5vw, 30px)', color: main, letterSpacing: '-0.03em', lineHeight: 1 }}>{s.value}</span>
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, color: muted, fontWeight: 500 }}>{s.label}</span>
-            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: muted, fontWeight: 600, letterSpacing: '0.1em' }}>{s.tag}</span>
-            <span style={{ color: border, fontSize: 18, marginLeft: 12, lineHeight: 1 }}>◆</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+/* ─── Magnetic button ─── */
+function useMagnetic(strength = 0.35) {
+  const ref = useRef(null);
+  const onMouseMove = (e) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    el.style.transform = `translate(${x * strength}px, ${y * strength}px)`;
+  };
+  const onMouseLeave = () => {
+    if (ref.current) ref.current.style.transform = 'translate(0,0)';
+  };
+  return { ref, onMouseMove, onMouseLeave };
 }
 
 /* ─── Feature card ─── */
 function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
   const [hov, setHov] = useState(false);
+  const [pos, setPos]  = useState({ x: 0, y: 0 });
+  const cardRef = useRef(null);
+
   const border    = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   const borderHov = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.2)';
   const bg        = isDark ? '#18181b' : '#ffffff';
-  const bgHov     = isDark ? '#1f1f23' : '#f8f8f9';
   const main      = isDark ? '#fafafa' : '#09090b';
+
+  const handleMove = (e) => {
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
   return (
     <Reveal delay={delay} style={{ height: '100%' }}>
       <div
+        ref={cardRef}
         onMouseEnter={() => setHov(true)}
         onMouseLeave={() => setHov(false)}
+        onMouseMove={handleMove}
         style={{
           padding: '28px 24px',
           border: `1px solid ${hov ? borderHov : border}`,
-          borderRadius: 10, background: hov ? bgHov : bg,
+          borderRadius: 10, background: bg,
           boxShadow: hov ? (isDark ? '0 12px 40px rgba(0,0,0,0.5)' : '0 12px 40px rgba(0,0,0,0.08)') : 'none',
           transform: hov ? 'translateY(-3px)' : 'none',
-          transition: 'all 0.25s ease', position: 'relative', overflow: 'hidden',
+          transition: 'all 0.25s ease',
+          position: 'relative', overflow: 'hidden',
           height: '100%', boxSizing: 'border-box',
         }}
       >
-        <span style={{ position: 'absolute', top: 20, right: 20, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: hov ? (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)') : border, transition: 'color 0.25s ease' }}>{String(num).padStart(2,'0')}</span>
-        <div style={{ marginBottom: 18, color: main }}>{icon}</div>
-        <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 17, color: main, margin: '0 0 10px', letterSpacing: '-0.01em' }}>{title}</h3>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: '#71717a', margin: 0, lineHeight: 1.65 }}>{desc}</p>
+        {/* Gradiente que sigue el cursor */}
+        {hov && (
+          <div style={{
+            position: 'absolute',
+            pointerEvents: 'none',
+            left: pos.x - 80, top: pos.y - 80,
+            width: 160, height: 160,
+            borderRadius: '50%',
+            background: isDark
+              ? 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)'
+              : 'radial-gradient(circle, rgba(0,0,0,0.04) 0%, transparent 70%)',
+            transition: 'none',
+            zIndex: 0,
+          }} />
+        )}
+        <span style={{ position: 'absolute', top: 20, right: 20, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: hov ? (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)') : border, transition: 'color 0.25s ease', zIndex: 1 }}>{String(num).padStart(2,'0')}</span>
+        <div style={{ marginBottom: 18, color: main, position: 'relative', zIndex: 1 }}>{icon}</div>
+        <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 17, color: main, margin: '0 0 10px', letterSpacing: '-0.01em', position: 'relative', zIndex: 1 }}>{title}</h3>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: '#71717a', margin: 0, lineHeight: 1.65, position: 'relative', zIndex: 1 }}>{desc}</p>
       </div>
     </Reveal>
   );
@@ -299,6 +332,7 @@ export default function Home() {
   const bg2    = isDark ? '#111113' : '#f4f4f5';
   const lang   = getPrefs().lang;
   const capLabel = lang === 'es' ? 'Capacidades' : 'Capabilities';
+  const { ref: magneticRef, onMouseMove: magneticOnMove, onMouseLeave: magneticOnLeave } = useMagnetic();
 
   const featureIcons = [<DeployIcon size={24}/>, <ShieldIcon size={24}/>, <GlobeIcon size={24}/>, <ChartIcon size={24}/>];
   const features = h.cards.map((c, i) => ({ icon: featureIcons[i], title: c.title, desc: c.desc, num: i + 1 }));
@@ -309,7 +343,7 @@ export default function Home() {
   ];
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: bg, overflowX: 'hidden' }}>
+    <div className="page-transition" style={{ position: 'relative', minHeight: '100vh', background: bg, overflowX: 'hidden' }}>
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
       <section style={{ position: 'relative', minHeight: '92vh', display: 'flex', alignItems: 'center', padding: '100px 24px 80px', overflow: 'hidden' }}>
@@ -337,10 +371,12 @@ export default function Home() {
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: '#71717a', maxWidth: 420, margin: 0, lineHeight: 1.65, fontWeight: 400 }}>{h.subtitle}</p>
             <div className="flex flex-col sm:flex-row w-full sm:w-auto" style={{ gap: 10 }}>
               <Link to="/deploy"
+                ref={magneticRef}
+                onMouseMove={magneticOnMove}
                 className="justify-center"
-                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s, transform 0.3s cubic-bezier(0.23,1,0.32,1)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; magneticOnLeave(); }}
               >
                 {h.cta_start}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -356,16 +392,39 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Hero micro-stats */}
+          <div className="fade-up fade-up-3" style={{
+            display: 'flex', gap: 40, marginTop: 48, flexWrap: 'wrap',
+          }}>
+            {[
+              { end: 9, suffix: '+', label: lang === 'es' ? 'Stacks' : 'Stacks' },
+              { end: 100, suffix: '%', label: lang === 'es' ? 'Aislado' : 'Isolated' },
+              { end: 30, suffix: 's', label: lang === 'es' ? 'Deploy' : 'Deploy' },
+            ].map(({ end, suffix, label }) => (
+              <div key={label}>
+                <div style={{
+                  fontFamily: "'Inter',sans-serif", fontWeight: 900,
+                  fontSize: 'clamp(28px, 4vw, 40px)', color: main,
+                  letterSpacing: '-0.04em', lineHeight: 1,
+                }}>
+                  <CountUp end={end} suffix={suffix} />
+                </div>
+                <div style={{
+                  fontFamily: "'JetBrains Mono',monospace", fontSize: 10,
+                  color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                  textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 5,
+                }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
           {/* Capabilities label */}
-          <div className="fade-up fade-up-3" style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="fade-up fade-up-4" style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 18, height: 1, background: border, display: 'inline-block' }} />
             <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)' }}>{capLabel}</span>
           </div>
         </div>
       </section>
-
-      {/* ══ STATS TICKER ════════════════════════════════════════════ */}
-      <StatTicker isDark={isDark} />
 
       {/* ══ STEPS ═══════════════════════════════════════════════════ */}
       <section id="como-funciona" style={{ padding: 'clamp(80px, 10vw, 120px) 24px', background: bg }}>

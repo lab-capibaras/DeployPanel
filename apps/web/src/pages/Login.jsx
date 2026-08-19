@@ -32,7 +32,7 @@ function Login() {
   }
 
   return (
-    <div style={{
+    <div className="page-transition" style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px', background: 'var(--px-bg)', position: 'relative', overflow: 'hidden',
     }}>
@@ -121,11 +121,14 @@ function Login() {
 
 function OAuthButton({ href, icon, label }) {
   const [hov, setHov] = React.useState(false);
+  const [pressed, setPressed] = React.useState(false);
   return (
     <a
       href={href}
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseLeave={() => { setHov(false); setPressed(false); }}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '13px 18px',
@@ -135,13 +138,23 @@ function OAuthButton({ href, icon, label }) {
         color: hov ? 'var(--px-white)' : 'var(--px-muted)',
         textDecoration: 'none',
         fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 15,
-        cursor: 'pointer', transition: 'all 0.18s ease',
+        cursor: 'pointer',
+        transform: pressed ? 'scale(0.98)' : hov ? 'scale(1.01)' : 'scale(1)',
         boxShadow: hov ? 'var(--px-shadow-sm)' : 'none',
+        transition: 'all 0.18s cubic-bezier(0.23,1,0.32,1)',
+        position: 'relative', overflow: 'hidden',
       }}
     >
+      {hov && (
+        <span style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%)',
+          animation: 'shimmer 0.6s ease forwards',
+        }} />
+      )}
       {icon}
       <span style={{ flex: 1 }}>{label}</span>
-      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, opacity: hov ? 1 : 0, transition: 'opacity 0.18s ease' }}>→</span>
+      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, opacity: hov ? 1 : 0, transform: hov ? 'translateX(0)' : 'translateX(-6px)', transition: 'opacity 0.2s ease, transform 0.2s ease' }}>→</span>
     </a>
   );
 }
