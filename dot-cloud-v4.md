@@ -1,8 +1,17 @@
-// DotCloud.jsx
-import { useEffect, useRef } from 'react';
+# Fix: DotCloud v4 — nubes en movimiento + cursor preciso
 
+## Problema
+
+1. Las nubes estaban fijas en posición — solo sus bordes se animaban
+2. El cursor tenía un offset visual porque los puntos se desplazaban físicamente en el canvas pero el canvas está en `position: fixed`, y el evento `mousemove` usa coordenadas de viewport que sí coinciden — el problema era que el desplazamiento se aplicaba **antes** de dibujar el punto, pero la comparación de distancia era con la posición original, no con la desplazada
+
+## Solución
+
+Reemplazar `DotCloud` completo en `Home.jsx` y `Deploy.jsx`:
+
+```jsx
 /* ─── Dot Cloud background ─── */
-export default function DotCloud({ isDark }) {
+function DotCloud({ isDark }) {
   const ref   = useRef(null);
   const mouse = useRef({ x: -9999, y: -9999 });
 
@@ -154,3 +163,24 @@ export default function DotCloud({ isDark }) {
     />
   );
 }
+```
+
+---
+
+## Qué cambió respecto a v3
+
+| Problema | Solución |
+|---|---|
+| Nubes fijas | Cada nube oscila con `sin(t * vx)` y `cos(t * vy)` — se mueven suavemente por la pantalla rebotando alrededor de su posición inicial |
+| Cursor desplazado | El desplazamiento se aplica **solo al dibujo** (`drawX/drawY`), mientras que la opacidad se calcula con la posición original (`baseX/baseY`). Así el cursor afecta exactamente donde está el mouse sin offset |
+| Velocidad | `t += 0.014` — ligeramente más rápido |
+
+---
+
+## Archivos a modificar
+
+Reemplazar la función `DotCloud` completa en:
+- `deploy_panel/apps/web/src/pages/Home.jsx`
+- `deploy_panel/apps/web/src/pages/Deploy.jsx`
+
+Sin otros cambios.
