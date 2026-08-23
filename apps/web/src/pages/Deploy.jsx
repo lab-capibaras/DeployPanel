@@ -384,9 +384,9 @@ export default function Deploy() {
   // ===== DESIGN CONSTANTS =====
   const pageBg = 'var(--px-bg)';
   const pageTextColor = 'var(--px-white)';
-  const cardBg = 'var(--px-surface)';
-  const cardBorder = 'var(--px-border)';
-  const cardShadow = 'var(--px-shadow-md)';
+  const cardBg = isDark ? 'rgba(10, 10, 10, 0.58)' : 'rgba(255, 255, 255, 0.60)';
+  const cardBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+  const cardShadow = isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)';
 
   const textTitle = 'var(--px-white)';
   const textMuted = 'var(--px-muted)';
@@ -445,6 +445,8 @@ export default function Deploy() {
             border: `1px solid ${cardBorder}`,
             borderRadius: cardRadius,
             boxShadow: cardShadow,
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
           }}>
 
             {/* ── Tab switcher ── */}
