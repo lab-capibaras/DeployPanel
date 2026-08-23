@@ -5,6 +5,15 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../i18n';
 import { CopyIcon, CheckIcon } from '../components/Icons';
 import GitHubReposPanel from '../components/GitHubReposPanel';
+import DotCloud from '../components/DotCloud';
+import { getPrefs, subscribePrefs } from '../store/prefs';
+
+/* ─── Theme hook ─── */
+function useTheme() {
+    const [p, setP] = useState(getPrefs);
+    useEffect(() => subscribePrefs(setP), []);
+    return p.theme === 'dark';
+}
 
 function timeAgo(dateStr, dash) {
     if (!dateStr || dateStr === 'unknown') return dash.unknown_date;
@@ -87,7 +96,8 @@ function GitHubTokenSection() {
     return (
         <div style={{
             padding: 24, borderRadius: 'var(--px-radius-lg)',
-            border: '1px solid var(--px-border)', background: 'var(--px-surface)',
+            border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-bg)',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             marginBottom: 32,
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -160,6 +170,7 @@ function GitHubTokenSection() {
 }
 
 export default function Dashboard() {
+    const isDark = useTheme();
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const t = useTranslation();
@@ -267,7 +278,10 @@ export default function Dashboard() {
     if (!user) return null;
 
     return (
-        <div className="page-transition" style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+        <div className="page-transition" style={{ position: 'relative', minHeight: '100vh' }}>
+            <DotCloud isDark={isDark} />
+
+            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
             {/* Header */}
             <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16, paddingBottom: 24 }}>
@@ -306,10 +320,11 @@ export default function Dashboard() {
             {deploys.length === 0 && (
                 <div className="fade-up fade-up-1" style={{
                     textAlign: 'center', padding: '80px 24px',
-                    border: '1px solid var(--px-border)',
+                    border: '1px solid var(--px-glass-border)',
                     borderRadius: 'var(--px-radius-lg)',
-                    background: 'var(--px-surface)',
-                    boxShadow: 'var(--px-shadow-sm)',
+                    background: 'var(--px-glass-bg)',
+                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    boxShadow: 'var(--px-glass-shadow)',
                 }}>
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -339,18 +354,19 @@ export default function Dashboard() {
                             className={`fade-up fade-up-${Math.min(idx + 1, 4)} card-hover`}
                             style={{
                                 padding: '24px 28px',
-                                border: '1px solid var(--px-border)',
+                                border: '1px solid var(--px-glass-border)',
                                 borderRadius: 'var(--px-radius-lg)',
-                                background: 'var(--px-surface)',
-                                boxShadow: 'var(--px-shadow-sm)',
+                                background: 'var(--px-glass-bg)',
+                                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                                boxShadow: 'var(--px-glass-shadow)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 20,
                                 flexWrap: 'wrap',
                                 transition: 'transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease, box-shadow 0.2s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.boxShadow = 'var(--px-shadow-md)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.boxShadow = 'var(--px-shadow-sm)'; }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-glass-border)'; }}
                         >
                             {/* Index number */}
                             <span style={{
@@ -613,6 +629,7 @@ export default function Dashboard() {
                         </div>
                     );
                 })}
+            </div>
             </div>
         </div>
     );

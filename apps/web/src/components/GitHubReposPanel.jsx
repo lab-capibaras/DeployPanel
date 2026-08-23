@@ -110,8 +110,9 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
             {filtered.length === 0 ? (
                 <div style={{
                     padding: 32, textAlign: 'center',
-                    border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-lg)',
-                    background: 'var(--px-surface)',
+                    border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-lg)',
+                    background: 'var(--px-glass-bg)',
+                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                     color: 'var(--px-muted)', fontSize: 14,
                 }}>
                     {dash.gh_repos_empty}
@@ -127,14 +128,15 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 16,
                                     padding: '16px 20px',
-                                    border: '1px solid var(--px-border)',
+                                    border: '1px solid var(--px-glass-border)',
                                     borderRadius: 'var(--px-radius)',
-                                    background: 'var(--px-surface)',
+                                    background: 'var(--px-glass-bg)',
+                                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                                     flexWrap: 'wrap',
                                     transition: 'transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease',
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-glass-border)'; }}
                             >
                                 <div style={{ flex: 1, minWidth: 200 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -234,6 +236,9 @@ function OrgCard({ org, onClick, dash }) {
                 padding: 20, cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 gap: 12, textAlign: 'center',
+                background: 'var(--px-glass-bg)',
+                borderColor: 'var(--px-glass-border)',
+                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             }}
         >
             <img
@@ -379,8 +384,10 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
             {!hasToken && (
                 <div style={{
                     padding: '10px 16px', marginBottom: 16,
-                    border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
-                    background: 'var(--px-surface)', fontSize: 13,
+                    border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-sm)',
+                    background: 'var(--px-glass-bg)',
+                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    fontSize: 13,
                     color: 'var(--px-muted)',
                 }}>
                     {dash.gh_connect_hint_full}
@@ -450,8 +457,9 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
                     ) : orgs.length === 0 ? (
                         <div style={{
                             padding: 32, textAlign: 'center',
-                            border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-lg)',
-                            background: 'var(--px-surface)',
+                            border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-lg)',
+                            background: 'var(--px-glass-bg)',
+                            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
                             color: 'var(--px-muted)', fontSize: 14,
                         }}>
                             {dash.gh_orgs_empty}{!hasToken && dash.gh_orgs_empty_hint}
