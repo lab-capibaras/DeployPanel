@@ -412,9 +412,7 @@ export default function Deploy() {
     <div className="relative min-h-screen overflow-x-hidden page-transition" style={{ backgroundColor: pageBg, color: pageTextColor }}>
 
       {/* Fondo animado de puntos */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-        <DotCloud isDark={isDark} />
-      </div>
+      <DotCloud isDark={isDark} />
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 pt-28 pb-20">
 
