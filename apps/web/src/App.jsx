@@ -565,8 +565,7 @@ const Navbar = React.memo(function Navbar() {
 
   const textMain   = isDark ? '#f5f5f5'                  : '#0a0a0a';
   const textMuted  = isDark ? 'rgba(255,255,255,0.6)'    : '#6b6b6b';
-  const navBg = isDark ? 'rgba(10, 10, 10, 0.58)' : 'rgba(255, 255, 255, 0.60)';
-  const navBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+  const navBg = isDark ? 'rgba(10, 10, 10, 0.42)' : 'rgba(255, 255, 255, 0.42)';
 
   return (
     <nav
@@ -575,17 +574,25 @@ const Navbar = React.memo(function Navbar() {
         top: scrolled ? 10 : 0,
         left: scrolled ? 14 : 0,
         right: scrolled ? 14 : 0,
-        background: navBg,
-        border: `1px solid ${navBorder}`,
-        borderRadius: scrolled ? 16 : 0,
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: scrolled
-          ? (isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)')
-          : (isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)'),
-        transition: 'top 0.4s cubic-bezier(0.16,1,0.3,1), left 0.4s cubic-bezier(0.16,1,0.3,1), right 0.4s cubic-bezier(0.16,1,0.3,1), border-radius 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease',
+        filter: scrolled
+          ? (isDark ? 'drop-shadow(0 8px 32px rgba(0,0,0,0.55))' : 'drop-shadow(0 8px 32px rgba(0,0,0,0.1))')
+          : (isDark ? 'drop-shadow(0 1px 0 rgba(255,255,255,0.04))' : 'drop-shadow(0 1px 0 rgba(0,0,0,0.06))'),
+        transition: 'top 0.4s cubic-bezier(0.16,1,0.3,1), left 0.4s cubic-bezier(0.16,1,0.3,1), right 0.4s cubic-bezier(0.16,1,0.3,1)',
       }}
     >
+      {/* Web component (registrado en index.html): efecto liquid glass real vía filtro SVG de desplazamiento */}
+      <glass-element
+        full-width=""
+        auto-size=""
+        min-height="56"
+        radius={scrolled ? 16 : 0}
+        depth={14}
+        blur={9}
+        strength={65}
+        chromatic-aberration={3}
+        background-color={navBg}
+        style={{ display: 'block', transition: 'border-radius 0.4s cubic-bezier(0.16,1,0.3,1)' }}
+      >
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
 
@@ -642,6 +649,7 @@ const Navbar = React.memo(function Navbar() {
           </div>
         </div>
       </div>
+      </glass-element>
     </nav>
   );
 });
