@@ -1,8 +1,10 @@
-// DotCloud.jsx
-import { useEffect, useRef } from 'react';
+# Fix: DotCloud — nubes separadas + interacción con cursor + más rápido
 
+## Reemplazar `DotCloud` completo en `Home.jsx` y `Deploy.jsx`
+
+```jsx
 /* ─── Dot Cloud background ─── */
-export default function DotCloud({ isDark }) {
+function DotCloud({ isDark }) {
   const ref    = useRef(null);
   const mouse  = useRef({ x: -9999, y: -9999 });
 
@@ -147,3 +149,35 @@ export default function DotCloud({ isDark }) {
     />
   );
 }
+```
+
+---
+
+## Cómo funciona
+
+**Nubes separadas:** se definen 6 elipses (`CLOUDS`) en posiciones relativas de la pantalla. Cada punto solo es visible si cae dentro de alguna elipse — fuera de ellas la opacidad es 0. Los bordes de cada nube se distorsionan con ruido sinusoidal animado para que parezcan orgánicos y en movimiento.
+
+**Interacción con cursor:** dentro de un radio de 90px, los puntos se desplazan hacia afuera del cursor (repulsión). Los puntos dentro de ese radio también aumentan ligeramente su brillo.
+
+**Velocidad:** `t += 0.012` — 3x más rápido que la versión anterior.
+
+---
+
+## Parámetros ajustables
+
+| Parámetro | Valor actual | Efecto |
+|---|---|---|
+| `SPACING` | 7 | Separación entre puntos — bajar = más denso |
+| `MOUSE_R` | 90 | Radio de influencia del cursor en px |
+| `MOUSE_STR` | 0.6 | Fuerza de repulsión — 0 = nada, 1 = máxima |
+| `t += 0.012` | 0.012 | Velocidad de animación |
+| `CLOUDS` | 6 nubes | Agregar o quitar objetos para más/menos nubes |
+| `gauss * 2.8` | 2.8 | Qué tan concentrada es cada nube — más alto = núcleo más pequeño |
+
+## Archivos a modificar
+
+Reemplazar la función `DotCloud` completa en:
+- `deploy_panel/apps/web/src/pages/Home.jsx`
+- `deploy_panel/apps/web/src/pages/Deploy.jsx`
+
+No se requiere ningún otro cambio.
