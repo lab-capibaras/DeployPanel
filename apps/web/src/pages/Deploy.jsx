@@ -384,7 +384,7 @@ export default function Deploy() {
   // ===== DESIGN CONSTANTS =====
   const pageBg = 'var(--px-bg)';
   const pageTextColor = 'var(--px-white)';
-  const cardBg = isDark ? 'rgba(10, 10, 10, 0.58)' : 'rgba(255, 255, 255, 0.60)';
+  const cardBg = isDark ? 'rgba(16, 16, 18, 0.82)' : 'rgba(255, 255, 255, 0.82)';
   const cardBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
   const cardShadow = isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)';
 

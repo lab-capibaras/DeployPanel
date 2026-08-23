@@ -51,8 +51,9 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --nav-bg:         rgba(9, 9, 11, 0.82);
   --drawer-bg:      rgba(9, 9, 11, 0.98);
 
-  /* Glass surfaces (navbar, deploy panel, dashboard cards) */
-  --px-glass-bg:     rgba(10, 10, 10, 0.58);
+  /* Glass surfaces (dashboard/repo cards) — algo de transparencia + blur,
+     pero legibles: no tan lavadas como el navbar, que es una franja angosta. */
+  --px-glass-bg:     rgba(16, 16, 18, 0.82);
   --px-glass-border: rgba(255, 255, 255, 0.08);
   --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.55);
 }
@@ -499,7 +500,7 @@ html.light-mode {
   --px-shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
   --px-shadow-md:   0 8px 32px rgba(0,0,0,0.08);
   --px-shadow-hover:0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.1);
-  --px-glass-bg:     rgba(255, 255, 255, 0.60);
+  --px-glass-bg:     rgba(255, 255, 255, 0.82);
   --px-glass-border: rgba(0, 0, 0, 0.08);
   --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.1);
 }
