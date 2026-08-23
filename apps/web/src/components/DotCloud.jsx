@@ -1,5 +1,6 @@
 // DotCloud.jsx
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 /* ─── Dot Cloud background ─── */
 export default function DotCloud({ isDark }) {
@@ -116,7 +117,11 @@ export default function DotCloud({ isDark }) {
     };
   }, [isDark]);
 
-  return (
+  // Se monta vía portal directo en <body>, fuera del árbol de la página:
+  // así ningún ancestro (transform / filter / backdrop-filter de alguna card,
+  // animación de entrada, etc.) puede "atrapar" el position:fixed y cortar
+  // el fondo a mitad de página.
+  return createPortal(
     <canvas
       ref={ref}
       style={{
@@ -127,6 +132,7 @@ export default function DotCloud({ isDark }) {
         pointerEvents: 'none',
         zIndex: 0,
       }}
-    />
+    />,
+    document.body
   );
 }
