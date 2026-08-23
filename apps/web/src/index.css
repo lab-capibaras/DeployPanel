@@ -262,7 +262,7 @@ textarea:focus-visible {
 /* ─── Page entrance transition ──────────────────────────────────── */
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 .page-transition { animation: page-enter 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 

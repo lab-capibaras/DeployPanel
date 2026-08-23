@@ -18,12 +18,12 @@ export default function DotCloud({ isDark }) {
     // vx/vy = velocidad de drift
     // rx/ry = radio de la elipse relativo al tamaño de pantalla
     const CLOUDS = [
-      { nx: 0.18, ny: 0.22, rx: 0.22, ry: 0.18, vx: 0.04,  vy: 0.025, seed: 0.0 },
-      { nx: 0.72, ny: 0.15, rx: 0.20, ry: 0.16, vx: -0.03, vy: 0.035, seed: 1.3 },
-      { nx: 0.50, ny: 0.55, rx: 0.26, ry: 0.20, vx: 0.05,  vy: -0.02, seed: 2.6 },
-      { nx: 0.85, ny: 0.65, rx: 0.18, ry: 0.22, vx: -0.04, vy: -0.03, seed: 3.9 },
-      { nx: 0.12, ny: 0.72, rx: 0.20, ry: 0.18, vx: 0.035, vy: 0.04,  seed: 5.2 },
-      { nx: 0.62, ny: 0.85, rx: 0.22, ry: 0.16, vx: -0.025,vy: -0.035,seed: 6.5 },
+      { nx: 0.18, ny: 0.22, rx: 0.22, ry: 0.18, vx: 0.12,  vy: 0.075, seed: 0.0 },
+      { nx: 0.72, ny: 0.15, rx: 0.20, ry: 0.16, vx: -0.09, vy: 0.105, seed: 1.3 },
+      { nx: 0.50, ny: 0.55, rx: 0.26, ry: 0.20, vx: 0.15,  vy: -0.06, seed: 2.6 },
+      { nx: 0.85, ny: 0.65, rx: 0.18, ry: 0.22, vx: -0.12, vy: -0.09, seed: 3.9 },
+      { nx: 0.12, ny: 0.72, rx: 0.20, ry: 0.18, vx: 0.105, vy: 0.12,  seed: 5.2 },
+      { nx: 0.62, ny: 0.85, rx: 0.22, ry: 0.16, vx: -0.075,vy: -0.105,seed: 6.5 },
     ];
 
     const DOT_R    = 1.1;
@@ -53,8 +53,8 @@ export default function DotCloud({ isDark }) {
     // Opacidad de un punto (x,y en pixels) respecto a una nube en movimiento
     const cloudOp = (px, py, cloud, W, H, t) => {
       // Posición actual de la nube: oscila con sin/cos alrededor de su centro
-      const cnx = cloud.nx + Math.sin(t * cloud.vx + cloud.seed)       * 0.12;
-      const cny = cloud.ny + Math.cos(t * cloud.vy + cloud.seed * 0.7) * 0.09;
+      const cnx = cloud.nx + Math.sin(t * cloud.vx + cloud.seed)       * 0.18;
+      const cny = cloud.ny + Math.cos(t * cloud.vy + cloud.seed * 0.7) * 0.14;
 
       const cx = cnx * W;
       const cy = cny * H;
