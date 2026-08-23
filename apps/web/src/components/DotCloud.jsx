@@ -35,6 +35,16 @@ export default function DotCloud({ isDark }) {
     resize();
     window.addEventListener('resize', resize, { passive: true });
 
+    // Ruido 2D barato (suma de senos cruzados en varias frecuencias/direcciones)
+    // usado para deformar el espacio antes de medir distancia — así el contorno
+    // de la nube deja de ser un círculo/elipse "tembloroso" y pasa a ser una
+    // silueta irregular, tipo humo.
+    const noise2D = (x, y, t, seed) => (
+      Math.sin(x * 2.1 + y * 1.6 + t * 0.6 + seed) +
+      Math.sin(x * 4.4 - y * 3.2 + t * 0.9 + seed * 1.7) * 0.5 +
+      Math.sin(x * 8.3 + y * 6.5 - t * 0.5 + seed * 2.9) * 0.25
+    ) / 1.75;
+
     // Opacidad de un punto (x,y en pixels) respecto a una nube en movimiento
     const cloudOp = (px, py, cloud, W, H, t) => {
       // Posición actual de la nube: oscila con sin/cos alrededor de su centro
@@ -46,19 +56,23 @@ export default function DotCloud({ isDark }) {
       const rx = cloud.rx * W;
       const ry = cloud.ry * H;
 
-      const dx = (px - cx) / rx;
-      const dy = (py - cy) / ry;
+      let dx = (px - cx) / rx;
+      let dy = (py - cy) / ry;
+
+      // Descarte rápido antes del cálculo de ruido (más caro), dejando margen
+      // suficiente para el desplazamiento máximo que puede introducir el warp
+      if (dx * dx + dy * dy > 2.25) return 0;
+
+      // Domain warping: dos octavas de ruido a distinta escala/velocidad
+      dx += noise2D(dx * 1.3, dy * 1.3, t, cloud.seed) * 0.65
+          + noise2D(dx * 3.1 + 9.1, dy * 3.1 + 9.1, t * 1.4, cloud.seed) * 0.22;
+      dy += noise2D(dx * 1.3 + 3.7, dy * 1.3 + 3.7, t, cloud.seed) * 0.65
+          + noise2D(dx * 3.1 - 5.4, dy * 3.1 - 5.4, t * 1.4, cloud.seed) * 0.22;
+
       const dist2 = dx * dx + dy * dy;
       if (dist2 > 1.0) return 0;
 
-      const gauss = Math.exp(-dist2 * 2.6);
-      const angle = Math.atan2(dy, dx);
-      const noise =
-        Math.sin(angle * 3.0 + t * 1.4 + cloud.seed) * 0.18 +
-        Math.sin(angle * 5.5 - t * 0.9 + cloud.seed) * 0.10 +
-        Math.cos(angle * 2.0 + t * 0.6 + cloud.seed) * 0.12;
-
-      return Math.max(0, Math.min(1, gauss + noise));
+      return Math.max(0, Math.min(1, Math.exp(-dist2 * 2.4)));
     };
 
     const draw = () => {
