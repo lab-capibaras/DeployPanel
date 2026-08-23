@@ -3,8 +3,7 @@ import { useEffect, useRef } from 'react';
 
 /* ─── Dot Cloud background ─── */
 export default function DotCloud({ isDark }) {
-  const ref   = useRef(null);
-  const mouse = useRef({ x: -9999, y: -9999 });
+  const ref = useRef(null);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -18,18 +17,16 @@ export default function DotCloud({ isDark }) {
     // vx/vy = velocidad de drift
     // rx/ry = radio de la elipse relativo al tamaño de pantalla
     const CLOUDS = [
-      { nx: 0.18, ny: 0.22, rx: 0.22, ry: 0.18, vx: 0.12,  vy: 0.075, seed: 0.0 },
-      { nx: 0.72, ny: 0.15, rx: 0.20, ry: 0.16, vx: -0.09, vy: 0.105, seed: 1.3 },
-      { nx: 0.50, ny: 0.55, rx: 0.26, ry: 0.20, vx: 0.15,  vy: -0.06, seed: 2.6 },
-      { nx: 0.85, ny: 0.65, rx: 0.18, ry: 0.22, vx: -0.12, vy: -0.09, seed: 3.9 },
-      { nx: 0.12, ny: 0.72, rx: 0.20, ry: 0.18, vx: 0.105, vy: 0.12,  seed: 5.2 },
-      { nx: 0.62, ny: 0.85, rx: 0.22, ry: 0.16, vx: -0.075,vy: -0.105,seed: 6.5 },
+      { nx: 0.18, ny: 0.22, rx: 0.22, ry: 0.18, vx: 0.24,  vy: 0.15,  seed: 0.0 },
+      { nx: 0.72, ny: 0.15, rx: 0.20, ry: 0.16, vx: -0.18, vy: 0.21,  seed: 1.3 },
+      { nx: 0.50, ny: 0.55, rx: 0.26, ry: 0.20, vx: 0.30,  vy: -0.12, seed: 2.6 },
+      { nx: 0.85, ny: 0.65, rx: 0.18, ry: 0.22, vx: -0.24, vy: -0.18, seed: 3.9 },
+      { nx: 0.12, ny: 0.72, rx: 0.20, ry: 0.18, vx: 0.21,  vy: 0.24,  seed: 5.2 },
+      { nx: 0.62, ny: 0.85, rx: 0.22, ry: 0.16, vx: -0.15, vy: -0.21, seed: 6.5 },
     ];
 
-    const DOT_R    = 1.1;
-    const SPACING  = 7;
-    const MOUSE_R  = 80;    // radio de influencia en px
-    const MOUSE_F  = 22;    // fuerza de empuje en px
+    const DOT_R   = 1.1;
+    const SPACING = 7;
 
     const resize = () => {
       canvas.width  = window.innerWidth;
@@ -37,18 +34,6 @@ export default function DotCloud({ isDark }) {
     };
     resize();
     window.addEventListener('resize', resize, { passive: true });
-
-    const onMouseMove = (e) => {
-      // clientX/Y ya son coordenadas de viewport — coinciden exactamente con fixed canvas
-      mouse.current.x = e.clientX;
-      mouse.current.y = e.clientY;
-    };
-    const onMouseLeave = () => {
-      mouse.current.x = -9999;
-      mouse.current.y = -9999;
-    };
-    window.addEventListener('mousemove', onMouseMove, { passive: true });
-    window.addEventListener('mouseleave', onMouseLeave);
 
     // Opacidad de un punto (x,y en pixels) respecto a una nube en movimiento
     const cloudOp = (px, py, cloud, W, H, t) => {
@@ -80,49 +65,28 @@ export default function DotCloud({ isDark }) {
       const W = canvas.width;
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
-      t += 0.014;
-
-      const mx = mouse.current.x;
-      const my = mouse.current.y;
+      t += 0.026;
 
       const cols = Math.ceil(W / SPACING) + 2;
       const rows = Math.ceil(H / SPACING) + 2;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const baseX = c * SPACING;
-          const baseY = r * SPACING;
+          const x = c * SPACING;
+          const y = r * SPACING;
 
-          // ── 1. Calcular opacidad en posición original ──
           let op = 0;
           for (let i = 0; i < CLOUDS.length; i++) {
-            const v = cloudOp(baseX, baseY, CLOUDS[i], W, H, t);
+            const v = cloudOp(x, y, CLOUDS[i], W, H, t);
             if (v > op) op = v;
           }
           if (op < 0.04) continue;
 
-          // ── 2. Calcular desplazamiento del cursor ──
-          const mdx = baseX - mx;
-          const mdy = baseY - my;
-          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-
-          let drawX = baseX;
-          let drawY = baseY;
-          let opBoost = 0;
-
-          if (mdist < MOUSE_R && mdist > 0.5) {
-            const force = (1 - mdist / MOUSE_R) * MOUSE_F;
-            drawX = baseX + (mdx / mdist) * force;
-            drawY = baseY + (mdy / mdist) * force;
-            opBoost = (1 - mdist / MOUSE_R) * 0.45;
-          }
-
-          // ── 3. Dibujar en posición desplazada ──
           ctx.beginPath();
-          ctx.arc(drawX, drawY, DOT_R, 0, Math.PI * 2);
+          ctx.arc(x, y, DOT_R, 0, Math.PI * 2);
           ctx.fillStyle = isDark
-            ? `rgba(255,255,255,${Math.min(1, (op + opBoost) * 0.62).toFixed(3)})`
-            : `rgba(0,0,0,${Math.min(1, (op + opBoost) * 0.40).toFixed(3)})`;
+            ? `rgba(255,255,255,${(op * 0.62).toFixed(3)})`
+            : `rgba(0,0,0,${(op * 0.40).toFixed(3)})`;
           ctx.fill();
         }
       }
@@ -135,8 +99,6 @@ export default function DotCloud({ isDark }) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseleave', onMouseLeave);
     };
   }, [isDark]);
 
