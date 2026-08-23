@@ -6,6 +6,7 @@ import { CheckCircleIcon } from '../components/Icons';
 import JSZip from 'jszip';
 import { useAuth } from '../hooks/useAuth';
 import WebhookInstructions from '../components/WebhookInstructions';
+import DotCloud from '../components/DotCloud';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -409,6 +410,11 @@ export default function Deploy() {
   // ===== RENDER =====
   return (
     <div className="relative min-h-screen overflow-x-hidden page-transition" style={{ backgroundColor: pageBg, color: pageTextColor }}>
+
+      {/* Fondo animado de puntos */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+        <DotCloud isDark={isDark} />
+      </div>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center px-4 pt-28 pb-20">
 

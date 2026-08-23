@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { DeployIcon, ShieldIcon, GlobeIcon, ChartIcon, CommitIcon, BuildIcon } from '../components/Icons';
 import { getPrefs, subscribePrefs } from '../store/prefs';
+import DotCloud from '../components/DotCloud';
 
 /* ─── Theme hook ─── */
 function useTheme() {
@@ -29,59 +30,6 @@ function Reveal({ children, delay = 0, as: Tag = 'div', style = {}, className = 
       {children}
     </Tag>
   );
-}
-
-/* ─── Scattered character canvas background ─── */
-function ScatteredChars({ isDark }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const CHARS = 'LTF01+×─│┌┐└┘·∙◦←→↑↓∧∨⊕⊗'.split('');
-    let items = [];
-    let raf;
-
-    const setup = () => {
-      const W = window.innerWidth;
-      const H = Math.max(canvas.parentElement?.offsetHeight || window.innerHeight, 600);
-      canvas.width = W;
-      canvas.height = H;
-      items = Array.from({ length: 110 }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        ch: CHARS[Math.floor(Math.random() * CHARS.length)],
-        a: Math.random() * 0.07 + 0.02,
-        sz: Math.floor(Math.random() * 5 + 9),
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.1,
-      }));
-    };
-    setup();
-
-    const onResize = () => { cancelAnimationFrame(raf); setup(); draw(); };
-    window.addEventListener('resize', onResize);
-
-    const draw = () => {
-      const W = canvas.width, H = canvas.height;
-      ctx.clearRect(0, 0, W, H);
-      items.forEach(it => {
-        ctx.font = `${it.sz}px 'JetBrains Mono',monospace`;
-        ctx.fillStyle = isDark ? `rgba(255,255,255,${it.a})` : `rgba(0,0,0,${it.a * 0.75})`;
-        ctx.fillText(it.ch, it.x, it.y);
-        it.x += it.vx; it.y += it.vy;
-        if (it.x < -20) it.x = W + 5;
-        if (it.x > W + 20) it.x = -5;
-        if (it.y < -20) it.y = H + 5;
-        if (it.y > H + 20) it.y = -5;
-      });
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); };
-  }, [isDark]);
-
-  return <canvas ref={ref} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }} />;
 }
 
 /* ─── Animated SVG circle ─── */
@@ -138,48 +86,6 @@ function HeroCircle({ isDark }) {
       </svg>
     </div>
   );
-}
-
-/* ─── Count-up number ─── */
-function CountUp({ end, suffix = '', decimals = 0, duration = 1400 }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef(null);
-  const started = useRef(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !started.current) {
-        started.current = true;
-        const t0 = performance.now();
-        const tick = (now) => {
-          const p = Math.min((now - t0) / duration, 1);
-          const ease = 1 - Math.pow(1 - p, 3);
-          setVal(end * ease);
-          if (p < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      }
-    }, { threshold: 0.4 });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [end, duration]);
-  return <span ref={ref}>{val.toFixed(decimals)}{suffix}</span>;
-}
-
-/* ─── Magnetic button ─── */
-function useMagnetic(strength = 0.35) {
-  const ref = useRef(null);
-  const onMouseMove = (e) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    el.style.transform = `translate(${x * strength}px, ${y * strength}px)`;
-  };
-  const onMouseLeave = () => {
-    if (ref.current) ref.current.style.transform = 'translate(0,0)';
-  };
-  return { ref, onMouseMove, onMouseLeave };
 }
 
 /* ─── Feature card ─── */
@@ -332,7 +238,6 @@ export default function Home() {
   const bg2    = isDark ? '#111113' : '#f4f4f5';
   const lang   = getPrefs().lang;
   const capLabel = lang === 'es' ? 'Capacidades' : 'Capabilities';
-  const { ref: magneticRef, onMouseMove: magneticOnMove, onMouseLeave: magneticOnLeave } = useMagnetic();
 
   const featureIcons = [<DeployIcon size={24}/>, <ShieldIcon size={24}/>, <GlobeIcon size={24}/>, <ChartIcon size={24}/>];
   const features = h.cards.map((c, i) => ({ icon: featureIcons[i], title: c.title, desc: c.desc, num: i + 1 }));
@@ -347,7 +252,7 @@ export default function Home() {
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
       <section style={{ position: 'relative', minHeight: '92vh', display: 'flex', alignItems: 'center', padding: '100px 24px 80px', overflow: 'hidden' }}>
-        <ScatteredChars isDark={isDark} />
+        <DotCloud isDark={isDark} />
         <HeroCircle isDark={isDark} />
 
         <div style={{ maxWidth: 1200, margin: '0 auto', width: '100%', position: 'relative', zIndex: 1 }}>
@@ -371,12 +276,10 @@ export default function Home() {
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: '#71717a', maxWidth: 420, margin: 0, lineHeight: 1.65, fontWeight: 400 }}>{h.subtitle}</p>
             <div className="flex flex-col sm:flex-row w-full sm:w-auto" style={{ gap: 10 }}>
               <Link to="/deploy"
-                ref={magneticRef}
-                onMouseMove={magneticOnMove}
                 className="justify-center"
-                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s, transform 0.3s cubic-bezier(0.23,1,0.32,1)', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
+                style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '13px 26px', fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 700, background: main, color: bg, border: `1px solid ${main}`, borderRadius: 999, transition: 'opacity 0.2s', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}
                 onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; magneticOnLeave(); }}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
               >
                 {h.cta_start}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -392,34 +295,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Hero micro-stats */}
-          <div className="fade-up fade-up-3" style={{
-            display: 'flex', gap: 40, marginTop: 48, flexWrap: 'wrap',
-          }}>
-            {[
-              { end: 9, suffix: '+', label: lang === 'es' ? 'Stacks' : 'Stacks' },
-              { end: 100, suffix: '%', label: lang === 'es' ? 'Aislado' : 'Isolated' },
-              { end: 30, suffix: 's', label: lang === 'es' ? 'Deploy' : 'Deploy' },
-            ].map(({ end, suffix, label }) => (
-              <div key={label}>
-                <div style={{
-                  fontFamily: "'Inter',sans-serif", fontWeight: 900,
-                  fontSize: 'clamp(28px, 4vw, 40px)', color: main,
-                  letterSpacing: '-0.04em', lineHeight: 1,
-                }}>
-                  <CountUp end={end} suffix={suffix} />
-                </div>
-                <div style={{
-                  fontFamily: "'JetBrains Mono',monospace", fontSize: 10,
-                  color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-                  textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 5,
-                }}>{label}</div>
-              </div>
-            ))}
-          </div>
-
           {/* Capabilities label */}
-          <div className="fade-up fade-up-4" style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="fade-up fade-up-3" style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 18, height: 1, background: border, display: 'inline-block' }} />
             <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)' }}>{capLabel}</span>
           </div>
