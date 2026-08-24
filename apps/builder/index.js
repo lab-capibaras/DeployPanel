@@ -1168,6 +1168,28 @@ function endDeployTracking(userId) {
     else deployInProgress.set(userId, current - 1);
 }
 
+// Máximo de proyectos (subdominios) activos simultáneos por usuario.
+const MAX_DEPLOYS_PER_USER = 3;
+
+// Cuenta subdominios distintos con al menos un contenedor 'running' del
+// usuario. En modo dual (backend+frontend) ambos contenedores comparten
+// subdominio y cuentan como un solo proyecto. `excludeSubdomain` deja afuera
+// el subdominio al que se está desplegando ahora mismo, para que redesplegar
+// un proyecto ya existente no consuma el límite.
+async function countActiveDeploys(userId, excludeSubdomain) {
+    const containers = await docker.listContainers({ all: true });
+    const subdomains = new Set();
+    for (const c of containers) {
+        if (c.State !== 'running') continue;
+        if (c.Labels['deploy.userId'] !== userId) continue;
+        if (!c.Names.some(n => n.includes('container-'))) continue;
+        const subdomain = c.Labels['deploy.subdomain'] || c.Names[0].replace('/container-', '').replace(/-backend$|-frontend$/, '');
+        if (subdomain === excludeSubdomain) continue;
+        subdomains.add(subdomain);
+    }
+    return subdomains.size;
+}
+
 const runDockerBuild = (stream, subdomain) => new Promise((resolve, reject) => {
     docker.modem.followProgress(stream, (err, outputRes) => {
         if (err) return reject(err);
@@ -2126,6 +2148,24 @@ app.post('/deploy', requireAuth, async (req, res) => {
     const userEnv = sanitizeUserEnv(env);
 
     const actualBranch = branch || 'main';
+
+    const activeDeployCount = await countActiveDeploys(userId, subdomain);
+    if (activeDeployCount >= MAX_DEPLOYS_PER_USER) {
+        logger.warn({
+            event: 'deploy_limit_reached',
+            userId: req.user?.id,
+            subdomain,
+            current: activeDeployCount,
+            ip: getIP(req)
+        }, 'Deploy bloqueado por límite de proyectos activos');
+        return res.status(403).json({
+            status: 'error',
+            code: 'DEPLOY_LIMIT_REACHED',
+            details: `Alcanzaste el límite de ${MAX_DEPLOYS_PER_USER} proyectos activos. Elimina uno desde el Dashboard antes de desplegar uno nuevo.`,
+            current: activeDeployCount,
+            max: MAX_DEPLOYS_PER_USER,
+        });
+    }
 
     const rateCheck = canDeploy(userId);
     if (!rateCheck.allowed) {

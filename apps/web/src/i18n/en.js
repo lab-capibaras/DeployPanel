@@ -157,6 +157,7 @@ const en = {
       retry:  'Retry Deployment',
       modify: 'Modify Configuration',
       reconnect_github: 'Go to Dashboard to reconnect GitHub →',
+      go_dashboard: 'Go to Dashboard →',
     },
 
     toasts: {
@@ -248,6 +249,8 @@ const en = {
     projects_one: 'active project',
     projects_many:'active projects',
     new_deploy:   '+ New Deploy',
+    limit_reached:  '· Limit reached',
+    limit_hint:     'Delete a project to create a new one',
     empty:        "You don't have any deploys yet",
     create_first: 'Create your first deploy →',
     unknown_date: 'Unknown date',

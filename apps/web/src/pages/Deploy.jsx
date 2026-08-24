@@ -39,6 +39,7 @@ export default function Deploy() {
   const [showRocketLaunch, setShowRocketLaunch] = useState(false);
   const [webhookInfo, setWebhookInfo] = useState(null);
   const [tokenExpired, setTokenExpired] = useState(false);
+  const [showDashboardLink, setShowDashboardLink] = useState(false);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
 
@@ -167,12 +168,14 @@ export default function Deploy() {
   const startDeploy = () => {
     setPhase('progress');
     setTokenExpired(false);
+    setShowDashboardLink(false);
 
     // Disparamos el deploy real sin esperarlo — el progreso real se ve a
     // través del stream de logs SSE (<DeployLogs>), que abre su conexión
     // apenas se monta este phase. Acá solo capturamos los fallos que ocurren
-    // ANTES de que deployApp() arranque en el backend (rate limit, fallos de
-    // red), porque en esos casos nunca se emite un evento SSE 'fail'.
+    // ANTES de que deployApp() arranque en el backend (rate limit, límite de
+    // proyectos activos, fallos de red), porque en esos casos nunca se emite
+    // un evento SSE 'fail'.
     fetch('/api/deploy', {
       method: 'POST',
       credentials: 'include',
@@ -184,6 +187,15 @@ export default function Deploy() {
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         handleDeployFail(data.details || d.error.title);
+      } else if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        if (data.code === 'DEPLOY_LIMIT_REACHED') {
+          setErrorMessage(data.details);
+          setShowDashboardLink(true);
+          setPhase('error');
+        } else {
+          handleDeployFail(data.details || d.error.title);
+        }
       }
     }).catch(err => {
       setErrorMessage(err.message);
@@ -222,6 +234,7 @@ export default function Deploy() {
     setSuccessUrl('');
     setSubdomainError('');
     setTokenExpired(false);
+    setShowDashboardLink(false);
     setPhase('form');
   };
 
@@ -1062,7 +1075,7 @@ export default function Deploy() {
                 <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 28, color: textTitle, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{d.error.title}</h2>
                 <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, color: isDark ? '#fca5a5' : '#b91c1c', margin: '0 0 28px' }}>{errorMessage}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {tokenExpired && (
+                  {(tokenExpired || showDashboardLink) && (
                     <button
                       onClick={() => navigate('/dashboard')}
                       onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
@@ -1083,7 +1096,7 @@ export default function Deploy() {
                         borderRadius: btnRadius,
                       }}
                     >
-                      {d.error.reconnect_github}
+                      {tokenExpired ? d.error.reconnect_github : d.error.go_dashboard}
                     </button>
                   )}
                   <button

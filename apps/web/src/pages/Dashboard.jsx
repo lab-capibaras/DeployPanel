@@ -8,6 +8,9 @@ import GitHubReposPanel from '../components/GitHubReposPanel';
 import DotCloud from '../components/DotCloud';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 
+// Debe coincidir con MAX_DEPLOYS_PER_USER en apps/builder/index.js
+const MAX_DEPLOYS_PER_USER = 3;
+
 /* ─── Theme hook ─── */
 function useTheme() {
     const [p, setP] = useState(getPrefs);
@@ -424,7 +427,10 @@ export default function Dashboard() {
                         {dash.title}
                     </h1>
                     <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-muted)', margin: '12px 0 0' }}>
-                        {String(deploys.length).padStart(2, '0')} — {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
+                        {String(deploys.length).padStart(2, '0')} / {MAX_DEPLOYS_PER_USER} — {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
+                        {deploys.length >= MAX_DEPLOYS_PER_USER && (
+                            <span style={{ color: 'var(--px-red)', marginLeft: 8 }}>{dash.limit_reached}</span>
+                        )}
                     </p>
                 </div>
                 <Link
@@ -434,7 +440,11 @@ export default function Dashboard() {
                         textDecoration: 'none',
                         display: 'inline-flex', alignItems: 'center',
                         fontSize: 13, padding: '14px 28px',
+                        opacity: deploys.length >= MAX_DEPLOYS_PER_USER ? 0.4 : 1,
+                        pointerEvents: deploys.length >= MAX_DEPLOYS_PER_USER ? 'none' : 'auto',
+                        cursor: deploys.length >= MAX_DEPLOYS_PER_USER ? 'not-allowed' : 'pointer',
                     }}
+                    title={deploys.length >= MAX_DEPLOYS_PER_USER ? dash.limit_hint : ''}
                 >
                     {dash.new_deploy}
                 </Link>

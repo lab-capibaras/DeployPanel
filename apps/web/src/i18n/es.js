@@ -157,6 +157,7 @@ const es = {
       retry:  'Reintentar Despliegue',
       modify: 'Modificar Configuración',
       reconnect_github: 'Ir al Dashboard para reconectar GitHub →',
+      go_dashboard: 'Ir al Dashboard →',
     },
 
     toasts: {
@@ -247,6 +248,8 @@ const es = {
     projects_one: 'proyecto activo',
     projects_many:'proyectos activos',
     new_deploy:   '+ Nuevo Deploy',
+    limit_reached:  '· Límite alcanzado',
+    limit_hint:     'Elimina un proyecto para crear uno nuevo',
     empty:        'No tienes deploys aún',
     create_first: 'Crear tu primer deploy →',
     unknown_date: 'Fecha desconocida',
