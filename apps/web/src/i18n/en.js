@@ -156,6 +156,7 @@ const en = {
       title:  'Deployment Failed',
       retry:  'Retry Deployment',
       modify: 'Modify Configuration',
+      reconnect_github: 'Go to Dashboard to reconnect GitHub →',
     },
 
     toasts: {

@@ -38,6 +38,7 @@ export default function Deploy() {
   const [subdomainError, setSubdomainError] = useState('');
   const [showRocketLaunch, setShowRocketLaunch] = useState(false);
   const [webhookInfo, setWebhookInfo] = useState(null);
+  const [tokenExpired, setTokenExpired] = useState(false);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
 
@@ -165,12 +166,13 @@ export default function Deploy() {
 
   const startDeploy = () => {
     setPhase('progress');
+    setTokenExpired(false);
 
     // Disparamos el deploy real sin esperarlo — el progreso real se ve a
     // través del stream de logs SSE (<DeployLogs>), que abre su conexión
-    // apenas se monta este phase. Solo capturamos acá los fallos de red que
-    // ocurren ANTES de llegar al servidor (el stream nunca se abre en ese
-    // caso, así que el evento 'fail' del backend jamás dispararía).
+    // apenas se monta este phase. Acá solo capturamos los fallos que ocurren
+    // ANTES de que deployApp() arranque en el backend (rate limit, fallos de
+    // red), porque en esos casos nunca se emite un evento SSE 'fail'.
     fetch('/api/deploy', {
       method: 'POST',
       credentials: 'include',
@@ -178,6 +180,11 @@ export default function Deploy() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ ...formData, env: buildEnvPayload() }),
+    }).then(async (res) => {
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        handleDeployFail(data.details || d.error.title);
+      }
     }).catch(err => {
       setErrorMessage(err.message);
       setPhase('error');
@@ -199,9 +206,12 @@ export default function Deploy() {
   };
 
   const handleDeployFail = (message) => {
-    setErrorMessage(message);
+    const isTokenError = message?.startsWith('TOKEN_GITHUB_INVALIDO:');
+    const cleanMessage = isTokenError ? message.replace('TOKEN_GITHUB_INVALIDO: ', '') : message;
+    setTokenExpired(isTokenError);
+    setErrorMessage(cleanMessage);
     setPhase('error');
-    showToast('Error: ' + message, 'error');
+    showToast('Error: ' + cleanMessage, 'error');
   };
 
   const reset = () => {
@@ -211,6 +221,7 @@ export default function Deploy() {
     setErrorMessage('');
     setSuccessUrl('');
     setSubdomainError('');
+    setTokenExpired(false);
     setPhase('form');
   };
 
@@ -1051,6 +1062,30 @@ export default function Deploy() {
                 <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 28, color: textTitle, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{d.error.title}</h2>
                 <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, color: isDark ? '#fca5a5' : '#b91c1c', margin: '0 0 28px' }}>{errorMessage}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {tokenExpired && (
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                      style={{
+                        width: '100%',
+                        padding: '14px 24px',
+                        background: btnGradient,
+                        border: '1px solid var(--px-accent)',
+                        color: 'var(--px-accent-fg)',
+                        fontFamily: "'Inter',sans-serif",
+                        fontSize: 15,
+                        letterSpacing: '0.04em',
+                        cursor: 'pointer',
+                        boxShadow: btnShadow,
+                        transition: 'all 0.15s ease',
+                        fontWeight: 'bold',
+                        borderRadius: btnRadius,
+                      }}
+                    >
+                      {d.error.reconnect_github}
+                    </button>
+                  )}
                   <button
                     onClick={startDeploy}
                     onMouseEnter={(e) => {

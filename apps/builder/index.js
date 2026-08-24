@@ -1117,6 +1117,57 @@ function deployLog(subdomain, type, message) {
     emitDeployLog(subdomain, { type, message, ts: Date.now() });
 }
 
+// ==========================================
+// --- RATE LIMITING DE DEPLOYS POR USUARIO ---
+// ==========================================
+// En memoria (no persiste entre reinicios) — suficiente porque los reinicios
+// del servidor son poco frecuentes en este stack.
+const deployInProgress = new Map(); // userId → número de deploys activos
+const deployHistory    = new Map(); // userId → array de timestamps
+
+const MAX_CONCURRENT_DEPLOYS = 3;   // deploys simultáneos por usuario
+const MAX_DEPLOYS_PER_HOUR   = 10;  // deploys por hora por usuario
+const ONE_HOUR_MS            = 60 * 60 * 1000;
+
+function canDeploy(userId) {
+    const concurrent = deployInProgress.get(userId) || 0;
+    if (concurrent >= MAX_CONCURRENT_DEPLOYS) {
+        return {
+            allowed: false,
+            code: 'CONCURRENT_LIMIT',
+            reason: `Tienes ${concurrent} deploys en progreso. Espera a que terminen antes de iniciar otro.`,
+        };
+    }
+
+    const now = Date.now();
+    const history = (deployHistory.get(userId) || []).filter(t => now - t < ONE_HOUR_MS);
+    deployHistory.set(userId, history);
+
+    if (history.length >= MAX_DEPLOYS_PER_HOUR) {
+        const resetIn = Math.ceil((history[0] + ONE_HOUR_MS - now) / 60000);
+        return {
+            allowed: false,
+            code: 'HOURLY_LIMIT',
+            reason: `Límite de ${MAX_DEPLOYS_PER_HOUR} deploys por hora alcanzado. Podrás desplegar en ${resetIn} minuto${resetIn > 1 ? 's' : ''}.`,
+        };
+    }
+
+    return { allowed: true };
+}
+
+function startDeployTracking(userId) {
+    deployInProgress.set(userId, (deployInProgress.get(userId) || 0) + 1);
+    const history = deployHistory.get(userId) || [];
+    history.push(Date.now());
+    deployHistory.set(userId, history);
+}
+
+function endDeployTracking(userId) {
+    const current = deployInProgress.get(userId) || 1;
+    if (current <= 1) deployInProgress.delete(userId);
+    else deployInProgress.set(userId, current - 1);
+}
+
 const runDockerBuild = (stream, subdomain) => new Promise((resolve, reject) => {
     docker.modem.followProgress(stream, (err, outputRes) => {
         if (err) return reject(err);
@@ -1497,7 +1548,23 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             } catch (e) {}
         }
 
-        await git.clone(cloneUrl, repoPath, cloneOptions);
+        try {
+            await git.clone(cloneUrl, repoPath, cloneOptions);
+        } catch (cloneError) {
+            const msg = cloneError.message || '';
+            const isAuthError = /Authentication failed|could not read Username|Repository not found|invalid credentials|\b403\b|\b401\b/.test(msg);
+
+            if (isAuthError && userGithubToken) {
+                console.warn(`[Clone] Token de GitHub inválido o expirado para userId ${userId}. Eliminando...`);
+                deleteUserToken(userId);
+                throw new Error(
+                    'TOKEN_GITHUB_INVALIDO: Tu token de GitHub expiró o fue revocado. ' +
+                    'Ve al Dashboard → "Repositorios privados" y vuelve a conectar tu cuenta.'
+                );
+            }
+
+            throw cloneError;
+        }
 
         const hasDockerfile = fs.existsSync(path.join(repoPath, 'Dockerfile'));
         const nextConfigFileNames = ['next.config.js', 'next.config.ts', 'next.config.mjs'];
@@ -2060,6 +2127,18 @@ app.post('/deploy', requireAuth, async (req, res) => {
 
     const actualBranch = branch || 'main';
 
+    const rateCheck = canDeploy(userId);
+    if (!rateCheck.allowed) {
+        logger.warn({
+            event: 'deploy_rate_limited',
+            userId: req.user?.id,
+            subdomain,
+            code: rateCheck.code,
+            ip: getIP(req)
+        }, 'Deploy bloqueado por rate limit');
+        return res.status(429).json({ status: 'error', code: rateCheck.code, details: rateCheck.reason });
+    }
+
     logger.info({
         event: 'deploy_start',
         userId: req.user?.id,
@@ -2069,6 +2148,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
         ip: getIP(req)
     }, 'Deploy iniciado');
 
+    startDeployTracking(userId);
     try {
         const url = await deployApp(repoUrl, subdomain, actualBranch, userId, userEmail, userEnv);
         saveDeployment(repoUrl, actualBranch, subdomain);
@@ -2096,7 +2176,24 @@ app.post('/deploy', requireAuth, async (req, res) => {
         }, 'Deploy fallido');
         emitDeployLog(subdomain, { type: 'fail', message: error.message, ts: Date.now() });
         res.status(500).json({ status: 'error', details: error.message });
+    } finally {
+        endDeployTracking(userId);
     }
+});
+
+// GET /deploy-quota — estado del rate limit del usuario autenticado
+app.get('/deploy-quota', requireAuth, (req, res) => {
+    const userId = req.user.id;
+    const now = Date.now();
+    const history = (deployHistory.get(userId) || []).filter(t => now - t < ONE_HOUR_MS);
+    const concurrent = deployInProgress.get(userId) || 0;
+
+    res.json({
+        concurrent,
+        hourly: history.length,
+        maxConcurrent: MAX_CONCURRENT_DEPLOYS,
+        maxHourly: MAX_DEPLOYS_PER_HOUR,
+    });
 });
 
 // 1b. Listar ramas de un repositorio de GitHub (proxy server-side para evitar

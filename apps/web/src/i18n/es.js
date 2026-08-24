@@ -156,6 +156,7 @@ const es = {
       title:  'Error en el Despliegue',
       retry:  'Reintentar Despliegue',
       modify: 'Modificar Configuración',
+      reconnect_github: 'Ir al Dashboard para reconectar GitHub →',
     },
 
     toasts: {
