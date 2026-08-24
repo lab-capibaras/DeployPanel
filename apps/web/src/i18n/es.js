@@ -127,10 +127,12 @@ const es = {
     },
 
     progress: {
-      title:   'Desplegando...',
-      clone:   'Clonado',
-      build:   'Compilado',
-      publish: 'Publicado',
+      title:     'Desplegando...',
+      waiting:   'Iniciando deploy...',
+      running:   'En progreso',
+      completed: 'Completado',
+      failed:    'Falló',
+      log_label: 'deploy log',
     },
 
     success: {
@@ -152,7 +154,6 @@ const es = {
 
     toasts: {
       branches_loaded: (n) => `${n} ramas cargadas`,
-      server_error:    'El servidor retornó un error al desplegar',
     },
 
     // ── Upload Tab ───────────────────────────────────────────
@@ -230,26 +231,6 @@ const es = {
         { delay: 10800, text: '✓ HEALTH CHECK PASSED [200 OK]',            color: 'text-green-400 font-bold' },
       ],
     },
-
-    logs: [
-      { delay: 300,   text: '> Iniciando pipeline de despliegue...',       color: 'text-[#CBCDD3]' },
-      { delay: 700,   text: '> Conectando con repositorio remoto...',       color: 'text-[#CBCDD3]' },
-      { delay: 1300,  text: '✓ Repositorio autenticado correctamente',      color: 'text-green-400' },
-      { delay: 1800,  text: '> Clonando rama seleccionada...',              color: 'text-[#CBCDD3]' },
-      { delay: 2500,  text: '✓ Clonado completo — 142 archivos indexados',  color: 'text-green-400' },
-      { delay: 3000,  text: '> Detectando entorno de ejecución...',         color: 'text-[#CBCDD3]' },
-      { delay: 3600,  text: '✓ Entorno detectado y configurado',            color: 'text-green-400' },
-      { delay: 4000,  text: '> Construyendo imagen de contenedor...',       color: 'text-[#CBCDD3]' },
-      { delay: 5000,  text: '> Resolviendo dependencias del proyecto...',   color: 'text-[#CBCDD3]' },
-      { delay: 6000,  text: '✓ Imagen compilada [1.21s]',                   color: 'text-green-400' },
-      { delay: 6500,  text: '> Provisionando red de distribución...',       color: 'text-[#CBCDD3]' },
-      { delay: 7200,  text: '> Registrando dominio en proxy inverso...',    color: 'text-[#CBCDD3]' },
-      { delay: 8000,  text: '✓ Certificado TLS provisionado automáticamente', color: 'text-green-400' },
-      { delay: 8500,  text: '> Publicando contenedor en nodo activo...',    color: 'text-[#CBCDD3]' },
-      { delay: 9200,  text: '✓ Contenedor activo y respondiendo',           color: 'text-green-400' },
-      { delay: 9800,  text: '> Ejecutando health check...',                 color: 'text-[#CBCDD3]' },
-      { delay: 10500, text: '✓ HEALTH CHECK PASSED [200 OK]',               color: 'text-green-400 font-bold' },
-    ],
   },
 
   // ── Dashboard ───────────────────────────────────────────

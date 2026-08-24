@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import { useAuth } from '../hooks/useAuth';
 import WebhookInstructions from '../components/WebhookInstructions';
 import DotCloud from '../components/DotCloud';
+import DeployLogs from '../components/DeployLogs';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -33,12 +34,9 @@ export default function Deploy() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successUrl, setSuccessUrl] = useState('');
   const [toasts, setToasts] = useState([]);
-  const [progress, setProgress] = useState(0);
-  const [logLines, setLogLines] = useState([]);
   const [subdomainError, setSubdomainError] = useState('');
   const [showRocketLaunch, setShowRocketLaunch] = useState(false);
   const [webhookInfo, setWebhookInfo] = useState(null);
-  const logRef = useRef(null);
   const toastIdRef = useRef(0);
   const timerRefs = useRef([]);
 
@@ -55,11 +53,6 @@ export default function Deploy() {
   const uploadLogRef = useRef(null);
   const uploadTimerRefs = useRef([]);
   const fileInputRef = useRef(null);
-
-  // Auto-scroll log
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [logLines]);
 
   // Auto-scroll upload log
   useEffect(() => {
@@ -151,51 +144,45 @@ export default function Deploy() {
     setPhase('confirm');
   };
 
-  const startDeploy = async () => {
+  const startDeploy = () => {
     setPhase('progress');
-    setLogLines([]);
-    setProgress(0);
-    timerRefs.current.forEach(clearTimeout);
-    timerRefs.current = [];
 
-    // Use the logs from the current locale
-    d.logs.forEach(({ delay, text, color }) => {
-      const timer = setTimeout(() => {
-        setLogLines(prev => [...prev, { text, color }]);
-        setProgress(Math.min((delay / 10500) * 95, 95));
-      }, delay);
-      timerRefs.current.push(timer);
+    // Disparamos el deploy real sin esperarlo — el progreso real se ve a
+    // través del stream de logs SSE (<DeployLogs>), que abre su conexión
+    // apenas se monta este phase. Solo capturamos acá los fallos de red que
+    // ocurren ANTES de llegar al servidor (el stream nunca se abre en ese
+    // caso, así que el evento 'fail' del backend jamás dispararía).
+    fetch('/api/deploy', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    }).catch(err => {
+      setErrorMessage(err.message);
+      setPhase('error');
+      showToast('Error: ' + err.message, 'error');
     });
+  };
 
-    const finalTimer = setTimeout(async () => {
-      try {
-        const response = await fetch('/api/deploy', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(formData),
-        });
-        if (!response.ok) throw new Error(d.toasts.server_error);
-        setProgress(100);
-        setSuccessUrl(`https://${formData.subdomain}.stardest.com`);
-        setShowRocketLaunch(true);
-        setTimeout(() => {
-          setShowRocketLaunch(false);
-          setPhase('success');
-          setWebhookInfo({
-            subdomain: formData.subdomain,
-            repoUrl: formData.repoUrl,
-          });
-        }, 3200);
-      } catch (err) {
-        setErrorMessage(err.message);
-        setPhase('error');
-        showToast('Error: ' + err.message, 'error');
-      }
-    }, 11000);
-    timerRefs.current.push(finalTimer);
+  const handleDeploySuccess = (url) => {
+    setSuccessUrl(url);
+    setShowRocketLaunch(true);
+    setTimeout(() => {
+      setShowRocketLaunch(false);
+      setPhase('success');
+      setWebhookInfo({
+        subdomain: formData.subdomain,
+        repoUrl: formData.repoUrl,
+      });
+    }, 3200);
+  };
+
+  const handleDeployFail = (message) => {
+    setErrorMessage(message);
+    setPhase('error');
+    showToast('Error: ' + message, 'error');
   };
 
   const reset = () => {
@@ -204,8 +191,6 @@ export default function Deploy() {
     setBranches([]);
     setErrorMessage('');
     setSuccessUrl('');
-    setProgress(0);
-    setLogLines([]);
     setSubdomainError('');
     setPhase('form');
   };
@@ -826,92 +811,16 @@ export default function Deploy() {
             {/* ======= PROGRESS ======= */}
             {mode === 'git' && phase === 'progress' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 22, color: textTitle, margin: 0, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{d.progress.title}</h2>
-                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: textMuted, margin: '4px 0 0' }}>{formData.subdomain}.stardest.com</p>
-                  </div>
-                  <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 28, color: textTitle, fontWeight: 'bold' }}>{Math.round(progress)}%</span>
+                <div>
+                  <h2 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 900, fontSize: 22, color: textTitle, margin: 0, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>{d.progress.title}</h2>
+                  <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: textMuted, margin: '4px 0 0' }}>{formData.subdomain}.stardest.com</p>
                 </div>
 
-                <div style={{
-                  width: '100%',
-                  height: 14,
-                  background: inputBg,
-                  border: `1px solid ${inputBorder}`,
-                  padding: 2,
-                  boxSizing: 'border-box',
-                  borderRadius: 99,
-                  overflow: 'hidden',
-                }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${progress}%`,
-                      background: 'repeating-linear-gradient(90deg, var(--px-border-glow) 0px, var(--px-border-glow) 6px, var(--px-white) 6px, var(--px-white) 8px)',
-                      transition: 'width 0.4s cubic-bezier(0.23,1,0.32,1)',
-                      borderRadius: 99,
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  {[
-                    { key: 'clone',   label: d.progress.clone,   threshold: 35 },
-                    { key: 'build',   label: d.progress.build,   threshold: 65 },
-                    { key: 'publish', label: d.progress.publish,  threshold: 95 },
-                  ].map(({ key, label, threshold }) => {
-                    const done   = progress >= threshold;
-                    const active = progress > threshold - 35 && progress < threshold;
-                    return (
-                      <div key={key} style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '12px 8px',
-                        border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}`,
-                        background: done ? 'rgba(16,185,129,0.1)' : active ? 'rgba(128,128,128,0.15)' : 'transparent',
-                        fontFamily: "'Inter',sans-serif",
-                        fontSize: 13,
-                        flex: 1,
-                        textAlign: 'center',
-                        borderRadius: 12,
-                      }}>
-                        <div style={{
-                          width: 24,
-                          height: 24,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 6,
-                          background: done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBg,
-                          border: `1px solid ${done ? '#10b981' : active ? 'var(--px-border-glow)' : inputBorder}`,
-                        }}>
-                          {done
-                            ? <svg style={{ width: 14, height: 14, color: '#fff' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                            : active
-                              ? <div style={{ width: 10, height: 10, border: '1px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                              : <div style={{ width: 6, height: 6, background: inputBorder }} />
-                          }
-                        </div>
-                        <span style={{ color: done ? '#10b981' : active ? pageTextColor : textMuted, fontWeight: 'bold' }}>{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div ref={logRef} className="px-terminal" style={{
-                  height: 200,
-                  overflowY: 'auto',
-                  boxSizing: 'border-box',
-                  fontSize: 12,
-                }}>
-                  {logLines.map((line, i) => (
-                    <p key={i} className={line.color} style={{ margin: '0 0 6px', lineHeight: 1.4 }}>{line.text}</p>
-                  ))}
-                  <p style={{ margin: 0, color: 'var(--px-border-glow)', animation: 'px-blink 1s steps(1) infinite' }}>█</p>
-                </div>
+                <DeployLogs
+                  subdomain={formData.subdomain}
+                  onDone={handleDeploySuccess}
+                  onFail={handleDeployFail}
+                />
               </div>
             )}
 

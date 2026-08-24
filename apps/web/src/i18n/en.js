@@ -127,10 +127,12 @@ const en = {
     },
 
     progress: {
-      title:   'Deploying...',
-      clone:   'Cloned',
-      build:   'Built',
-      publish: 'Published',
+      title:     'Deploying...',
+      waiting:   'Starting deploy...',
+      running:   'In progress',
+      completed: 'Completed',
+      failed:    'Failed',
+      log_label: 'deploy log',
     },
 
     success: {
@@ -152,7 +154,6 @@ const en = {
 
     toasts: {
       branches_loaded: (n) => `${n} branches loaded`,
-      server_error:    'The server returned an error while deploying',
     },
 
     // ── Upload Tab ───────────────────────────────────────────
@@ -231,27 +232,6 @@ const en = {
       ],
     },
 
-
-
-    logs: [
-      { delay: 300,   text: '> Starting deployment pipeline...',           color: 'text-[#CBCDD3]' },
-      { delay: 700,   text: '> Connecting to remote repository...',        color: 'text-[#CBCDD3]' },
-      { delay: 1300,  text: '✓ Repository authenticated successfully',     color: 'text-green-400' },
-      { delay: 1800,  text: '> Cloning selected branch...',                color: 'text-[#CBCDD3]' },
-      { delay: 2500,  text: '✓ Clone complete — 142 files indexed',        color: 'text-green-400' },
-      { delay: 3000,  text: '> Detecting runtime environment...',          color: 'text-[#CBCDD3]' },
-      { delay: 3600,  text: '✓ Environment detected and configured',       color: 'text-green-400' },
-      { delay: 4000,  text: '> Building container image...',               color: 'text-[#CBCDD3]' },
-      { delay: 5000,  text: '> Resolving project dependencies...',         color: 'text-[#CBCDD3]' },
-      { delay: 6000,  text: '✓ Image compiled [1.21s]',                    color: 'text-green-400' },
-      { delay: 6500,  text: '> Provisioning distribution network...',      color: 'text-[#CBCDD3]' },
-      { delay: 7200,  text: '> Registering domain in reverse proxy...',    color: 'text-[#CBCDD3]' },
-      { delay: 8000,  text: '✓ TLS certificate provisioned automatically', color: 'text-green-400' },
-      { delay: 8500,  text: '> Publishing container to active node...',    color: 'text-[#CBCDD3]' },
-      { delay: 9200,  text: '✓ Container active and responding',           color: 'text-green-400' },
-      { delay: 9800,  text: '> Running health check...',                   color: 'text-[#CBCDD3]' },
-      { delay: 10500, text: '✓ HEALTH CHECK PASSED [200 OK]',              color: 'text-green-400 font-bold' },
-    ],
   },
 
   // ── Dashboard ───────────────────────────────────────────

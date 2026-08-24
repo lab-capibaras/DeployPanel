@@ -1082,12 +1082,40 @@ function ensureDockerfileCopiesSource(dockerfilePath) {
     console.log('[Dockerfile] COPY . . inyectado correctamente.');
 }
 
-const runDockerBuild = (stream) => new Promise((resolve, reject) => {
+// ==========================================
+// --- LOGS DE DEPLOY EN TIEMPO REAL (SSE) ---
+// ==========================================
+// Mapa de subdomain → Set<res> (una conexión SSE por pestaña/cliente escuchando)
+const deployLogClients = new Map();
+
+function emitDeployLog(subdomain, data) {
+    const clients = deployLogClients.get(subdomain);
+    if (!clients || clients.size === 0) return;
+    const payload = JSON.stringify(data);
+    clients.forEach(res => {
+        try { res.write(`data: ${payload}\n\n`); } catch (e) {}
+    });
+}
+
+function deployLog(subdomain, type, message) {
+    if (type === 'error') console.error(`[${subdomain}] ${message}`);
+    else console.log(`[${subdomain}] ${message}`);
+    emitDeployLog(subdomain, { type, message, ts: Date.now() });
+}
+
+const runDockerBuild = (stream, subdomain) => new Promise((resolve, reject) => {
     docker.modem.followProgress(stream, (err, outputRes) => {
         if (err) return reject(err);
         outputRes.forEach(line => {
-            if (line.stream) process.stdout.write(line.stream);
-            if (line.error) process.stderr.write(line.error);
+            if (line.stream) {
+                process.stdout.write(line.stream);
+                const msg = line.stream.trim();
+                if (msg && subdomain) deployLog(subdomain, 'build', msg);
+            }
+            if (line.error) {
+                process.stderr.write(line.error);
+                if (subdomain) deployLog(subdomain, 'error', line.error.trim());
+            }
         });
         const errorLine = outputRes.find(l => l.error);
         if (errorLine) {
@@ -1117,7 +1145,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
         { context: backend.buildContext, src: ['.'] },
         { t: backendImageName, dockerfile: path.basename(backend.dockerfilePath) }
     );
-    await runDockerBuild(stream);
+    await runDockerBuild(stream, subdomain);
 
     // 3. Parchar y construir imagen del FRONTEND
     ensureDockerfileCopiesSource(frontend.dockerfilePath);
@@ -1126,7 +1154,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
         { context: frontend.buildContext, src: ['.'] },
         { t: frontendImageName, dockerfile: path.basename(frontend.dockerfilePath) }
     );
-    await runDockerBuild(stream);
+    await runDockerBuild(stream, subdomain);
 
     // 4. Limpiar contenedores anteriores (backend, frontend, y el legacy single si existía)
     const containers = await docker.listContainers({ all: true });
@@ -1412,6 +1440,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         console.log(`-------------------------------------------`);
 
         console.log(`Clonando ${repoUrl}...`);
+        deployLog(subdomain, 'info', `Clonando repositorio...`);
         if (fs.existsSync(repoPath)) {
             console.log(`Limpiando directorio temporal anterior...`);
             fs.rmSync(repoPath, { recursive: true, force: true });
@@ -1424,6 +1453,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         } else {
             console.log(`Descargando la rama por defecto (main/master)`);
         }
+        deployLog(subdomain, 'info', `Rama: ${branch || 'default'}`);
 
         let cloneUrl = repoUrl;
         const userGithubToken = getUserToken(userId);
@@ -1536,6 +1566,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             console.log(monorepoApp
                 ? `Monorepo detectado. Usando Dockerfile en ${monorepoApp.buildContext}...`
                 : `Dockerfile detectado. Usando build tradicional...`);
+            deployLog(subdomain, 'info', `Stack detectado: ${monorepoApp ? 'Monorepo (Dockerfile)' : 'Dockerfile propio'}`);
 
             const buildContext = monorepoApp ? monorepoApp.buildContext : repoPath;
             const dockerfileFullPath = monorepoApp ? monorepoApp.dockerfilePath : path.join(repoPath, 'Dockerfile');
@@ -1548,10 +1579,12 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
                 { context: buildContext, src: ['.'] },
                 { t: imageName, dockerfile: dockerfileName }
             );
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (isNextJs) {
             console.log(`Proyecto Next.js detectado. Generando Dockerfile optimizado...`);
+            deployLog(subdomain, 'info', `Stack detectado: Next.js`);
             const nextMajor = getNextVersion(packageJsonPath);
             console.log(`Versión de Next.js detectada: ${nextMajor}.x`);
 
@@ -1658,10 +1691,12 @@ ${runnerStage}
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log(`Dockerfile generado (modo: ${hasStandaloneOutput ? 'standalone' : 'npm start'})`);
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (isVite) {
             console.log(`Proyecto Vite/React detectado. Generando Dockerfile con Nginx...`);
+            deployLog(subdomain, 'info', `Stack detectado: Vite/React`);
             const dockerfile = `FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
@@ -1677,10 +1712,12 @@ EXPOSE ${appPort}
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Nginx generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (isPython) {
             console.log(`Proyecto Python detectado. Escaneando código y dependencias...`);
+            deployLog(subdomain, 'info', `Stack detectado: Python/FastAPI`);
             const reqContent = fs.readFileSync(requirementsPath, 'utf8').toLowerCase();
             let linuxDeps = [];
             if (reqContent.includes('pyodbc')) linuxDeps.push('unixodbc', 'unixodbc-dev', 'g++');
@@ -1737,10 +1774,12 @@ CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "${appPort}"]
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile de Python/FastAPI generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (isNode) {
             console.log(`Proyecto Node.js detectado. Generando Dockerfile estándar...`);
+            deployLog(subdomain, 'info', `Stack detectado: Node.js`);
             const dockerfile = `FROM node:20-slim
 WORKDIR /app
 COPY package*.json ./
@@ -1753,10 +1792,12 @@ CMD ["npm", "start"]
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile para Node.js generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (hasIndexHtml) {
             console.log(`Sitio estático detectado (index.html). Generando Dockerfile con Nginx...`);
+            deployLog(subdomain, 'info', `Stack detectado: Sitio estático`);
             const dockerfile = `FROM nginx:alpine
 RUN printf 'server {\\nlisten ${appPort};\\nroot /usr/share/nginx/html;\\nindex index.html;\\nlocation / {\\ntry_files $uri $uri/ /index.html;\\n}\\n}\\n' > /etc/nginx/conf.d/default.conf
 COPY . /usr/share/nginx/html
@@ -1765,10 +1806,12 @@ EXPOSE ${appPort}
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile estático de Nginx generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else if (hasPhpFiles) {
             console.log('Proyecto PHP plano detectado. Generando Dockerfile con Apache...');
+            deployLog(subdomain, 'info', `Stack detectado: PHP`);
             const dockerfile = `FROM php:8.2-apache
 RUN docker-php-ext-install pdo pdo_mysql mysqli
 RUN sed -i "s/80/${appPort}/g" /etc/apache2/ports.conf /etc/apache2/sites-enabled/000-default.conf
@@ -1778,10 +1821,12 @@ EXPOSE ${appPort}
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
             console.log('Dockerfile PHP/Apache generado exitosamente.');
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
-            await runDockerBuild(stream);
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
 
         } else {
             console.log(`No hay Dockerfile, Next.js, Vite ni Python. Usando Buildpacks...`);
+            deployLog(subdomain, 'info', `Stack detectado: Buildpacks (fallback)`);
             const absoluteRepoPath = path.resolve(repoPath);
             const containerId = os.hostname();
 
@@ -1797,6 +1842,7 @@ EXPOSE ${appPort}
                 build "${imageName}" \
                 --builder paketobuildpacks/builder-jammy-base`;
 
+            deployLog(subdomain, 'info', `Construyendo con Buildpacks...`);
             await new Promise((resolve, reject) => {
                 const packProcess = exec(packCommand, (error, stdout, stderr) => {
                     if (error) {
@@ -1809,6 +1855,14 @@ EXPOSE ${appPort}
                 });
                 packProcess.stdout.pipe(process.stdout);
                 packProcess.stderr.pipe(process.stderr);
+                packProcess.stdout.on('data', chunk => {
+                    const msg = chunk.toString().trim();
+                    if (msg) deployLog(subdomain, 'build', msg);
+                });
+                packProcess.stderr.on('data', chunk => {
+                    const msg = chunk.toString().trim();
+                    if (msg) deployLog(subdomain, 'build', msg);
+                });
             });
         }
 
@@ -1820,6 +1874,7 @@ EXPOSE ${appPort}
         }
 
         console.log(`Lanzando contenedor en la red de Traefik...`);
+        deployLog(subdomain, 'info', `Lanzando contenedor...`);
 
         let dbEnv = [];
         if (dbCredentials) {
@@ -1909,6 +1964,40 @@ EXPOSE ${appPort}
 // --- RUTAS DE LA API ---
 // ==========================================
 
+// 1a. Stream de logs en tiempo real (SSE) para un deploy en curso.
+// requireAuth: los logs de build pueden filtrar detalles del repo/errores,
+// así que solo el usuario autenticado que dispara el deploy puede escucharlos
+// (EventSource no puede mandar headers custom, pero sí manda la cookie
+// auth_token automáticamente en same-origin, así que requireAuth funciona igual).
+app.get('/deploy-logs/:subdomain', requireAuth, (req, res) => {
+    const { subdomain } = req.params;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // desactivar buffering en nginx/traefik
+    res.flushHeaders();
+
+    if (!deployLogClients.has(subdomain)) {
+        deployLogClients.set(subdomain, new Set());
+    }
+    deployLogClients.get(subdomain).add(res);
+
+    // Ping cada 15s para mantener la conexión viva (Cloudflare corta SSE idle)
+    const ping = setInterval(() => {
+        try { res.write(': ping\n\n'); } catch (e) {}
+    }, 15000);
+
+    req.on('close', () => {
+        clearInterval(ping);
+        const clients = deployLogClients.get(subdomain);
+        if (clients) {
+            clients.delete(res);
+            if (clients.size === 0) deployLogClients.delete(subdomain);
+        }
+    });
+});
+
 // 1. Despliegue Manual
 app.post('/deploy', requireAuth, async (req, res) => {
     const { repoUrl, subdomain, branch } = req.body;
@@ -1937,6 +2026,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
             subdomain,
             ip: getIP(req)
         }, 'Deploy completado');
+        emitDeployLog(subdomain, { type: 'done', url, ts: Date.now() });
         res.json({
             status: 'success',
             url: url,
@@ -1952,6 +2042,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
             error: error.message,
             ip: getIP(req)
         }, 'Deploy fallido');
+        emitDeployLog(subdomain, { type: 'fail', message: error.message, ts: Date.now() });
         res.status(500).json({ status: 'error', details: error.message });
     }
 });
@@ -2500,4 +2591,4 @@ app.post('/deploy/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-app.listen(4000, () => console.log("Panel PRO (Vercel Style) en puerto 4000"));
+app.listen(4000, () => console.log("StarDest en puerto 4000"));
