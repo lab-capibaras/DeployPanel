@@ -29,6 +29,7 @@ export default function Deploy() {
   const [formData, setFormData] = useState({ repoUrl: '', branch: '', subdomain: '' });
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [envVars, setEnvVars] = useState([{ key: '', value: '' }]);
   // states: 'form' | 'confirm' | 'progress' | 'success' | 'error'
   const [phase, setPhase] = useState('form');
   const [errorMessage, setErrorMessage] = useState('');
@@ -133,6 +134,24 @@ export default function Deploy() {
     setSubdomainError(validateSubdomain(val));
   };
 
+  const addEnvVar = () => {
+    setEnvVars(prev => [...prev, { key: '', value: '' }]);
+  };
+
+  const removeEnvVar = (index) => {
+    setEnvVars(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateEnvVar = (index, field, value) => {
+    setEnvVars(prev => prev.map((v, i) => i === index ? { ...v, [field]: value } : v));
+  };
+
+  const buildEnvPayload = () => {
+    return envVars
+      .filter(v => v.key.trim() !== '')
+      .map(v => `${v.key.trim()}=${v.value}`);
+  };
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!formData.repoUrl.trim() || !formData.branch || !formData.subdomain.trim()) {
@@ -158,7 +177,7 @@ export default function Deploy() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(formData),
+      body: JSON.stringify({ ...formData, env: buildEnvPayload() }),
     }).catch(err => {
       setErrorMessage(err.message);
       setPhase('error');
@@ -681,6 +700,87 @@ export default function Deploy() {
                       </p>
                     )
                   }
+                </div>
+
+                {/* ── Variables de entorno ── */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <label style={{
+                      fontFamily: "'Inter',sans-serif", fontSize: 12, fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.06em', color: labelColor,
+                    }}>
+                      {d.form.env_label} <span style={{ fontWeight: 400, opacity: 0.6 }}>{d.form.env_optional}</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addEnvVar}
+                      style={{
+                        fontSize: 12, padding: '4px 10px',
+                        border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                        background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
+                        fontFamily: "'Inter',sans-serif",
+                      }}
+                    >
+                      {d.form.env_add}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {envVars.map((v, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          placeholder={d.form.env_key_ph}
+                          value={v.key}
+                          onChange={e => updateEnvVar(i, 'key', e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+                          style={{
+                            flex: 1,
+                            padding: '9px 12px', fontSize: 13,
+                            fontFamily: "'JetBrains Mono',monospace",
+                            background: inputBg, color: inputColor,
+                            border: `1px solid ${inputBorder}`,
+                            borderRadius: inputRadius, outline: 'none',
+                          }}
+                        />
+                        <span style={{ color: 'var(--px-muted)', fontSize: 14, flexShrink: 0 }}>=</span>
+                        <input
+                          type="text"
+                          placeholder={d.form.env_value_ph}
+                          value={v.value}
+                          onChange={e => updateEnvVar(i, 'value', e.target.value)}
+                          style={{
+                            flex: 2,
+                            padding: '9px 12px', fontSize: 13,
+                            fontFamily: "'JetBrains Mono',monospace",
+                            background: inputBg, color: inputColor,
+                            border: `1px solid ${inputBorder}`,
+                            borderRadius: inputRadius, outline: 'none',
+                          }}
+                        />
+                        {envVars.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeEnvVar(i)}
+                            style={{
+                              width: 32, height: 32, flexShrink: 0,
+                              border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                              background: 'transparent', color: 'var(--px-muted)',
+                              cursor: 'pointer', fontSize: 16, display: 'flex',
+                              alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {envVars.some(v => v.key) && (
+                    <p style={{ fontSize: 11, color: 'var(--px-muted)', marginTop: 8, opacity: 0.6 }}>
+                      {d.form.env_db_hint}
+                    </p>
+                  )}
                 </div>
 
                 <button

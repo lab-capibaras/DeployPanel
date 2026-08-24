@@ -324,6 +324,20 @@ function deleteUserToken(userId) {
     } catch (e) {}
 }
 
+// ==========================================
+// --- DOMINIOS PERSONALIZADOS POR DEPLOY ---
+// ==========================================
+const CUSTOM_DOMAINS_FILE = path.join(process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..'), 'custom_domains.json');
+
+function readCustomDomains() {
+    if (!fs.existsSync(CUSTOM_DOMAINS_FILE)) return {};
+    try { return JSON.parse(fs.readFileSync(CUSTOM_DOMAINS_FILE, 'utf8')); } catch (e) { return {}; }
+}
+
+function writeCustomDomains(data) {
+    fs.writeFileSync(CUSTOM_DOMAINS_FILE, JSON.stringify(data, null, 2));
+}
+
 function normalizeUrl(url) {
     return url.trim().replace(/\.git$/, '').toLowerCase();
 }
@@ -1125,7 +1139,18 @@ const runDockerBuild = (stream, subdomain) => new Promise((resolve, reject) => {
     });
 });
 
-async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath) {
+// Filtra las variables de entorno personalizadas que el usuario agrega desde
+// el formulario de deploy: deben ser "NOMBRE=valor" con un nombre válido de
+// variable de entorno. No son shell-interpoladas (van directo al array Env
+// de la API de Docker), pero igual se validan del lado del servidor por si
+// alguien llama al endpoint directo sin pasar por el sanitizado del frontend.
+const ENV_VAR_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*=/;
+function sanitizeUserEnv(userEnv) {
+    if (!Array.isArray(userEnv)) return [];
+    return userEnv.filter(v => typeof v === 'string' && ENV_VAR_PATTERN.test(v));
+}
+
+async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath, userEnv = []) {
     const { backend, frontend } = deployPlan;
     const backendImageName = `user-app-${subdomain.toLowerCase()}-backend`;
     const frontendImageName = `user-app-${subdomain.toLowerCase()}-frontend`;
@@ -1195,10 +1220,11 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
 
     // 6. Lanzar contenedor BACKEND con PathPrefix /api
     const backendPort = backend.port || '80';
+    const cleanUserEnv = sanitizeUserEnv(userEnv);
     const backendContainer = await docker.createContainer({
         Image: backendImageName,
         name: `container-${subdomain}-backend`,
-        Env: backendEnv,
+        Env: [...backendEnv, ...cleanUserEnv],
         Labels: {
             "traefik.enable": "true",
             [`traefik.http.routers.${subdomain}-backend.rule`]: `Host(\`${subdomain}.stardest.com\`) && PathPrefix(\`/api\`)`,
@@ -1212,6 +1238,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
             "deploy.timestamp": new Date().toISOString(),
             "deploy.userId": userId || 'anonymous',
             "deploy.userEmail": userEmail || 'anonymous',
+            "deploy.userEnv": JSON.stringify(cleanUserEnv),
             ...(dbCredentials ? {
                 "deploy.db.type":       dbCredentials.dbType,
                 "deploy.db.host":       dbCredentials.dbHost,
@@ -1242,6 +1269,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     const frontendContainer = await docker.createContainer({
         Image: frontendImageName,
         name: `container-${subdomain}-frontend`,
+        Env: cleanUserEnv,
         Labels: {
             "traefik.enable": "true",
             [`traefik.http.routers.${subdomain}-frontend.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
@@ -1255,6 +1283,7 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
             "deploy.timestamp": new Date().toISOString(),
             "deploy.userId": userId || 'anonymous',
             "deploy.userEmail": userEmail || 'anonymous',
+            "deploy.userEnv": JSON.stringify(cleanUserEnv),
         },
         HostConfig: {
             NetworkMode: "deploys_internal_network",
@@ -1425,7 +1454,7 @@ async function runMigrations(containerName, migrationCmd, maxWait = 30000) {
 // ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
-async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous') {
+async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous', userEnv = []) {
     const tempDir = path.join(__dirname, 'temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 
@@ -1520,7 +1549,7 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         const dbType = detectDatabase(repoPath);
 
         if (deployPlan && deployPlan.mode === 'dual') {
-            return await deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath);
+            return await deployDualService(deployPlan, subdomain, branch, repoUrl, userId, userEmail, dbType, repoPath, userEnv);
         }
 
         // Si es modo 'single', adaptar a la variable monorepoApp existente para no romper monorepo-compose.md
@@ -1910,10 +1939,30 @@ EXPOSE ${appPort}
             }
         }
 
+        // Dominios personalizados vinculados a este subdominio: un router de
+        // Traefik por dominio, con TLS/Let's Encrypt, apuntando al mismo
+        // service que ya expone el router de {subdomain}.stardest.com.
+        const customDomains = readCustomDomains();
+        const userCustomDomains = Object.entries(customDomains)
+            .filter(([, v]) => v.subdomain === subdomain)
+            .map(([domain]) => domain);
+
+        const customDomainLabels = {};
+        userCustomDomains.forEach((domain, i) => {
+            const routerName = `${subdomain}-custom-${i}`;
+            customDomainLabels[`traefik.http.routers.${routerName}.rule`]             = `Host(\`${domain}\`)`;
+            customDomainLabels[`traefik.http.routers.${routerName}.entrypoints`]      = 'websecure';
+            customDomainLabels[`traefik.http.routers.${routerName}.tls`]              = 'true';
+            customDomainLabels[`traefik.http.routers.${routerName}.tls.certresolver`] = 'letsencrypt';
+            customDomainLabels[`traefik.http.routers.${routerName}.service`]          = subdomain;
+            customDomainLabels[`traefik.http.routers.${routerName}.priority`]         = '20';
+        });
+
+        const cleanUserEnv = sanitizeUserEnv(userEnv);
         const container = await docker.createContainer({
             Image: imageName,
             name: `container-${subdomain}`,
-            Env: dbEnv,
+            Env: [...dbEnv, ...cleanUserEnv],
             Labels: {
                 "traefik.enable": "true",
                 [`traefik.http.routers.${subdomain}.rule`]: `Host(\`${subdomain}.stardest.com\`)`,
@@ -1925,6 +1974,7 @@ EXPOSE ${appPort}
                 "deploy.timestamp": new Date().toISOString(),
                 "deploy.userId": userId,
                 "deploy.userEmail": userEmail,
+                "deploy.userEnv": JSON.stringify(cleanUserEnv),
                 ...(dbCredentials ? {
                     "deploy.db.type":       dbCredentials.dbType,
                     "deploy.db.host":       dbCredentials.dbHost,
@@ -1934,6 +1984,7 @@ EXPOSE ${appPort}
                     "deploy.db.password":   dbCredentials.dbPassword,
                     "deploy.db.adminerUrl": dbCredentials.adminerUrl,
                 } : {}),
+                ...customDomainLabels,
             },
             HostConfig: {
                 NetworkMode: "deploys_internal_network",
@@ -2000,11 +2051,12 @@ app.get('/deploy-logs/:subdomain', requireAuth, (req, res) => {
 
 // 1. Despliegue Manual
 app.post('/deploy', requireAuth, async (req, res) => {
-    const { repoUrl, subdomain, branch } = req.body;
+    const { repoUrl, subdomain, branch, env } = req.body;
     if (!repoUrl || !subdomain) return res.status(400).send("Faltan datos: repoUrl o subdomain");
 
     const userId = req.user.id || 'anonymous';
     const userEmail = req.user.email || 'anonymous';
+    const userEnv = sanitizeUserEnv(env);
 
     const actualBranch = branch || 'main';
 
@@ -2018,7 +2070,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
     }, 'Deploy iniciado');
 
     try {
-        const url = await deployApp(repoUrl, subdomain, actualBranch, userId, userEmail);
+        const url = await deployApp(repoUrl, subdomain, actualBranch, userId, userEmail, userEnv);
         saveDeployment(repoUrl, actualBranch, subdomain);
         logger.info({
             event: 'deploy_success',
@@ -2337,6 +2389,7 @@ app.get('/deploys', requireAuth, async (req, res) => {
             });
 
         // Agrupar por subdominio (usando el label deploy.subdomain si existe, o el nombre)
+        const allCustomDomains = readCustomDomains();
         const grouped = {};
         for (const c of appContainers) {
             const labels = c.Labels;
@@ -2353,6 +2406,13 @@ app.get('/deploys', requireAuth, async (req, res) => {
                     userEmail: labels['deploy.userEmail'] || 'unknown',
                     roles: [],
                     database: null,
+                    customDomains: Object.entries(allCustomDomains)
+                        .filter(([, v]) => v.subdomain === subdomain)
+                        .map(([domain]) => ({ domain })),
+                    userEnv: (() => {
+                        try { return JSON.parse(labels['deploy.userEnv'] || '[]'); }
+                        catch (e) { return []; }
+                    })(),
                 };
             }
 
@@ -2383,6 +2443,63 @@ app.get('/deploys', requireAuth, async (req, res) => {
     } catch (error) {
         res.status(500).json({ status: 'error', details: error.message });
     }
+});
+
+// Dominios personalizados por deploy
+const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+
+// POST /custom-domain — vincular un dominio propio a un subdominio ya desplegado
+app.post('/custom-domain', requireAuth, async (req, res) => {
+    const userId = req.user.id;
+    const { subdomain, domain } = req.body;
+    if (!subdomain || !domain) return res.status(400).json({ ok: false, error: 'Faltan campos' });
+
+    if (!domainRegex.test(domain)) {
+        return res.status(400).json({ ok: false, error: 'Dominio inválido' });
+    }
+
+    const containers = await docker.listContainers({ all: true });
+    const container = containers.find(c =>
+        (c.Names.includes(`/container-${subdomain}`) ||
+         c.Names.includes(`/container-${subdomain}-frontend`)) &&
+        c.Labels['deploy.userId'] === userId
+    );
+    if (!container) {
+        return res.status(404).json({ ok: false, error: 'Deploy no encontrado o no es tuyo' });
+    }
+
+    const domains = readCustomDomains();
+    if (domains[domain] && domains[domain].userId !== userId) {
+        return res.status(409).json({ ok: false, error: 'Ese dominio ya está en uso' });
+    }
+    domains[domain] = { subdomain, userId, addedAt: new Date().toISOString() };
+    writeCustomDomains(domains);
+
+    console.log(`[Domain] Registrado: ${domain} -> ${subdomain}`);
+
+    res.json({ ok: true, domain, subdomain, cname: `${subdomain}.stardest.com` });
+});
+
+// GET /custom-domains — dominios del usuario autenticado
+app.get('/custom-domains', requireAuth, (req, res) => {
+    const domains = readCustomDomains();
+    const userDomains = Object.entries(domains)
+        .filter(([, v]) => v.userId === req.user.id)
+        .map(([domain, v]) => ({ domain, subdomain: v.subdomain, addedAt: v.addedAt }));
+
+    res.json({ domains: userDomains });
+});
+
+// DELETE /custom-domain/:domain
+app.delete('/custom-domain/:domain', requireAuth, (req, res) => {
+    const { domain } = req.params;
+    const domains = readCustomDomains();
+    if (!domains[domain] || domains[domain].userId !== req.user.id) {
+        return res.status(404).json({ ok: false, error: 'Dominio no encontrado' });
+    }
+    delete domains[domain];
+    writeCustomDomains(domains);
+    res.json({ ok: true });
 });
 
 // ==========================================

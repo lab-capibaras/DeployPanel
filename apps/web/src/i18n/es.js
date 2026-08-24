@@ -105,6 +105,12 @@ const es = {
       subdomain_suffix: '.stardest.com',
       subdomain_url:    'URL final:',
       submit:           'Revisar Despliegue',
+      env_label:        'Variables de entorno',
+      env_optional:     '(opcional)',
+      env_add:          '+ Agregar',
+      env_key_ph:       'NOMBRE_VARIABLE',
+      env_value_ph:     'valor',
+      env_db_hint:      'Las variables de la base de datos se agregan automáticamente.',
     },
 
     validation: {
@@ -319,6 +325,16 @@ const es = {
     gh_orgs_back:        '← Volver a organizaciones',
     gh_orgs_err_load:    'Error cargando organizaciones',
     gh_org_repos_err_load: 'Error cargando repos',
+    domain_add:          'Agregar dominio',
+    domain_count:        (n) => `${n} dominio${n > 1 ? 's' : ''}`,
+    domain_placeholder:  'midominio.com',
+    domain_remove:       'Eliminar',
+    domain_saving:       '...',
+    domain_err_network:  'Error de red',
+    domain_cname_hint:   'Crea este registro CNAME en tu DNS:',
+    domain_wait_hint:    'El dominio funcionará después de hacer Redeploy y de que el DNS propague (hasta 24h).',
+    env_show: (n) => `+ Ver variables (${n})`,
+    env_hide: (n) => `− Ocultar variables (${n})`,
   },
 
   // ── Webhook Instructions ─────────────────────────────────

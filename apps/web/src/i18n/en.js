@@ -105,6 +105,12 @@ const en = {
       subdomain_suffix: '.stardest.com',
       subdomain_url:    'Final URL:',
       submit:           'Review Deployment',
+      env_label:        'Environment variables',
+      env_optional:     '(optional)',
+      env_add:          '+ Add',
+      env_key_ph:       'VARIABLE_NAME',
+      env_value_ph:     'value',
+      env_db_hint:      'Database variables are added automatically.',
     },
 
     validation: {
@@ -320,6 +326,16 @@ const en = {
     gh_orgs_back:        '← Back to organizations',
     gh_orgs_err_load:    'Error loading organizations',
     gh_org_repos_err_load: 'Error loading repos',
+    domain_add:          'Add domain',
+    domain_count:        (n) => `${n} domain${n > 1 ? 's' : ''}`,
+    domain_placeholder:  'mydomain.com',
+    domain_remove:       'Remove',
+    domain_saving:       '...',
+    domain_err_network:  'Network error',
+    domain_cname_hint:   'Create this CNAME record in your DNS:',
+    domain_wait_hint:    'The domain will work after you Redeploy and the DNS propagates (up to 24h).',
+    env_show: (n) => `+ View variables (${n})`,
+    env_hide: (n) => `− Hide variables (${n})`,
   },
 
   // ── Webhook Instructions ─────────────────────────────────

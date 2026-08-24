@@ -169,6 +169,134 @@ function GitHubTokenSection() {
     );
 }
 
+function CustomDomainSection({ deploy, dash }) {
+    const [domain, setDomain]   = useState('');
+    const [saving, setSaving]   = useState(false);
+    const [error, setError]     = useState('');
+    const [success, setSuccess] = useState('');
+    const [show, setShow]       = useState(false);
+    const [domains, setDomains] = useState(deploy.customDomains || []);
+    const [addedDomain, setAddedDomain] = useState('');
+
+    async function handleAdd() {
+        if (!domain.trim()) return;
+        setSaving(true); setError(''); setSuccess('');
+        try {
+            const res = await fetch('/api/custom-domain', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subdomain: deploy.subdomain, domain: domain.trim() }),
+            });
+            const data = await res.json();
+            if (data.ok) {
+                setDomains(prev => [...prev, { domain: data.domain }]);
+                setAddedDomain(data.domain);
+                setDomain('');
+                setSuccess(data.cname);
+            } else {
+                setError(data.error);
+            }
+        } catch {
+            setError(dash.domain_err_network);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleRemove(d) {
+        await fetch(`/api/custom-domain/${encodeURIComponent(d)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+        setDomains(prev => prev.filter(x => x.domain !== d));
+    }
+
+    return (
+        <div style={{ width: '100%', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--px-border)' }}>
+            <button
+                onClick={() => setShow(s => !s)}
+                style={{
+                    fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
+                    padding: '7px 14px',
+                    border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                    background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
+                    textTransform: 'uppercase', letterSpacing: '0.06em',
+                    transition: 'border-color 0.15s ease, color 0.15s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.color = 'var(--px-muted)'; }}
+            >
+                {domains.length > 0 ? dash.domain_count(domains.length) : dash.domain_add}
+            </button>
+
+            {show && (
+                <div style={{ marginTop: 10, border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius)', padding: 14 }}>
+                    {domains.map(d => (
+                        <div key={d.domain} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-white)' }}>{d.domain}</span>
+                            <button
+                                onClick={() => handleRemove(d.domain)}
+                                style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                {dash.domain_remove}
+                            </button>
+                        </div>
+                    ))}
+
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <input
+                            type="text"
+                            value={domain}
+                            onChange={e => setDomain(e.target.value)}
+                            placeholder={dash.domain_placeholder}
+                            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                            style={{
+                                flex: 1, padding: '7px 10px', fontSize: 13,
+                                fontFamily: "'JetBrains Mono',monospace",
+                                border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                background: 'var(--px-bg)', color: 'var(--px-white)', outline: 'none',
+                            }}
+                        />
+                        <button
+                            onClick={handleAdd}
+                            disabled={saving || !domain.trim()}
+                            style={{
+                                fontFamily: "'Inter',sans-serif",
+                                padding: '7px 14px', fontSize: 13, fontWeight: 600,
+                                background: 'var(--px-accent)', color: 'var(--px-accent-fg)',
+                                border: 'none', borderRadius: 'var(--px-radius-sm)',
+                                cursor: saving ? 'not-allowed' : 'pointer',
+                                opacity: saving || !domain.trim() ? 0.6 : 1,
+                            }}
+                        >
+                            {saving ? dash.domain_saving : dash.domain_add}
+                        </button>
+                    </div>
+
+                    {error && <p style={{ fontSize: 12, color: '#ef4444', margin: '6px 0 0' }}>{error}</p>}
+                    {success && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--px-muted)' }}>
+                            <p style={{ margin: '0 0 4px' }}>{dash.domain_cname_hint}</p>
+                            <code style={{
+                                display: 'block', padding: '6px 10px',
+                                fontFamily: "'JetBrains Mono',monospace",
+                                background: 'var(--px-bg)', color: 'var(--px-white)',
+                                borderRadius: 'var(--px-radius-sm)',
+                            }}>
+                                {addedDomain} CNAME {success}
+                            </code>
+                            <p style={{ margin: '6px 0 0', color: '#f59e0b' }}>
+                                {dash.domain_wait_hint}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function Dashboard() {
     const isDark = useTheme();
     const { user, loading: authLoading } = useAuth();
@@ -182,6 +310,7 @@ export default function Dashboard() {
     const [cooldowns, setCooldowns] = useState({});
     const [now, setNow] = useState(Date.now());
     const [showDb, setShowDb] = useState({});
+    const [showEnv, setShowEnv] = useState({});
     const [copiedField, setCopiedField] = useState(null);
 
     const deployedRepoUrls = useMemo(() => {
@@ -626,6 +755,47 @@ export default function Dashboard() {
                                     })()}
                                 </div>
                             )}
+
+                            {deploy.userEnv && deploy.userEnv.length > 0 && (
+                                <div style={{ width: '100%', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--px-border)' }}>
+                                    <button
+                                        onClick={() => setShowEnv(prev => ({ ...prev, [deploy.subdomain]: !prev[deploy.subdomain] }))}
+                                        style={{
+                                            fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
+                                            padding: '7px 14px',
+                                            border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                            background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
+                                            textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            transition: 'border-color 0.15s ease, color 0.15s ease',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.color = 'var(--px-muted)'; }}
+                                    >
+                                        {showEnv[deploy.subdomain] ? dash.env_hide(deploy.userEnv.length) : dash.env_show(deploy.userEnv.length)}
+                                    </button>
+
+                                    {showEnv[deploy.subdomain] && (
+                                        <div style={{ marginTop: 10, border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius)' }}>
+                                            {deploy.userEnv.map((v, i) => {
+                                                const [key, ...rest] = v.split('=');
+                                                return (
+                                                    <div key={i} style={{
+                                                        display: 'grid', gridTemplateColumns: '1fr 2fr',
+                                                        gap: 8, padding: '8px 14px',
+                                                        borderBottom: i < deploy.userEnv.length - 1 ? '1px solid var(--px-border)' : 'none',
+                                                        fontFamily: "'JetBrains Mono',monospace", fontSize: 12,
+                                                    }}>
+                                                        <span style={{ color: 'var(--px-muted)', wordBreak: 'break-all' }}>{key}</span>
+                                                        <span style={{ color: 'var(--px-white)', wordBreak: 'break-all' }}>{rest.join('=')}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <CustomDomainSection deploy={deploy} dash={dash} />
                         </div>
                     );
                 })}
