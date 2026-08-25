@@ -96,7 +96,6 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
 
   const border    = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   const borderHov = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.2)';
-  const bg        = isDark ? '#18181b' : '#ffffff';
   const main      = isDark ? '#fafafa' : '#09090b';
 
   const handleMove = (e) => {
@@ -115,7 +114,8 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
         style={{
           padding: '28px 24px',
           border: `1px solid ${hov ? borderHov : border}`,
-          borderRadius: 10, background: bg,
+          borderRadius: 10, background: 'var(--px-glass-bg)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
           boxShadow: hov ? (isDark ? '0 12px 40px rgba(0,0,0,0.5)' : '0 12px 40px rgba(0,0,0,0.08)') : 'none',
           transform: hov ? 'translateY(-3px)' : 'none',
           transition: 'all 0.25s ease',
@@ -141,7 +141,7 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
         <span style={{ position: 'absolute', top: 20, right: 20, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: hov ? (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.18)') : border, transition: 'color 0.25s ease', zIndex: 1 }}>{String(num).padStart(2,'0')}</span>
         <div style={{ marginBottom: 18, color: main, position: 'relative', zIndex: 1 }}>{icon}</div>
         <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 17, color: main, margin: '0 0 10px', letterSpacing: '-0.01em', position: 'relative', zIndex: 1 }}>{title}</h3>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: '#71717a', margin: 0, lineHeight: 1.65, position: 'relative', zIndex: 1 }}>{desc}</p>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: isDark ? '#a1a1aa' : '#52525b', margin: 0, lineHeight: 1.65, position: 'relative', zIndex: 1 }}>{desc}</p>
       </div>
     </Reveal>
   );
@@ -150,17 +150,16 @@ function FeatureCard({ icon, title, desc, num, isDark, delay = 0 }) {
 /* ─── Step card ─── */
 function StepCard({ num, icon, title, desc, isDark, delay = 0 }) {
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const bg     = isDark ? '#18181b' : '#ffffff';
   const main   = isDark ? '#fafafa' : '#09090b';
   return (
     <Reveal delay={delay} style={{ flex: 1, minWidth: 200 }}>
-      <div style={{ padding: '28px 24px', border: `1px solid ${border}`, borderRadius: 10, background: bg, height: '100%' }}>
+      <div style={{ padding: '28px 24px', border: `1px solid ${border}`, borderRadius: 10, background: 'var(--px-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', height: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${border}`, borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', color: main }}>{icon}</div>
-          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 12, color: '#71717a', letterSpacing: '0.08em' }}>0{num}</span>
+          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 12, color: isDark ? '#a1a1aa' : '#52525b', letterSpacing: '0.08em' }}>0{num}</span>
         </div>
         <h3 style={{ fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 17, color: main, margin: '0 0 8px', letterSpacing: '-0.01em' }}>{title}</h3>
-        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: '#71717a', margin: 0, lineHeight: 1.65 }}>{desc}</p>
+        <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, color: isDark ? '#a1a1aa' : '#52525b', margin: 0, lineHeight: 1.65 }}>{desc}</p>
       </div>
     </Reveal>
   );
@@ -173,7 +172,6 @@ function LiveTerminal({ isDark }) {
   const lines = tr.home.terminal_lines.map((txt, i) => ({ t: delays[i], txt }));
   const [visible, setVisible] = useState([]);
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-  const bg     = isDark ? '#111113' : '#f4f4f5';
   const main   = isDark ? '#fafafa' : '#09090b';
 
   useEffect(() => {
@@ -187,15 +185,15 @@ function LiveTerminal({ isDark }) {
   }, []);
 
   return (
-    <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: '18px 20px', minHeight: 220 }}>
+    <div style={{ background: 'var(--px-glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: `1px solid ${border}`, borderRadius: 10, padding: '18px 20px', minHeight: 220 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, borderBottom: `1px solid ${border}`, paddingBottom: 12, alignItems: 'center' }}>
         {[0,1,2].map(i => <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i === 0 ? '#ff3c3c' : i === 1 ? '#ffb400' : border }} />)}
-        <span style={{ marginLeft: 8, color: '#71717a', fontSize: 12, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono',monospace" }}>mission-control — deploy</span>
+        <span style={{ marginLeft: 8, color: isDark ? '#a1a1aa' : '#52525b', fontSize: 12, letterSpacing: '0.05em', fontFamily: "'JetBrains Mono',monospace" }}>mission-control — deploy</span>
       </div>
       {lines.map((l, i) => (
         <div key={i} style={{
           fontFamily: "'JetBrains Mono',monospace",
-          color: l.txt.startsWith('  ✓') ? '#4ade80' : l.txt.startsWith('  >>') ? main : '#71717a',
+          color: l.txt.startsWith('  ✓') ? '#4ade80' : l.txt.startsWith('  >>') ? main : (isDark ? '#a1a1aa' : '#52525b'),
           fontSize: 13, lineHeight: 2.1, marginBottom: 1,
           opacity: visible.includes(i) ? 1 : 0,
           transform: visible.includes(i) ? 'none' : 'translateX(-8px)',
@@ -234,8 +232,11 @@ export default function Home() {
 
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
   const main   = isDark ? '#fafafa' : '#09090b';
-  const bg     = isDark ? '#09090b' : '#fafafa';
-  const bg2    = isDark ? '#111113' : '#f4f4f5';
+  // Fondos de sección translúcidos (no sólidos): dejan ver el DotCloud
+  // animado de fondo en vez de taparlo por completo — solo dan un leve tinte
+  // para diferenciar la franja de sección, igual que las cards "glass".
+  const bg     = isDark ? 'rgba(9, 9, 11, 0.55)'   : 'rgba(250, 250, 250, 0.55)';
+  const bg2    = isDark ? 'rgba(17, 17, 19, 0.55)' : 'rgba(244, 244, 245, 0.55)';
   const lang   = getPrefs().lang;
   const capLabel = lang === 'es' ? 'Capacidades' : 'Capabilities';
 

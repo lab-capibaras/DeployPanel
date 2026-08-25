@@ -410,7 +410,9 @@ export default function Deploy() {
   const u = t.deploy.upload;
 
   // ===== DESIGN CONSTANTS =====
-  const pageBg = 'var(--px-bg)';
+  // Translúcido, no sólido: deja ver el DotCloud animado de fondo en vez de
+  // taparlo por completo (el panel con blur ya se encarga de la legibilidad).
+  const pageBg = isDark ? 'rgba(9, 9, 11, 0.55)' : 'rgba(250, 250, 250, 0.55)';
   const pageTextColor = 'var(--px-white)';
   const cardBg = isDark ? 'rgba(16, 16, 18, 0.94)' : 'rgba(255, 255, 255, 0.94)';
   const cardBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
