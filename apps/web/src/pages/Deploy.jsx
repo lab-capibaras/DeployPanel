@@ -464,6 +464,7 @@ export default function Deploy() {
             fontSize: 16,
             color: textMuted,
             margin: 0,
+            textShadow: 'var(--px-text-halo)',
           }}>{d.subtitle}</p>
         </div>
 

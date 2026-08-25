@@ -56,6 +56,11 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --px-glass-bg:     rgba(16, 16, 18, 0.94);
   --px-glass-border: rgba(255, 255, 255, 0.08);
   --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.55);
+
+  /* Halo detrás de texto que queda flotando sobre el fondo animado de puntos
+     (DotCloud), fuera de cualquier card opaca — sin esto el contraste del
+     texto gris/mudo varía según qué esté animando justo detrás. */
+  --px-text-halo: 0 0 3px var(--px-bg), 0 0 8px var(--px-bg), 0 0 14px var(--px-bg);
 }
 
 /* ─── Suppress nav tap highlight ────────────────────────────────── */
@@ -334,6 +339,7 @@ textarea:focus-visible {
   letter-spacing: 0.1em;
   color: var(--px-muted);
   text-transform: uppercase;
+  text-shadow: var(--px-text-halo);
 }
 
 /* ─── Link hover sweep ──────────────────────────────────────────── */

@@ -261,7 +261,7 @@ export default function Home() {
           <div className="fade-up" style={{ marginBottom: 36 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 28, height: 1, background: border, display: 'inline-block' }} />
-              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#71717a' }}>{h.badge}</span>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? '#a1a1aa' : '#52525b', textShadow: 'var(--px-text-halo)' }}>{h.badge}</span>
             </div>
           </div>
 
@@ -273,7 +273,7 @@ export default function Home() {
 
           {/* Subtitle + CTAs */}
           <div className="fade-up fade-up-2 hero-lower" style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start', justifyContent: 'space-between', borderTop: `1px solid ${border}`, paddingTop: 28 }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: '#71717a', maxWidth: 420, margin: 0, lineHeight: 1.65, fontWeight: 400 }}>{h.subtitle}</p>
+            <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 16, color: isDark ? '#a1a1aa' : '#52525b', maxWidth: 420, margin: 0, lineHeight: 1.65, fontWeight: 400, textShadow: 'var(--px-text-halo)' }}>{h.subtitle}</p>
             <div className="flex flex-col sm:flex-row w-full sm:w-auto" style={{ gap: 10 }}>
               <Link to="/deploy"
                 className="justify-center"
@@ -298,7 +298,7 @@ export default function Home() {
           {/* Capabilities label */}
           <div className="fade-up fade-up-3" style={{ marginTop: 64, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 18, height: 1, background: border, display: 'inline-block' }} />
-            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.22)' }}>{capLabel}</span>
+            <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.42)' : 'rgba(0,0,0,0.45)', textShadow: 'var(--px-text-halo)' }}>{capLabel}</span>
           </div>
         </div>
       </section>
