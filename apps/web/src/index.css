@@ -275,7 +275,16 @@ textarea:focus-visible {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-.page-transition { animation: page-enter 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+/* Cualquier elemento con una animación de CSS que toque opacity/transform
+   forma su propio stacking context mientras esa animación esté asociada
+   (incluso en reposo, con fill-mode: forwards) — sin este z-index explícito,
+   ese stacking context compite contra el canvas de DotCloud (position:fixed,
+   z-index:0, montado como hermano en <body> vía portal) usando solo orden de
+   DOM, y como el canvas se inserta después, terminaba pintándose ENCIMA de
+   toda la página (Home, Dashboard, Deploy) sin importar los z-index puestos
+   más adentro. Con z-index:1 explícito acá, .page-transition le gana al
+   canvas directamente por valor, sin depender del empate por orden de DOM. */
+.page-transition { position: relative; z-index: 1; animation: page-enter 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
 /* ─── OAuth button hover shimmer ────────────────────────────────── */
 @keyframes shimmer {

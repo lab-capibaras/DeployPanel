@@ -304,7 +304,7 @@ export default function Home() {
       </section>
 
       {/* ══ STEPS ═══════════════════════════════════════════════════ */}
-      <section id="como-funciona" style={{ padding: 'clamp(80px, 10vw, 120px) 24px', background: bg }}>
+      <section id="como-funciona" style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 10vw, 120px) 24px', background: bg }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <SectionHeader index={1} title={h.timeline_title} sub={h.timeline_sub} isDark={isDark} />
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -316,7 +316,7 @@ export default function Home() {
       </section>
 
       {/* ══ FEATURES ════════════════════════════════════════════════ */}
-      <section id="features" style={{ padding: 'clamp(80px, 10vw, 120px) 24px', background: bg2, borderTop: `1px solid ${border}` }}>
+      <section id="features" style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 10vw, 120px) 24px', background: bg2, borderTop: `1px solid ${border}` }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <SectionHeader index={2} title={h.features_title} sub={h.features_sub} isDark={isDark} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 }}>
@@ -326,7 +326,7 @@ export default function Home() {
       </section>
 
       {/* ══ HOW IT WORKS + TERMINAL ═════════════════════════════════ */}
-      <section style={{ padding: 'clamp(80px, 10vw, 120px) 24px', borderTop: `1px solid ${border}`, background: bg }}>
+      <section style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 10vw, 120px) 24px', borderTop: `1px solid ${border}`, background: bg }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="terminal-grid">
             <div>
@@ -357,7 +357,7 @@ export default function Home() {
       </section>
 
       {/* ══ CTA BAND ════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(80px, 10vw, 120px) 24px', borderTop: `1px solid ${border}`, background: bg2 }}>
+      <section style={{ position: 'relative', zIndex: 1, padding: 'clamp(80px, 10vw, 120px) 24px', borderTop: `1px solid ${border}`, background: bg2 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Reveal>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -379,7 +379,7 @@ export default function Home() {
       </section>
 
       {/* ══ FOOTER ══════════════════════════════════════════════════ */}
-      <footer style={{ padding: 'clamp(48px, 6vw, 64px) 24px 32px', borderTop: `1px solid ${border}`, background: bg }}>
+      <footer style={{ position: 'relative', zIndex: 1, padding: 'clamp(48px, 6vw, 64px) 24px 32px', borderTop: `1px solid ${border}`, background: bg }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 48 }}>
             <span style={{ width: 8, height: 8, background: main, display: 'inline-block' }} />
