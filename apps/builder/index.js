@@ -1474,6 +1474,30 @@ function detectMigrationCommand(repoPath, appDirPath) {
     return null;
 }
 
+// Detecta la versión de Node requerida desde "engines.node" en package.json,
+// limitada a las LTS con imagen oficial en Docker Hub (18/20/22). Si no hay
+// package.json, no hay campo "engines.node", o no se puede parsear, cae a 20
+// (la versión que ya se usaba hardcodeada antes de esta función).
+function detectNodeVersion(repoPath) {
+    const pkgPath = path.join(repoPath, 'package.json');
+    if (!fs.existsSync(pkgPath)) return '20';
+    try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const engines = pkg.engines?.node;
+        if (!engines) return '20';
+        const match = engines.match(/(\d+)/);
+        if (!match) return '20';
+        const major = parseInt(match[1]);
+        if (major >= 22) return '22';
+        if (major >= 20) return '20';
+        if (major >= 18) return '18';
+        return '20';
+    } catch (e) {
+        console.warn('[Node] Error leyendo engines.node de package.json:', e.message);
+        return '20';
+    }
+}
+
 async function runMigrations(containerName, migrationCmd, maxWait = 30000) {
     console.log(`[Migration] Esperando que la app esté lista antes de migrar...`);
 
@@ -1898,7 +1922,9 @@ CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "${appPort}"]
         } else if (isNode) {
             console.log(`Proyecto Node.js detectado. Generando Dockerfile estándar...`);
             deployLog(subdomain, 'info', `Stack detectado: Node.js`);
-            const dockerfile = `FROM node:20-slim
+            const nodeVersion = detectNodeVersion(repoPath);
+            console.log(`[Node] Versión de imagen seleccionada: node:${nodeVersion}-slim`);
+            const dockerfile = `FROM node:${nodeVersion}-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
