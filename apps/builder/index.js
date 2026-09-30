@@ -1169,7 +1169,7 @@ function endDeployTracking(userId) {
 }
 
 // Máximo de proyectos (subdominios) activos simultáneos por usuario.
-const MAX_DEPLOYS_PER_USER = 3;
+const MAX_DEPLOYS_PER_USER = 5;
 
 // Cuenta subdominios distintos con al menos un contenedor 'running' del
 // usuario. En modo dual (backend+frontend) ambos contenedores comparten

@@ -9,7 +9,7 @@ import DotCloud from '../components/DotCloud';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 
 // Debe coincidir con MAX_DEPLOYS_PER_USER en apps/builder/index.js
-const MAX_DEPLOYS_PER_USER = 3;
+const MAX_DEPLOYS_PER_USER = 5;
 
 /* ─── Theme hook ─── */
 function useTheme() {
