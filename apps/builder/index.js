@@ -1498,6 +1498,189 @@ function detectNodeVersion(repoPath) {
     }
 }
 
+// ── Detección de framework Python ──────────────────────────────
+
+const PY_IGNORED_DIRS = new Set([
+    'node_modules', '.git', 'venv', '.venv', 'env', '__pycache__',
+    'site-packages', 'dist', 'build', 'tests', 'test',
+]);
+const PY_NAME_PRIORITY = ['app.py', 'main.py', 'server.py', 'run.py', 'wsgi.py', 'asgi.py', 'application.py'];
+
+// Lee texto quitando BOM (UTF-8) y soportando UTF-16 (requirements generados en PowerShell)
+function readTextFileSafe(filePath) {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) {
+        return buf.subarray(2).toString('utf16le');
+    }
+    if (buf.length >= 2 && buf[0] === 0xFE && buf[1] === 0xFF) {
+        const body = Buffer.from(buf.subarray(2, buf.length - ((buf.length - 2) % 2)));
+        return body.swap16().toString('utf16le');
+    }
+    let text = buf.toString('utf8');
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    return text;
+}
+
+// Lista los .py del repo (hasta 4 niveles), ordenados por profundidad y nombre preferido
+function listPythonFiles(root) {
+    const out = [];
+    const walk = (dir, depth) => {
+        if (depth > 4) return;
+        let entries;
+        try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries) {
+            const abs = path.join(dir, e.name);
+            if (e.isDirectory()) {
+                if (!PY_IGNORED_DIRS.has(e.name) && !e.name.startsWith('.')) walk(abs, depth + 1);
+            } else if (e.name.endsWith('.py')) {
+                out.push({ abs, rel: path.relative(root, abs).replace(/\\/g, '/'), depth, name: e.name });
+            }
+        }
+    };
+    walk(root, 0);
+    out.sort((a, b) => {
+        if (a.depth !== b.depth) return a.depth - b.depth;
+        const pa = PY_NAME_PRIORITY.indexOf(a.name);
+        const pb = PY_NAME_PRIORITY.indexOf(b.name);
+        return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+    });
+    return out;
+}
+
+// "src/api/app.py" → "src.api.app" · "app/__init__.py" → "app"
+function toPyModule(rel) {
+    return rel.replace(/\.py$/, '').replace(/\//g, '.').replace(/\.__init__$/, '');
+}
+
+// Determina el puerto real a partir de una expresión de puerto en el código.
+// Si la app lee PORT del entorno, se usa currentPort (el Dockerfile define ENV PORT).
+function resolvePyPort(expr, currentPort) {
+    if (!expr) return currentPort;
+    if (/environ\[\s*['"]PORT['"]\s*\]/.test(expr)) return currentPort;
+    const env = expr.match(/(?:environ\.get|getenv)\(\s*['"](\w+)['"]\s*(?:,\s*['"]?(\d+)['"]?)?/);
+    if (env && env[1] === 'PORT') return currentPort;
+    if (env && env[2]) return env[2];          // otra variable de entorno → se usa su default
+    const literal = expr.match(/\b(\d{2,5})\b/);
+    if (literal) return literal[1];
+    return currentPort;
+}
+
+// Encuentra el puerto de una llamada .run(...)
+// Soporta: port=5000 | port=port (variable definida en el archivo) | port=int(os.environ.get(...))
+// Se toma el resto de la línea (no hasta la primera coma) para no cortar
+// expresiones como int(os.environ.get('APP_PORT', 8080)).
+function findRunPort(runLine, src, currentPort, frameworkDefault) {
+    const portArg = runLine.match(/\bport\s*=\s*(.+)$/);
+    if (!portArg) return frameworkDefault;     // .run() sin port → default del framework
+    const value = portArg[1].trim();
+    const ident = value.match(/^([A-Za-z_]\w*)\s*(?:,|\))/);
+    if (ident) {
+        const assign = src.match(new RegExp(`^\\s*${ident[1]}\\s*=\\s*(.+)$`, 'm'));
+        return resolvePyPort(assign ? assign[1] : null, currentPort);
+    }
+    return resolvePyPort(value, currentPort);
+}
+
+// Devuelve { framework, cmd, port, extraPip } para el Dockerfile de un repo Python.
+function detectPythonEntrypoint(repoPath, reqText, currentPort) {
+    const req = reqText.toLowerCase();
+    const has = (pkg) => new RegExp(`^\\s*${pkg.replace(/[-_]/g, '[-_]')}\\b`, 'm').test(req);
+    const extraPip = [];
+    const sources = listPythonFiles(repoPath).map(f => {
+        let src = '';
+        try { src = readTextFileSafe(f.abs); } catch { /* symlink roto / sin permisos: se ignora */ }
+        return { ...f, src };
+    });
+
+    // 1. Django
+    if (fs.existsSync(path.join(repoPath, 'manage.py'))) {
+        const wsgi = sources.find(f => f.name === 'wsgi.py' && /get_wsgi_application/.test(f.src));
+        if (wsgi) {
+            if (!has('gunicorn')) extraPip.push('gunicorn');
+            return {
+                framework: 'django', port: currentPort, extraPip,
+                cmd: ['gunicorn', `${toPyModule(wsgi.rel)}:application`, '--bind', `0.0.0.0:${currentPort}`],
+            };
+        }
+    }
+
+    // 2. FastAPI (admite anotación de tipo: `app: FastAPI = FastAPI(`)
+    for (const f of sources) {
+        const m = f.src.match(/^\s*([A-Za-z_]\w*)\s*(?::\s*[\w.]+\s*)?=\s*FastAPI\s*\(/m);
+        if (m) {
+            if (!has('uvicorn')) extraPip.push('uvicorn[standard]');
+            return {
+                framework: 'fastapi', port: currentPort, extraPip,
+                cmd: ['uvicorn', `${toPyModule(f.rel)}:${m[1]}`, '--host', '0.0.0.0', '--port', String(currentPort)],
+            };
+        }
+    }
+
+    // 3. Flask (con o sin Socket.IO)
+    for (const f of sources) {
+        const m = f.src.match(/^([ \t]*)([A-Za-z_]\w*)\s*(?::\s*[\w.]+\s*)?=\s*Flask\s*\(/m);
+        if (!m) continue;
+
+        let target = `${toPyModule(f.rel)}:${m[2]}`;
+
+        // Flask creado dentro de una factory (línea indentada) → module:create_app()
+        if (m[1] !== '') {
+            const factoryFile = sources.find(s => /^def\s+create_app\s*\(/m.test(s.src));
+            if (factoryFile) target = `${toPyModule(factoryFile.rel)}:create_app()`;
+        }
+
+        const sio = f.src.match(/^\s*([A-Za-z_]\w*)\s*=\s*SocketIO\s*\(/m);
+
+        if (sio) {
+            const runLine = f.src.split('\n').find(l => l.includes(`${sio[1]}.run(`)) || '';
+            const bindsAll = /host\s*=\s*['"]0\.0\.0\.0['"]/.test(runLine) || /host\s*=\s*os\.(environ|getenv)/.test(runLine);
+
+            // 3a. El autor ya arranca con socketio.run en 0.0.0.0 → respetarlo
+            if (runLine && bindsAll) {
+                return {
+                    framework: 'flask-socketio', extraPip,
+                    port: findRunPort(runLine, f.src, currentPort, '5000'),
+                    cmd: ['python', f.rel],
+                };
+            }
+
+            // 3b. socketio.run escucha en localhost o no existe → gunicorn con worker async
+            if (!has('gunicorn')) extraPip.push('gunicorn');
+            const worker = has('eventlet') ? ['--worker-class', 'eventlet'] : ['--threads', '100'];
+            return {
+                framework: 'flask-socketio', port: currentPort, extraPip,
+                cmd: ['gunicorn', ...worker, '-w', '1', '--bind', `0.0.0.0:${currentPort}`, target],
+            };
+        }
+
+        // 3c. Flask sin Socket.IO → gunicorn (nunca el servidor de desarrollo)
+        if (!has('gunicorn')) extraPip.push('gunicorn');
+        return {
+            framework: 'flask', port: currentPort, extraPip,
+            cmd: ['gunicorn', '-w', '2', '--bind', `0.0.0.0:${currentPort}`, target],
+        };
+    }
+
+    // 4. Script con __main__ en la raíz (app.py, main.py, server.py, run.py...)
+    const script = sources.find(f =>
+        f.depth === 0 &&
+        PY_NAME_PRIORITY.includes(f.name) &&
+        /if\s+__name__\s*==\s*['"]__main__['"]/.test(f.src)
+    );
+    if (script) {
+        console.warn(`[Python] Framework no reconocido. Arrancando ${script.rel} directamente.`);
+        return { framework: 'script', port: currentPort, extraPip, cmd: ['python', script.rel] };
+    }
+
+    // 5. Último recurso: comportamiento anterior, con uvicorn garantizado
+    console.warn('[Python] No se detectó punto de entrada. Usando uvicorn main:app como último recurso.');
+    if (!has('uvicorn')) extraPip.push('uvicorn[standard]');
+    return {
+        framework: 'unknown', port: currentPort, extraPip,
+        cmd: ['uvicorn', 'main:app', '--host', '0.0.0.0', '--port', String(currentPort)],
+    };
+}
+
 async function runMigrations(containerName, migrationCmd, maxWait = 30000) {
     console.log(`[Migration] Esperando que la app esté lista antes de migrar...`);
 
@@ -1859,8 +2042,9 @@ EXPOSE ${appPort}
 
         } else if (isPython) {
             console.log(`Proyecto Python detectado. Escaneando código y dependencias...`);
-            deployLog(subdomain, 'info', `Stack detectado: Python/FastAPI`);
-            const reqContent = fs.readFileSync(requirementsPath, 'utf8').toLowerCase();
+            deployLog(subdomain, 'info', `Stack detectado: Python`);
+            const reqText = readTextFileSafe(requirementsPath);
+            const reqContent = reqText.toLowerCase();
             let linuxDeps = [];
             if (reqContent.includes('pyodbc')) linuxDeps.push('unixodbc', 'unixodbc-dev', 'g++');
             if (reqContent.includes('psycopg2')) linuxDeps.push('libpq-dev', 'gcc');
@@ -1873,48 +2057,29 @@ EXPOSE ${appPort}
                 console.log(`Bases de datos detectadas. Se instalarán: ${uniqueDeps}`);
             }
 
-            function findFastAPIApp(dir) {
-                let results = [];
-                const list = fs.readdirSync(dir);
-                for (const file of list) {
-                    const filePath = path.join(dir, file);
-                    const stat = fs.statSync(filePath);
-                    if (stat && stat.isDirectory()) {
-                        if (!['node_modules', '.git', 'venv', '__pycache__'].includes(file)) {
-                            results = results.concat(findFastAPIApp(filePath));
-                        }
-                    } else if (file.endsWith('.py')) {
-                        const content = fs.readFileSync(filePath, 'utf8');
-                        const match = content.match(/([a-zA-Z0-9_]+)\s*=\s*FastAPI\(/);
-                        if (match) results.push({ filePath, appName: match[1] });
-                    }
-                }
-                return results;
-            }
+            const entry = detectPythonEntrypoint(repoPath, reqText, appPort);
+            // El puerto real puede venir del código (ej. socketio.run(..., port=5000));
+            // el label de Traefik se arma más abajo leyendo appPort.
+            appPort = String(entry.port);
+            console.log(`[Python] Framework: ${entry.framework} → CMD ${entry.cmd.join(' ')} (puerto ${appPort})`);
+            deployLog(subdomain, 'info', `Framework Python: ${entry.framework} → ${entry.cmd.join(' ')} (puerto ${appPort})`);
 
-            const fastApiApps = findFastAPIApp(repoPath);
-            let uvicornModule = "main:app";
-
-            if (fastApiApps.length > 0) {
-                const appDef = fastApiApps[0];
-                const relPath = path.relative(repoPath, appDef.filePath);
-                const parsedPath = path.parse(relPath);
-                let modulePath = parsedPath.dir ? `${parsedPath.dir.replace(/\\/g, '/').replace(/\//g, '.')}.${parsedPath.name}` : parsedPath.name;
-                uvicornModule = `${modulePath}:${appDef.appName}`;
-                console.log(`¡EXITO! FastAPI encontrado en: ${relPath}`);
-            }
+            const pipExtra = entry.extraPip.length
+                ? `RUN pip install --no-cache-dir ${entry.extraPip.map(p => `"${p}"`).join(' ')}\n`
+                : '';
 
             const reqRelativePath = path.relative(repoPath, requirementsPath).replace(/\\/g, '/');
             const dockerfile = `FROM python:3.11-slim
 WORKDIR /app
+ENV PYTHONUNBUFFERED=1 HOST=0.0.0.0 PORT=${appPort}
 ${aptGetCommand}COPY ${reqRelativePath} ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+${pipExtra}COPY . .
 EXPOSE ${appPort}
-CMD ["uvicorn", "${uvicornModule}", "--host", "0.0.0.0", "--port", "${appPort}"]
+CMD ${JSON.stringify(entry.cmd)}
 `;
             fs.writeFileSync(path.join(repoPath, 'Dockerfile'), dockerfile);
-            console.log('Dockerfile de Python/FastAPI generado exitosamente.');
+            console.log(`Dockerfile de Python (${entry.framework}) generado exitosamente.`);
             const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
             await runDockerBuild(stream, subdomain);
