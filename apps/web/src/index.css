@@ -56,6 +56,9 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --px-glass-bg:     rgba(16, 16, 18, 0.94);
   --px-glass-border: rgba(255, 255, 255, 0.08);
   --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  /* Menús flotantes: más translúcidos que las cards, como el navbar */
+  --px-glass-menu-bg: rgba(16, 16, 18, 0.62);
+  --px-glass-hover:   rgba(255, 255, 255, 0.06);
 
   /* Halo detrás de texto que queda flotando sobre el fondo animado de puntos
      (DotCloud), fuera de cualquier card opaca — sin esto el contraste del
@@ -397,10 +400,12 @@ textarea:focus-visible {
 
 /* ─── Mega menu ─────────────────────────────────────────────────── */
 .mega-menu-panel {
-  background: var(--px-surface) !important;
-  border: 1px solid var(--px-border) !important;
-  border-radius: var(--px-radius) !important;
-  box-shadow: var(--px-shadow-md) !important;
+  background: var(--px-glass-menu-bg) !important;
+  border: 1px solid var(--px-glass-border) !important;
+  border-radius: var(--px-radius-lg) !important;
+  box-shadow: var(--px-glass-shadow) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 
 /* ─── Pref trigger button ───────────────────────────────────────── */
@@ -518,6 +523,8 @@ html.light-mode {
   --px-glass-bg:     rgba(255, 255, 255, 0.94);
   --px-glass-border: rgba(0, 0, 0, 0.08);
   --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  --px-glass-menu-bg: rgba(255, 255, 255, 0.62);
+  --px-glass-hover:   rgba(0, 0, 0, 0.04);
 }
 
 html.light-mode body {
@@ -538,12 +545,6 @@ html.light-mode .px-terminal {
   background: #f4f4f5 !important;
   border-color: var(--px-border) !important;
   color: #09090b !important;
-}
-
-html.light-mode .mega-menu-panel {
-  background: #ffffff !important;
-  border-color: var(--px-border) !important;
-  box-shadow: var(--px-shadow-md) !important;
 }
 
 html.light-mode .pref-dropdown-panel {

@@ -26,13 +26,11 @@ const NAV_TOOLS = {
   es: [
     { to: '/deploy', label: 'Despliegue', desc: 'Despliega tu código en segundos',   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /> },
     { to: '#', label: 'Pizarra',    desc: 'Diseña tu arquitectura visualmente',       icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /> },
-    { to: '#', label: 'Monitoreo',  desc: 'Métricas de CPU en tiempo real',           icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /> },
     { to: '#', label: 'Dominios',   desc: 'Configura URLs y certificados',             icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /> },
   ],
   en: [
     { to: '/deploy', label: 'Deploy',     desc: 'Ship your code in seconds',          icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /> },
     { to: '#', label: 'Board',       desc: 'Design your architecture visually',       icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /> },
-    { to: '#', label: 'Monitoring',  desc: 'Real-time CPU metrics',                   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /> },
     { to: '#', label: 'Domains',     desc: 'Set up URLs and certificates',            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /> },
   ],
 };
@@ -576,17 +574,22 @@ const Navbar = React.memo(function Navbar() {
         top: scrolled ? 10 : 0,
         left: scrolled ? 14 : 0,
         right: scrolled ? 14 : 0,
-        background: navBg,
         border: `1px solid ${navBorder}`,
         borderRadius: scrolled ? 16 : 0,
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
         boxShadow: scrolled
           ? (isDark ? '0 8px 32px rgba(0,0,0,0.55)' : '0 8px 32px rgba(0,0,0,0.1)')
           : (isDark ? '0 1px 0 rgba(255,255,255,0.04)' : '0 1px 0 rgba(0,0,0,0.06)'),
         transition: 'top 0.4s cubic-bezier(0.16,1,0.3,1), left 0.4s cubic-bezier(0.16,1,0.3,1), right 0.4s cubic-bezier(0.16,1,0.3,1), border-radius 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease',
       }}
     >
+      {/* El blur del navbar vive en esta capa y no en el <nav>: un elemento con
+          backdrop-filter "encierra" a sus hijos, y el menú de Herramientas
+          (que también usa backdrop-filter) dejaría de difuminar la página. */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none',
+        borderRadius: 'inherit', background: navBg,
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      }} />
       <div style={{ width: '100%', display: 'block', pointerEvents: 'none' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center w-full" style={{ pointerEvents: 'auto' }}>
 
@@ -610,15 +613,7 @@ const Navbar = React.memo(function Navbar() {
               </button>
               <div className="absolute top-full left-0 w-full h-3" />
               <div className="absolute top-[calc(100%+4px)] left-0 w-[420px] lg:w-[500px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-left -translate-y-2 group-hover:translate-y-0">
-                <div className="mega-menu-panel" style={{
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                  background: isDark ? 'rgba(24,24,27,0.98)' : 'rgba(255,255,255,0.98)',
-                  backdropFilter: 'blur(24px) saturate(180%)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-                  border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)',
-                  boxShadow: isDark ? '0 16px 40px rgba(0,0,0,0.5)' : '0 16px 40px rgba(0,0,0,0.1)',
-                }}>
+                <div className="mega-menu-panel" style={{ overflow: 'hidden' }}>
                   <div className="p-4">
                     <div className="grid grid-cols-2 gap-2 nav-tools-es">
                       {NAV_TOOLS.es.map((tool) => (
@@ -652,11 +647,11 @@ const Navbar = React.memo(function Navbar() {
 function ToolLink({ tool }) {
   const restBg = 'transparent';
   return (
-    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: '8px', border: '1px solid var(--px-border)', background: restBg, transition: 'border-color 0.18s, background 0.18s' }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-bg2)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; e.currentTarget.style.background = restBg; }}
+    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 12, padding: 12, borderRadius: '10px', border: '1px solid var(--px-glass-border)', background: restBg, transition: 'border-color 0.18s, background 0.18s' }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-glass-hover)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-glass-border)'; e.currentTarget.style.background = restBg; }}
     >
-      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px solid var(--px-border)', background: 'var(--px-bg)' }}>
+      <div style={{ flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-hover)' }}>
         <svg style={{ width: 16, height: 16, color: 'var(--px-white)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">{tool.icon}</svg>
       </div>
       <div>
