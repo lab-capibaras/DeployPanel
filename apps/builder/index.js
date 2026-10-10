@@ -55,7 +55,7 @@ const upload = multer({
     },
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // una pizarra grande pasa el default de 100 KB
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 app.use(cookieParser());
@@ -3483,6 +3483,149 @@ app.post('/admin/prune', ...adminOnly, async (req, res) => {
         const r = await docker.pruneImages({ filters: { dangling: ['true'] } });
         audit(req, 'prune_images');
         res.json({ reclaimed: r.SpaceReclaimed || 0, deleted: (r.ImagesDeleted || []).length });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ==========================================
+// --- BOARD (pizarra de arquitectura) ---
+// ==========================================
+const BOARDS_DIR = path.join(DEPLOYS_DIR, 'boards');
+const BOARD_KINDS = ['client', 'frontend', 'backend', 'app', 'database', 'cache', 'worker', 'external', 'note'];
+const MAX_BOARDS_PER_USER = 20;
+const MAX_BOARD_NODES = 300;
+const MAX_BOARD_EDGES = 600;
+
+// Un archivo por usuario, elegido con el JWT (nunca con datos del cliente).
+// Incluye el provider para que IDs de Google y GitHub nunca choquen.
+function boardsFile(user) {
+    const safe = `${user.provider || 'user'}-${String(user.id)}`.replace(/[^a-zA-Z0-9_-]/g, '');
+    return path.join(BOARDS_DIR, `${safe}.json`);
+}
+
+function readUserBoards(user) {
+    try {
+        const boards = JSON.parse(fs.readFileSync(boardsFile(user), 'utf8'));
+        return Array.isArray(boards) ? boards : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeUserBoards(user, boards) {
+    fs.mkdirSync(BOARDS_DIR, { recursive: true });
+    const file = boardsFile(user);
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(boards));
+    fs.renameSync(tmp, file); // escritura atómica: nunca queda un archivo a medias
+}
+
+const clampStr = (v, max) => String(v ?? '').slice(0, max);
+const boardNum = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : 0);
+
+// Nunca se guarda lo que manda el cliente tal cual: se normaliza y se limita
+function sanitizeBoardContent({ nodes = [], edges = [], viewport = {} } = {}) {
+    const cleanNodes = (Array.isArray(nodes) ? nodes : []).slice(0, MAX_BOARD_NODES).map(n => ({
+        id: clampStr(n?.id, 64),
+        type: 'stardest',
+        position: { x: boardNum(n?.position?.x), y: boardNum(n?.position?.y) },
+        data: {
+            kind: BOARD_KINDS.includes(n?.data?.kind) ? n.data.kind : 'app',
+            label: clampStr(n?.data?.label, 80),
+            notes: clampStr(n?.data?.notes, 1000),
+            deploy: /^[a-z0-9-]{0,40}$/.test(n?.data?.deploy || '') ? (n?.data?.deploy || '') : '',
+        },
+    })).filter(n => n.id);
+
+    const ids = new Set(cleanNodes.map(n => n.id));
+    const cleanEdges = (Array.isArray(edges) ? edges : []).slice(0, MAX_BOARD_EDGES).map(e => ({
+        id: clampStr(e?.id, 140),
+        source: clampStr(e?.source, 64),
+        target: clampStr(e?.target, 64),
+        sourceHandle: e?.sourceHandle ? clampStr(e.sourceHandle, 16) : null,
+        targetHandle: e?.targetHandle ? clampStr(e.targetHandle, 16) : null,
+        label: clampStr(e?.label, 60),
+    })).filter(e => e.id && ids.has(e.source) && ids.has(e.target));
+
+    return {
+        nodes: cleanNodes,
+        edges: cleanEdges,
+        viewport: {
+            x: boardNum(viewport?.x),
+            y: boardNum(viewport?.y),
+            zoom: Math.min(4, Math.max(0.1, boardNum(viewport?.zoom) || 1)),
+        },
+    };
+}
+
+// Listar pizarras del usuario
+app.get('/boards', requireAuth, (req, res) => {
+    const boards = readUserBoards(req.user)
+        .map(({ id, name, updatedAt, nodes }) => ({ id, name, updatedAt, nodeCount: (nodes || []).length }))
+        .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    res.json({ boards });
+});
+
+// Crear pizarra (vacía o con contenido inicial)
+app.post('/boards', requireAuth, (req, res) => {
+    try {
+        const boards = readUserBoards(req.user);
+        if (boards.length >= MAX_BOARDS_PER_USER) {
+            return res.status(400).json({ error: `Máximo ${MAX_BOARDS_PER_USER} pizarras por usuario` });
+        }
+        const now = new Date().toISOString();
+        const board = {
+            id: crypto.randomUUID(),
+            name: clampStr(req.body?.name || 'Nueva pizarra', 60),
+            createdAt: now,
+            updatedAt: now,
+            ...sanitizeBoardContent(req.body),
+        };
+        boards.push(board);
+        writeUserBoards(req.user, boards);
+        res.status(201).json({ board });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Obtener una pizarra
+app.get('/boards/:id', requireAuth, (req, res) => {
+    const board = readUserBoards(req.user).find(b => b.id === req.params.id);
+    if (!board) return res.status(404).json({ error: 'Pizarra no encontrada' });
+    res.json({ board });
+});
+
+// Guardar (autoguardado desde el editor). Si el body no trae nodes/edges
+// (p. ej. solo renombrar), el contenido existente no se pisa con una pizarra vacía.
+app.put('/boards/:id', requireAuth, (req, res) => {
+    try {
+        const boards = readUserBoards(req.user);
+        const i = boards.findIndex(b => b.id === req.params.id);
+        if (i === -1) return res.status(404).json({ error: 'Pizarra no encontrada' });
+        const hasContent = Array.isArray(req.body?.nodes) && Array.isArray(req.body?.edges);
+        boards[i] = {
+            ...boards[i],
+            ...(hasContent ? sanitizeBoardContent(req.body) : {}),
+            name: req.body?.name ? clampStr(req.body.name, 60) : boards[i].name,
+            updatedAt: new Date().toISOString(),
+        };
+        writeUserBoards(req.user, boards);
+        res.json({ updatedAt: boards[i].updatedAt });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Eliminar
+app.delete('/boards/:id', requireAuth, (req, res) => {
+    try {
+        const boards = readUserBoards(req.user);
+        const next = boards.filter(b => b.id !== req.params.id);
+        if (next.length === boards.length) return res.status(404).json({ error: 'Pizarra no encontrada' });
+        writeUserBoards(req.user, next);
+        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

@@ -576,3 +576,14 @@ html.light-mode .px-btn { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 html.light-mode .px-badge { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.12); }
 
 html.light-mode .hero-blob { opacity: 0.5; }
+
+/* ─── Board (pizarra) ──────────────────────────────────────────── */
+.board-root { padding-top: 70px; }
+@media (max-width: 767px) {
+  /* En móvil no hay navbar arriba pero sí la barra flotante abajo */
+  .board-root { padding-top: 0; padding-bottom: 92px; }
+  .board-palette { width: 52px !important; padding: 8px 6px !important; }
+  .board-palette .palette-label, .board-palette .palette-hint { display: none; }
+  .board-inspector { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; }
+  .board-toolbar .hide-mobile { display: none; }
+}
