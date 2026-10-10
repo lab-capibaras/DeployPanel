@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Deploy from './pages/Deploy';
 import Dashboard from './pages/Dashboard';
+import Console from './pages/Console';
 import { useAuth } from './hooks/useAuth';
 
 import { setTheme as storeSetTheme, setLang as storeSetLang, getPrefs, subscribePrefs } from './store/prefs';
@@ -623,11 +624,13 @@ const Navbar = React.memo(function Navbar() {
                       {NAV_TOOLS.es.map((tool) => (
                         <ToolLink key={tool.label} tool={tool} isDark={isDark} />
                       ))}
+                      <AdminToolLink lang="es" />
                     </div>
                     <div className="grid grid-cols-2 gap-2 nav-tools-en">
                       {NAV_TOOLS.en.map((tool) => (
                         <ToolLink key={tool.label} tool={tool} isDark={isDark} />
                       ))}
+                      <AdminToolLink lang="en" />
                     </div>
                   </div>
                 </div>
@@ -664,6 +667,20 @@ function ToolLink({ tool }) {
   );
 }
 
+// Solo cosmético: la protección real está en el backend (/admin/* responde 404 a no-admins).
+// Componente aparte para que el Navbar memoizado no se suscriba a useAuth.
+const CONSOLE_TOOL = {
+  es: { to: '/console', label: 'Console', desc: 'Administración de la plataforma' },
+  en: { to: '/console', label: 'Console', desc: 'Platform administration' },
+};
+const CONSOLE_ICON = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />;
+
+function AdminToolLink({ lang }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return null;
+  return <ToolLink tool={{ ...CONSOLE_TOOL[lang], icon: CONSOLE_ICON }} />;
+}
+
 /* ═══════════════════════════════════════════════════════════
    APP ROOT
 ═══════════════════════════════════════════════════════════ */
@@ -678,6 +695,7 @@ function App() {
           <Route path="/login"     element={<Login />} />
           <Route path="/deploy"    element={<Deploy />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/console"   element={<Console />} />
         </Routes>
       </div>
     </>

@@ -174,8 +174,8 @@ export default function Deploy() {
     // través del stream de logs SSE (<DeployLogs>), que abre su conexión
     // apenas se monta este phase. Acá solo capturamos los fallos que ocurren
     // ANTES de que deployApp() arranque en el backend (rate limit, límite de
-    // proyectos activos, fallos de red), porque en esos casos nunca se emite
-    // un evento SSE 'fail'.
+    // proyectos activos, mantenimiento, fallos de red), porque en esos casos
+    // nunca se emite un evento SSE 'fail'.
     fetch('/api/deploy', {
       method: 'POST',
       credentials: 'include',
@@ -184,7 +184,8 @@ export default function Deploy() {
       },
       body: JSON.stringify({ ...formData, env: buildEnvPayload() }),
     }).then(async (res) => {
-      if (res.status === 429) {
+      // 429 = rate limit · 503 = deploys en pausa por mantenimiento (Console)
+      if (res.status === 429 || res.status === 503) {
         const data = await res.json().catch(() => ({}));
         handleDeployFail(data.details || d.error.title);
       } else if (res.status === 403) {

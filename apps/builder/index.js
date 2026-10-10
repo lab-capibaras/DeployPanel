@@ -202,7 +202,7 @@ const requireAuth = (req, res, next) => {
 
 // Sesión actual
 app.get('/auth/me', requireAuth, (req, res) => {
-    res.json({ authenticated: true, user: req.user });
+    res.json({ authenticated: true, user: { ...req.user, isAdmin: isAdminUser(req.user) } });
 });
 
 // Logout
@@ -2340,6 +2340,15 @@ app.post('/deploy', requireAuth, async (req, res) => {
 
     const actualBranch = branch || 'main';
 
+    // Pausa de mantenimiento desde la Console: el admin sí puede desplegar
+    if (deploysPaused && !isAdminUser(req.user)) {
+        return res.status(503).json({
+            status: 'error',
+            code: 'MAINTENANCE',
+            details: 'StarDest está en mantenimiento. Intenta de nuevo en unos minutos.',
+        });
+    }
+
     const activeDeployCount = await countActiveDeploys(userId, subdomain);
     if (activeDeployCount >= MAX_DEPLOYS_PER_USER) {
         logger.warn({
@@ -2378,6 +2387,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
         branch: branch || 'default',
         ip: getIP(req)
     }, 'Deploy iniciado');
+    recordDeployEvent('start', { subdomain, userId, userEmail, repoUrl, branch: actualBranch });
 
     startDeployTracking(userId);
     try {
@@ -2389,6 +2399,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
             subdomain,
             ip: getIP(req)
         }, 'Deploy completado');
+        recordDeployEvent('success', { subdomain, userId, userEmail, repoUrl });
         emitDeployLog(subdomain, { type: 'done', url, ts: Date.now() });
         res.json({
             status: 'success',
@@ -2405,6 +2416,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
             error: error.message,
             ip: getIP(req)
         }, 'Deploy fallido');
+        recordDeployEvent('error', { subdomain, userId, userEmail, repoUrl, error: error.message });
         emitDeployLog(subdomain, { type: 'fail', message: error.message, ts: Date.now() });
         res.status(500).json({ status: 'error', details: error.message });
     } finally {
@@ -2620,7 +2632,7 @@ app.get('/github-org-repos', requireAuth, async (req, res) => {
     }
 });
 
-// 2. Webhook Automático (Vercel Style)
+// 2. Webhook Automático
 app.post('/webhook', async (req, res) => {
     const payload = req.body;
     console.log(`[Webhook] Petición recibida de GitHub`);
@@ -2657,42 +2669,68 @@ app.post('/webhook', async (req, res) => {
         return res.status(200).send('No registrado');
     }
 
+    // 503 para que el push aparezca como fallido en "Recent Deliveries" de GitHub
+    if (deploysPaused) {
+        console.log(`[Webhook] Deploys en pausa — se ignora el push de ${subdomain}`);
+        return res.status(503).send('Deploys en pausa (mantenimiento)');
+    }
+
     console.log(`[Webhook] Cambios detectados para ${subdomain}. Actualizando...`);
+    recordDeployEvent('webhook', { subdomain, repoUrl, branch: pushBranch });
     res.status(200).send('Actualización iniciada');
     try {
         await deployApp(repoUrl, subdomain, pushBranch);
         console.log(`[Webhook] ${subdomain} actualizado con éxito.`);
+        recordDeployEvent('success', { subdomain, repoUrl, source: 'webhook' });
     } catch (error) {
         console.error(`[Webhook] Error actualizando ${subdomain}:`, error.message);
+        recordDeployEvent('error', { subdomain, repoUrl, error: error.message, source: 'webhook' });
     }
 });
 
-// 3. Borrar Proyecto
-app.delete('/deploy/:subdomain', async (req, res) => {
+// Elimina todos los contenedores de un deploy (app, backend/frontend, DB y Adminer).
+// No valida dueño: eso lo hace cada endpoint que la llama.
+async function removeDeployContainers(subdomain, containers) {
+    const list = containers || await docker.listContainers({ all: true });
+    const names = [
+        `/container-${subdomain}`,
+        `/container-${subdomain}-backend`,
+        `/container-${subdomain}-frontend`,
+        `/db-${subdomain}`,
+        `/adminer-${subdomain}`,
+    ];
+    const removed = [];
+    for (const n of names) {
+        const c = list.find(x => x.Names.includes(n));
+        if (c) {
+            await docker.getContainer(c.Id).remove({ force: true });
+            console.log(`Contenedor ${n} eliminado.`);
+            removed.push(n.slice(1));
+        }
+    }
+    return removed;
+}
+
+// 3. Borrar Proyecto (solo el dueño)
+app.delete('/deploy/:subdomain', requireAuth, async (req, res) => {
     const { subdomain } = req.params;
     if (!subdomain) return res.status(400).json({ status: 'error', message: "Falta el subdominio" });
     try {
         console.log(`Solicitud para eliminar el proyecto: ${subdomain}`);
         const containers = await docker.listContainers({ all: true });
-        const possibleNames = [
-            `/container-${subdomain}`,
-            `/container-${subdomain}-backend`,
-            `/container-${subdomain}-frontend`,
-            `/db-${subdomain}`,
-            `/adminer-${subdomain}`,
-        ];
 
-        let removedAny = false;
-        for (const name of possibleNames) {
-            const existing = containers.find(c => c.Names.includes(name));
-            if (existing) {
-                await docker.getContainer(existing.Id).remove({ force: true });
-                console.log(`Contenedor ${name} eliminado.`);
-                removedAny = true;
-            }
+        // El dueño se toma del label deploy.userId del contenedor de la app. Si no
+        // es del usuario (o no existe), se responde igual que "no encontrado" para
+        // no revelar qué subdominios existen.
+        const appNames = [`/container-${subdomain}`, `/container-${subdomain}-backend`, `/container-${subdomain}-frontend`];
+        const appContainer = containers.find(c => c.Names.some(n => appNames.includes(n)));
+        if (!appContainer || appContainer.Labels['deploy.userId'] !== String(req.user.id)) {
+            return res.status(404).json({ status: 'warning', message: `No se encontró el proyecto.` });
         }
 
-        if (removedAny) {
+        const removed = await removeDeployContainers(subdomain, containers);
+
+        if (removed.length) {
             res.json({ status: 'success', message: `Proyecto ${subdomain} eliminado correctamente.` });
         } else {
             res.status(404).json({ status: 'warning', message: `No se encontró el proyecto.` });
@@ -3033,6 +3071,420 @@ app.post('/deploy/upload', upload.single('file'), async (req, res) => {
     } catch (error) {
         console.error('[Upload] Error durante el despliegue:', error.message);
         res.status(500).json({ status: 'error', details: error.message });
+    }
+});
+
+// ==========================================
+// --- STARDEST CONSOLE (solo admin) ---
+// ==========================================
+const { authenticator } = require('otplib');
+authenticator.options = { window: 1 }; // tolera ±30 s de desfase de reloj
+
+const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || '';
+const ADMIN_TOTP_SECRET = process.env.ADMIN_TOTP_SECRET || '';
+const ADMIN_SESSION_TTL = 30 * 60; // segundos
+
+// Contenedores sobre los que la Console puede ACTUAR (solo los de usuarios)
+const MANAGED_CONTAINER = /^(container|db|adminer)-[a-z0-9][a-z0-9-]*$/;
+// Contenedores del sistema: solo LECTURA de logs, nunca detener/eliminar.
+// Cada uno se busca por nombre de contenedor o por servicio de docker compose,
+// porque el compose del servidor no está en el repo y el nombre real puede variar.
+const SYSTEM_SERVICES = {
+    deploy_panel:  ['deploy_panel'],
+    traefik:       ['traefik'],
+    static_server: ['static_server'],
+    cloudflared:   ['cloudflared'],
+    frontend:      ['stardest_web', 'web_frontend'],
+};
+
+// ── Estado en memoria (se reinicia si el panel se reinicia) ──
+let deploysPaused = false;
+const deployEvents = [];      // últimos 200 eventos de deploy
+const adminAudit = [];        // últimas 200 acciones del admin
+const totpState = new Map();  // userId → { fails, lockedUntil, lastCode, lastCodeAt }
+
+function pushCapped(list, item, max = 200) {
+    list.unshift(item);
+    if (list.length > max) list.length = max;
+}
+
+function recordDeployEvent(type, data) {
+    pushCapped(deployEvents, { ts: Date.now(), type, ...data });
+}
+
+function audit(req, action, target = '') {
+    const ip = getIP(req);
+    pushCapped(adminAudit, { ts: Date.now(), action, target, ip });
+    logger.info({ event: 'admin_action', action, target, ip }, `[Admin] ${action} ${target}`);
+}
+
+// La sesión de StarDest viaja en la cookie httpOnly auth_token (igual que requireAuth)
+function getRequestUser(req) {
+    const token = req.cookies?.auth_token;
+    if (!token) return null;
+    try {
+        return jwt.verify(token, process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret');
+    } catch {
+        return null;
+    }
+}
+
+// Se identifica por el ID numérico de GitHub (inmutable), no por el username,
+// y solo si entró con GitHub: la misma persona logueada con Google no es admin.
+function isAdminUser(user) {
+    return !!user
+        && user.provider === 'github'
+        && ADMIN_GITHUB_IDS.includes(String(user.id));
+}
+
+// ── Middlewares ──
+// Para cualquiera que no sea admin, /admin/* responde 404 (no revela que existe)
+function requireAdmin(req, res, next) {
+    const user = getRequestUser(req);
+    if (!isAdminUser(user)) return res.status(404).json({ error: 'Not found' });
+    req.adminUser = user;
+    next();
+}
+
+function requireAdminSession(req, res, next) {
+    if (!ADMIN_SESSION_SECRET) return res.status(503).json({ error: 'Console no configurada' });
+    const token = req.headers['x-admin-token'];
+    if (!token) return res.status(401).json({ error: 'Código TOTP requerido', code: 'TOTP_REQUIRED' });
+    try {
+        const payload = jwt.verify(token, ADMIN_SESSION_SECRET);
+        if (payload.scope !== 'admin' || String(payload.sub) !== String(req.adminUser.id)) throw new Error('scope');
+        next();
+    } catch {
+        return res.status(401).json({ error: 'Sesión de consola expirada', code: 'TOTP_REQUIRED' });
+    }
+}
+
+const adminOnly = [requireAdmin, requireAdminSession];
+
+// ── Helpers de monitoreo ──
+function readMeminfo() {
+    const txt = fs.readFileSync('/proc/meminfo', 'utf8');
+    const get = (key) => Number((txt.match(new RegExp(`^${key}:\\s+(\\d+)`, 'm')) || [])[1] || 0) * 1024;
+    return {
+        total: get('MemTotal'), available: get('MemAvailable'),
+        swapTotal: get('SwapTotal'), swapFree: get('SwapFree'),
+    };
+}
+
+async function sampleCpuPercent(ms = 400) {
+    const a = os.cpus();
+    await new Promise(r => setTimeout(r, ms));
+    const b = os.cpus();
+    let idle = 0, total = 0;
+    b.forEach((cpu, i) => {
+        const d = (k) => cpu.times[k] - a[i].times[k];
+        const t = d('user') + d('nice') + d('sys') + d('idle') + d('irq');
+        total += t;
+        idle += d('idle');
+    });
+    return total ? Math.round((1 - idle / total) * 1000) / 10 : 0;
+}
+
+function withTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+    ]);
+}
+
+// Los logs de Docker sin TTY vienen multiplexados (cabecera de 8 bytes por bloque)
+function demuxDockerLogs(buf) {
+    if (!Buffer.isBuffer(buf)) return String(buf || '');
+    const multiplexed = buf.length >= 8 && [0, 1, 2].includes(buf[0]) && buf[1] === 0 && buf[2] === 0 && buf[3] === 0;
+    if (!multiplexed) return buf.toString('utf8');
+    let out = '';
+    let i = 0;
+    while (i + 8 <= buf.length) {
+        const size = buf.readUInt32BE(i + 4);
+        out += buf.subarray(i + 8, i + 8 + size).toString('utf8');
+        i += 8 + size;
+    }
+    return out;
+}
+
+async function checkHttp(url, isOk = (r) => r.ok) {
+    try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(2500) });
+        return isOk(r) ? 'ok' : 'down';
+    } catch (e) {
+        const code = String(e.cause?.code || e.message);
+        return /ENOTFOUND|EAI_AGAIN/.test(code) ? 'unknown' : 'down';
+    }
+}
+
+function findSystemContainer(containers, key) {
+    const aliases = SYSTEM_SERVICES[key] || [];
+    return containers.find(c =>
+        c.Names.some(n => aliases.includes(n.slice(1))) ||
+        aliases.includes(c.Labels?.['com.docker.compose.service']));
+}
+
+// ── TOTP ──
+app.post('/admin/totp/verify', requireAdmin, (req, res) => {
+    if (!ADMIN_TOTP_SECRET || !ADMIN_SESSION_SECRET) {
+        return res.status(503).json({ error: 'La consola no está configurada en el servidor' });
+    }
+    const id = String(req.adminUser.id);
+    const now = Date.now();
+    const state = totpState.get(id) || { fails: 0, lockedUntil: 0, lastCode: null, lastCodeAt: 0 };
+
+    if (state.lockedUntil > now) {
+        const min = Math.ceil((state.lockedUntil - now) / 60000);
+        return res.status(429).json({ error: `Demasiados intentos. Espera ${min} min.` });
+    }
+
+    const code = String(req.body?.code || '').replace(/\s/g, '');
+    if (code && code === state.lastCode && now - state.lastCodeAt < 90000) {
+        return res.status(401).json({ error: 'Ese código ya se usó. Espera el siguiente.' });
+    }
+
+    let valid = false;
+    try {
+        valid = /^\d{6}$/.test(code) && authenticator.verify({ token: code, secret: ADMIN_TOTP_SECRET });
+    } catch {
+        valid = false;
+    }
+
+    if (!valid) {
+        state.fails += 1;
+        if (state.fails >= 5) {
+            state.fails = 0;
+            state.lockedUntil = now + 15 * 60 * 1000;
+        }
+        totpState.set(id, state);
+        audit(req, 'totp_fail');
+        return res.status(401).json({ error: 'Código incorrecto' });
+    }
+
+    totpState.set(id, { fails: 0, lockedUntil: 0, lastCode: code, lastCodeAt: now });
+    audit(req, 'totp_ok');
+    const adminToken = jwt.sign({ sub: id, scope: 'admin' }, ADMIN_SESSION_SECRET, { expiresIn: ADMIN_SESSION_TTL });
+    res.json({ adminToken, expiresIn: ADMIN_SESSION_TTL });
+});
+
+// ── Monitoreo: servidor + plataforma ──
+app.get('/admin/overview', ...adminOnly, async (req, res) => {
+    try {
+        const [cpu, info, containers, disk] = await Promise.all([
+            sampleCpuPercent(),
+            docker.info(),
+            docker.listContainers({ all: true }),
+            fs.promises.statfs(DEPLOYS_DIR).catch(() => null),
+        ]);
+
+        const appContainers = containers.filter(c => c.Names.some(n => n.startsWith('/container-')));
+        const subdomains = new Set(appContainers.map(c =>
+            c.Labels['deploy.subdomain'] || c.Names[0].replace('/container-', '').replace(/-(backend|frontend)$/, '')));
+        const users = new Set(appContainers
+            .map(c => c.Labels['deploy.userId'])
+            .filter(u => u && u !== 'anonymous' && u !== 'unknown'));
+        const mem = readMeminfo();
+
+        res.json({
+            host: {
+                cpuPercent: cpu,
+                cores: os.cpus().length,
+                load: os.loadavg(),
+                uptime: os.uptime(),
+                memory: { total: mem.total, used: mem.total - mem.available },
+                swap: { total: mem.swapTotal, used: mem.swapTotal - mem.swapFree },
+                disk: disk ? { total: disk.blocks * disk.bsize, used: (disk.blocks - disk.bfree) * disk.bsize } : null,
+            },
+            docker: {
+                version: info.ServerVersion,
+                containers: info.Containers,
+                running: info.ContainersRunning,
+                images: info.Images,
+            },
+            platform: {
+                deploys: subdomains.size,
+                containers: appContainers.length,
+                running: appContainers.filter(c => c.State === 'running').length,
+                restarting: appContainers.filter(c => c.State === 'restarting').map(c => c.Names[0].slice(1)),
+                users: users.size,
+                databases: containers.filter(c => c.Names.some(n => n.startsWith('/db-'))).length,
+                paused: deploysPaused,
+            },
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Monitoreo: consumo por contenedor (más pesado, se consulta cada 30 s) ──
+app.get('/admin/resources', ...adminOnly, async (req, res) => {
+    try {
+        const running = await docker.listContainers();
+        const managed = running.filter(c => MANAGED_CONTAINER.test(c.Names[0].slice(1)));
+        const results = await Promise.all(managed.map(async (c) => {
+            const name = c.Names[0].slice(1);
+            try {
+                const s = await withTimeout(docker.getContainer(c.Id).stats({ stream: false }), 4000);
+                const cache = s.memory_stats?.stats?.inactive_file ?? s.memory_stats?.stats?.cache ?? 0;
+                const memory = Math.max(0, (s.memory_stats?.usage || 0) - cache);
+                const cpuDelta = (s.cpu_stats?.cpu_usage?.total_usage || 0) - (s.precpu_stats?.cpu_usage?.total_usage || 0);
+                const sysDelta = (s.cpu_stats?.system_cpu_usage || 0) - (s.precpu_stats?.system_cpu_usage || 0);
+                const cpus = s.cpu_stats?.online_cpus || 1;
+                const cpuPercent = sysDelta > 0 ? Math.round((cpuDelta / sysDelta) * cpus * 1000) / 10 : 0;
+                return { name, memory, cpuPercent };
+            } catch {
+                return { name, memory: null, cpuPercent: null };
+            }
+        }));
+        results.sort((a, b) => (b.memory || 0) - (a.memory || 0));
+        res.json({ containers: results });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Deploys de toda la plataforma ──
+app.get('/admin/deploys', ...adminOnly, async (req, res) => {
+    try {
+        const containers = await docker.listContainers({ all: true });
+        const grouped = {};
+
+        for (const c of containers) {
+            const name = c.Names[0].slice(1);
+            if (!name.startsWith('container-')) continue;
+            const L = c.Labels;
+            const sub = L['deploy.subdomain'] || name.replace(/^container-/, '').replace(/-(backend|frontend)$/, '');
+            const g = grouped[sub] ||= {
+                subdomain: sub,
+                repo: L['deploy.repo'] || 'unknown',
+                branch: L['deploy.branch'] || 'unknown',
+                userId: L['deploy.userId'] || 'unknown',
+                userEmail: L['deploy.userEmail'] || 'unknown',
+                deployedAt: L['deploy.timestamp'] || null,
+                database: null,
+                containers: [],
+            };
+            g.containers.push({ name, role: L['deploy.role'] || 'app', state: c.State, status: c.Status });
+            if (!g.database && L['deploy.db.type']) g.database = { type: L['deploy.db.type'], name: L['deploy.db.name'] };
+            if (L['deploy.timestamp'] && (!g.deployedAt || L['deploy.timestamp'] > g.deployedAt)) g.deployedAt = L['deploy.timestamp'];
+        }
+
+        // Bases de datos y Adminer: se agregan a su deploy, o se reportan como huérfanas
+        const orphans = [];
+        for (const c of containers) {
+            const name = c.Names[0].slice(1);
+            const m = name.match(/^(db|adminer)-(.+)$/);
+            if (!m) continue;
+            const entry = { name, role: m[1], state: c.State, status: c.Status };
+            if (grouped[m[2]]) grouped[m[2]].containers.push(entry);
+            else orphans.push({ ...entry, subdomain: m[2] });
+        }
+
+        const deploys = Object.values(grouped).map(g => ({
+            ...g,
+            health: g.containers.some(x => x.state === 'restarting') ? 'restarting'
+                : g.containers.every(x => x.state === 'running') ? 'running' : 'degraded',
+        }));
+        deploys.sort((a, b) => String(b.deployedAt).localeCompare(String(a.deployedAt)));
+
+        res.json({ deploys, orphans });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Logs de un contenedor: de usuario (por nombre) o del sistema (por clave) ──
+app.get('/admin/containers/:name/logs', ...adminOnly, async (req, res) => {
+    const { name } = req.params;
+    const tail = Math.min(parseInt(req.query.tail, 10) || 200, 1000);
+    try {
+        let target = name;
+        if (!MANAGED_CONTAINER.test(name)) {
+            if (!SYSTEM_SERVICES[name]) return res.status(400).json({ error: 'Contenedor no permitido' });
+            const found = findSystemContainer(await docker.listContainers({ all: true }), name);
+            if (!found) return res.status(404).json({ error: `No se encontró el contenedor de ${name}` });
+            target = found.Id;
+        }
+        const buf = await docker.getContainer(target).logs({ stdout: true, stderr: true, tail, timestamps: true });
+        res.json({ name, logs: demuxDockerLogs(buf) });
+    } catch (e) {
+        res.status(404).json({ error: e.message });
+    }
+});
+
+// ── Acciones sobre contenedores de usuarios ──
+app.post('/admin/containers/:name/:action', ...adminOnly, async (req, res) => {
+    const { name, action } = req.params;
+    if (!MANAGED_CONTAINER.test(name)) return res.status(400).json({ error: 'Contenedor no permitido' });
+    if (!['restart', 'stop', 'start'].includes(action)) return res.status(400).json({ error: 'Acción no válida' });
+    try {
+        await docker.getContainer(name)[action]();
+        audit(req, `container_${action}`, name);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Eliminar un deploy completo (de cualquier usuario) ──
+app.delete('/admin/deploys/:subdomain', ...adminOnly, async (req, res) => {
+    const { subdomain } = req.params;
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(subdomain)) return res.status(400).json({ error: 'Subdominio inválido' });
+    try {
+        const removed = await removeDeployContainers(subdomain);
+        audit(req, 'deploy_delete', subdomain);
+        res.json({ ok: true, removed });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Actividad ──
+app.get('/admin/activity', ...adminOnly, (req, res) => {
+    res.json({ deployEvents, audit: adminAudit });
+});
+
+// ── Salud de servicios ──
+app.get('/admin/health', ...adminOnly, async (req, res) => {
+    const containers = await docker.listContainers({ all: true }).catch(() => []);
+    const state = (key) => {
+        const c = findSystemContainer(containers, key);
+        return !c ? 'missing' : c.State === 'running' ? 'ok' : 'down';
+    };
+    const [dockerOk, webhook] = await Promise.all([
+        docker.ping().then(() => 'ok').catch(() => 'down'),
+        // adnanh/webhook responde 404 a un hook inexistente: cualquier respuesta = vivo
+        checkHttp('http://host.docker.internal:9000/hooks/health-check', () => true),
+    ]);
+    res.json({
+        paused: deploysPaused,
+        checks: [
+            { name: 'Docker (docker.sock)', status: dockerOk },
+            { name: 'Traefik', status: state('traefik') },
+            { name: 'Webhook autodeploy (:9000)', status: webhook },
+            { name: 'Static server', status: state('static_server') },
+            { name: 'Cloudflare Tunnel', status: state('cloudflared') },
+            { name: 'Frontend StarDest', status: state('frontend') },
+        ],
+    });
+});
+
+// ── Mantenimiento ──
+app.post('/admin/maintenance', ...adminOnly, (req, res) => {
+    deploysPaused = !!req.body?.paused;
+    audit(req, deploysPaused ? 'deploys_paused' : 'deploys_resumed');
+    res.json({ paused: deploysPaused });
+});
+
+app.post('/admin/prune', ...adminOnly, async (req, res) => {
+    try {
+        const r = await docker.pruneImages({ filters: { dangling: ['true'] } });
+        audit(req, 'prune_images');
+        res.json({ reclaimed: r.SpaceReclaimed || 0, deleted: (r.ImagesDeleted || []).length });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
