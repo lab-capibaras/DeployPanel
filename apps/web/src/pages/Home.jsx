@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { DeployIcon, ShieldIcon, GlobeIcon, ChartIcon, CommitIcon, BuildIcon } from '../components/Icons';
 import BrandMark from '../components/BrandMark';
+import VideoBackground from '../components/VideoBackground';
 
 /* ─── Scroll-reveal ─── */
 function Reveal({ children, delay = 0, style = {} }) {
@@ -48,10 +49,10 @@ export default function Home() {
 
   return (
     <div className="page-transition" style={{ overflowX: 'hidden' }}>
+      <VideoBackground src="/home-bg.mp4" poster="/home-bg-poster.jpg" />
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
       <section style={{ position: 'relative', padding: 'clamp(96px, 12vw, 160px) 24px clamp(48px, 6vw, 80px)', textAlign: 'center' }}>
-        <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(55% 45% at 50% 0%, var(--px-glow-blue), transparent 70%)' }} />
 
         <div style={{ position: 'relative', ...container }}>
 
@@ -94,7 +95,7 @@ export default function Home() {
       </section>
 
       {/* ══ CÓMO FUNCIONA ══════════════════════════════════════════ */}
-      <section id="como-funciona" style={{ ...section, background: 'var(--px-bg2)' }}>
+      <section id="como-funciona" style={section}>
         <div style={container}>
           <SectionHeader title={h.timeline_title} sub={h.timeline_sub} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
@@ -119,7 +120,9 @@ export default function Home() {
         <Reveal style={container}>
           <div style={{
             borderRadius: 'var(--px-radius-xl)', padding: 'clamp(56px, 8vw, 96px) 24px', textAlign: 'center',
-            background: 'radial-gradient(80% 120% at 50% 0%, #4f7dff 0%, #2962ff 45%, #1a3fb8 100%)', color: '#fff',
+            background: 'radial-gradient(80% 120% at 50% 0%, rgba(79,125,255,0.85) 0%, rgba(41,98,255,0.78) 45%, rgba(26,63,184,0.82) 100%)', color: '#fff',
+            border: '1px solid rgba(255,255,255,0.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 24px 64px rgba(41,98,255,0.25)',
+            backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
           }}>
             <h2 style={{ fontWeight: 800, fontSize: 'clamp(34px, 5.5vw, 64px)', margin: '0 auto 18px', letterSpacing: '-0.035em', lineHeight: 1.05, maxWidth: 820 }}>{h.cta_title}</h2>
             <p style={{ fontSize: 'clamp(16px, 1.6vw, 19px)', margin: '0 auto 36px', lineHeight: 1.6, maxWidth: 600, color: 'rgba(255,255,255,0.85)' }}>{h.cta_sub}</p>

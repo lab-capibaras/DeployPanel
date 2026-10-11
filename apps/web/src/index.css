@@ -57,12 +57,15 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --nav-bg:         #0f0f0f;
   --drawer-bg:      #1e1e1e;
 
-  /* Superficies de tarjetas y menús: sólidas, sin glassmorphism */
-  --px-glass-bg:      #1e1e1e;
-  --px-glass-border:  #2e2e2e;
-  --px-glass-shadow:  0 1px 2px rgba(0,0,0,0.4);
-  --px-glass-menu-bg: #1e1e1e;
-  --px-glass-hover:   rgba(255, 255, 255, 0.06);
+  /* Liquid glass: superficie translúcida + blur + borde con brillo + reflejo arriba */
+  --px-glass-bg:      rgba(28, 28, 30, 0.55);
+  --px-glass-border:  rgba(255, 255, 255, 0.10);
+  --px-glass-shadow:  inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 32px rgba(0, 0, 0, 0.35);
+  --px-glass-menu-bg: rgba(28, 28, 30, 0.72);
+  --px-glass-hover:   rgba(255, 255, 255, 0.07);
+  --px-glass-blur:    blur(24px) saturate(170%);
+  /* Velo sobre el video del Home (en claro lo aclara para que no quede oscuro) */
+  --px-video-veil:    rgba(15, 15, 15, 0.15);
 }
 
 /* ─── Suppress nav tap highlight ────────────────────────────────── */
@@ -188,8 +191,11 @@ html.theme-transitioning * {
   font-size: 15px;
   font-weight: 600;
   color: var(--px-white);
-  background: transparent;
-  border: 1px solid var(--px-border-glow);
+  background: var(--px-glass-bg);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
+  box-shadow: var(--px-glass-shadow);
+  border: 1px solid var(--px-glass-border);
   border-radius: 999px;
   padding: 11px 24px;
   cursor: pointer;
@@ -386,11 +392,29 @@ textarea:focus-visible {
 }
 
 /* ─── Mega menu ─────────────────────────────────────────────────── */
+/* ─── Liquid glass ──────────────────────────────────────────────── */
+.glass {
+  background: var(--px-glass-bg);
+  border: 1px solid var(--px-glass-border);
+  box-shadow: var(--px-glass-shadow);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
+}
+.glass-menu {
+  background: var(--px-glass-menu-bg);
+  border: 1px solid var(--px-glass-border);
+  box-shadow: var(--px-glass-shadow), var(--px-shadow-md);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
+}
+
 .mega-menu-panel {
   background: var(--px-glass-menu-bg);
-  border: 1px solid var(--px-border);
+  border: 1px solid var(--px-glass-border);
   border-radius: var(--px-radius-lg);
-  box-shadow: var(--px-shadow-md);
+  box-shadow: var(--px-glass-shadow), var(--px-shadow-md);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
 }
 
 /* ─── Pref trigger button (ícono redondo del navbar) ─────────────── */
@@ -408,10 +432,12 @@ textarea:focus-visible {
 
 /* ─── Pref dropdown panel ───────────────────────────────────────── */
 .pref-dropdown-panel {
-  background: var(--px-surface);
-  border: 1px solid var(--px-border);
-  border-radius: var(--px-radius);
-  box-shadow: var(--px-shadow-md);
+  background: var(--px-glass-menu-bg);
+  border: 1px solid var(--px-glass-border);
+  border-radius: var(--px-radius-lg);
+  box-shadow: var(--px-glass-shadow), var(--px-shadow-md);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
 }
 
 /* ─── Navbar links (TradingView: texto medio, pastilla al hover) ── */
@@ -436,12 +462,15 @@ textarea:focus-visible {
 
 /* ─── Tarjeta grande (secciones del Home) ──────────────────────── */
 .tv-card {
-  background: var(--px-surface);
-  border: 1px solid var(--px-border);
+  background: var(--px-glass-bg);
+  border: 1px solid var(--px-glass-border);
   border-radius: var(--px-radius-xl);
+  box-shadow: var(--px-glass-shadow);
+  backdrop-filter: var(--px-glass-blur);
+  -webkit-backdrop-filter: var(--px-glass-blur);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
-.tv-card:hover { border-color: var(--px-border-glow); }
+.tv-card:hover { border-color: var(--px-border-glow); transform: translateY(-2px); }
 
 /* ─── Noise texture overlay ─────────────────────────────────────── */
 .noise-overlay {
@@ -512,11 +541,12 @@ html.light-mode {
   --px-shadow-sm:   0 1px 3px rgba(19,23,34,0.06);
   --px-shadow-md:   0 12px 32px rgba(19,23,34,0.10);
   --px-shadow-hover:0 16px 40px rgba(19,23,34,0.12);
-  --px-glass-bg:      #ffffff;
-  --px-glass-border:  #e0e3eb;
-  --px-glass-shadow:  0 1px 3px rgba(19,23,34,0.06);
-  --px-glass-menu-bg: #ffffff;
-  --px-glass-hover:   rgba(19, 23, 34, 0.04);
+  --px-glass-bg:      rgba(255, 255, 255, 0.62);
+  --px-glass-border:  rgba(19, 23, 34, 0.08);
+  --px-glass-shadow:  inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 8px 32px rgba(19, 23, 34, 0.08);
+  --px-glass-menu-bg: rgba(255, 255, 255, 0.82);
+  --px-glass-hover:   rgba(19, 23, 34, 0.05);
+  --px-video-veil:    rgba(255, 255, 255, 0.78);
 }
 
 html.light-mode .noise-overlay  { opacity: 0.015; }

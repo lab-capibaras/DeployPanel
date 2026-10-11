@@ -150,22 +150,20 @@ function MobileBottomNav() {
   if (loading) return null;
 
   const popupStyle = {
-    position: 'absolute', bottom: 'calc(100% + 10px)',
-    background: 'var(--px-surface)', border: '1px solid var(--px-border)', borderRadius: 16,
-    boxShadow: 'var(--px-shadow-md)', overflow: 'hidden',
+    position: 'absolute', bottom: 'calc(100% + 10px)', borderRadius: 16, overflow: 'hidden',
   };
 
   return (
     <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 12, left: 12, right: 12 }}>
 
       {showPrefs && (
-        <div style={{ ...popupStyle, right: 0 }}>
+        <div className="glass-menu" style={{ ...popupStyle, right: 0 }}>
           <PreferencesPanel />
         </div>
       )}
 
       {showUser && user && (
-        <div style={{ ...popupStyle, right: 0, minWidth: 220, padding: 6 }}>
+        <div className="glass-menu" style={{ ...popupStyle, right: 0, minWidth: 220, padding: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px 12px', marginBottom: 6, borderBottom: '1px solid var(--px-border)' }}>
             <Avatar user={user} size={32} />
             <div style={{ minWidth: 0 }}>
@@ -185,9 +183,8 @@ function MobileBottomNav() {
         </div>
       )}
 
-      <nav style={{
-        background: 'var(--px-surface)', border: '1px solid var(--px-border)', borderRadius: 18,
-        boxShadow: 'var(--px-shadow-md)', display: 'flex', alignItems: 'stretch', padding: '4px 6px',
+      <nav className="glass-menu" style={{
+        borderRadius: 999, display: 'flex', alignItems: 'stretch', padding: '4px 6px',
       }}>
         <BottomNavItem to="/" icon={<HomeNavIcon />} label={t.nav.home} active={loc.pathname === '/'} />
         <BottomNavItem to="/deploy" icon={<DeployNavIcon />} label={t.nav.deploy} active={loc.pathname === '/deploy'} />
@@ -366,10 +363,9 @@ function UserMenu() {
         </span>
       </button>
       {open && (
-        <div style={{
+        <div className="glass-menu" style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 200,
-          background: 'var(--px-surface)', border: '1px solid var(--px-border)',
-          borderRadius: 14, boxShadow: 'var(--px-shadow-md)', padding: 6, minWidth: 240,
+          borderRadius: 16, padding: 6, minWidth: 240,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px 12px', marginBottom: 6, borderBottom: '1px solid var(--px-border)' }}>
             <Avatar user={user} size={36} />
@@ -410,17 +406,35 @@ const Navbar = React.memo(function Navbar() {
 
   const linkClass = (path) => `tv-nav-link ${pathname.startsWith(path) ? 'active' : ''}`;
 
+  const ease = 'cubic-bezier(0.16,1,0.3,1)';
+  // Al bajar: pastilla flotante centrada (máx. 1200px) con liquid glass
+  const side = scrolled ? 'max(16px, calc(50% - 600px))' : '0px';
+
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 hidden md:block"
+      className="fixed z-50 hidden md:block"
       style={{
-        height: 64,
-        background: 'var(--nav-bg)',
-        borderBottom: `1px solid ${scrolled ? 'var(--px-border)' : 'transparent'}`,
-        transition: 'border-color 0.2s ease',
+        top: scrolled ? 12 : 0,
+        left: side,
+        right: side,
+        height: scrolled ? 56 : 64,
+        borderRadius: scrolled ? 999 : 0,
+        border: '1px solid transparent',
+        // Arriba: solo una línea inferior · Flotante: borde completo
+        borderColor: scrolled ? 'var(--px-glass-border)' : 'transparent transparent var(--px-glass-border)',
+        boxShadow: scrolled ? 'var(--px-glass-shadow), var(--px-shadow-md)' : 'none',
+        transition: `top 0.45s ${ease}, left 0.45s ${ease}, right 0.45s ${ease}, height 0.45s ${ease}, border-radius 0.45s ${ease}, box-shadow 0.3s ease`,
       }}
     >
-      <div style={{ maxWidth: 1440, height: '100%', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* El blur vive en esta capa y no en el <nav>: un elemento con backdrop-filter
+          "encierra" a sus hijos, y el mega-menú (también glass) dejaría de difuminar la página. */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, zIndex: -1, pointerEvents: 'none', borderRadius: 'inherit',
+        background: scrolled ? 'var(--px-glass-menu-bg)' : 'var(--px-glass-bg)',
+        backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
+        transition: 'background 0.3s ease',
+      }} />
+      <div style={{ maxWidth: 1440, height: '100%', margin: '0 auto', padding: scrolled ? '0 8px 0 18px' : '0 24px', display: 'flex', alignItems: 'center', gap: 8, transition: `padding 0.45s ${ease}` }}>
 
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, marginRight: 16 }}>
           <BrandMark />
