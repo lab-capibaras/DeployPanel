@@ -49,7 +49,7 @@ export default function Home() {
 
   return (
     <div className="page-transition" style={{ overflowX: 'hidden' }}>
-      <VideoBackground src="/home-bg.mp4" poster="/home-bg-poster.jpg" />
+      <VideoBackground />
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
       <section style={{ position: 'relative', padding: 'clamp(96px, 12vw, 160px) 24px clamp(48px, 6vw, 80px)', textAlign: 'center' }}>

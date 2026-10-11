@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // veil='strong' oscurece más el video: para páginas con mucho texto (Deploy, Dashboard...)
-export default function VideoBackground({ src = '/home-bg.mp4', poster = '/home-bg-poster.jpg', veil = 'soft' }) {
+export default function VideoBackground({ src = '/bg-planets-ascii.mp4', poster = '/bg-planets-ascii-poster.jpg', veil = 'soft' }) {
   const ref = useRef(null);
 
   // Con "reducir movimiento" activado queda el primer fotograma (poster), sin animación
