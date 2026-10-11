@@ -180,7 +180,7 @@ function TotpGate({ onUnlock }) {
   }
 
   return (
-    <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div className="page-transition" style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ ...card, width: '100%', maxWidth: 380, padding: 32, textAlign: 'center' }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 6px', color: 'var(--px-white)' }}>Console</h1>
         <p style={{ ...muted, margin: '0 0 24px' }}>Ingresa el código de Google Authenticator</p>
