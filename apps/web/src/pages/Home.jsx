@@ -59,7 +59,7 @@ export default function Home() {
           <h1 className="fade-up fade-up-1" style={{ margin: '0 auto 24px', fontWeight: 800, fontSize: 'clamp(52px, 10vw, 128px)', letterSpacing: '-0.045em', lineHeight: 0.98, color: 'var(--px-white)' }}>
             {h.h1_1}
             <br />
-            <span style={{ background: 'linear-gradient(90deg, #2962ff, #7aa2ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{h.h1_2}</span>
+            <span className="text-gradient-blue">{h.h1_2}</span>
           </h1>
 
           <p className="fade-up fade-up-2" style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: 'var(--px-muted)', maxWidth: 660, margin: '0 auto', lineHeight: 1.55 }}>

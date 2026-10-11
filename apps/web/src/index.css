@@ -507,10 +507,30 @@ textarea:focus-visible {
 .home-footer-link:hover { color: var(--px-white); }
 
 
+/* ─── Texto con degradado azul animado (titular del Home) ───────── */
+@keyframes text-gradient-flow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 200% 50%; }
+}
+.text-gradient-blue {
+  /* Solo azules; el primer y el último color son iguales para que el loop no salte */
+  background: linear-gradient(90deg, #1e3fae, #2962ff, #5b8cff, #9db8ff, #5b8cff, #2962ff, #1e3fae);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-gradient-flow 6s linear infinite;
+  /* background-clip:text solo pinta dentro de la caja; con letter-spacing negativo
+     el trazo final de la última letra se salía y quedaba cortado */
+  display: inline-block;
+  padding: 0 0.08em 0.08em 0;
+  margin-right: -0.08em;
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4,
-  .swiss-line, .swiss-marquee, .reveal, .hero-blob {
+  .swiss-line, .swiss-marquee, .reveal, .hero-blob, .text-gradient-blue {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
