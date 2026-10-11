@@ -8,6 +8,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useAuth } from '../hooks/useAuth';
+import VideoBackground from '../components/VideoBackground';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
 
@@ -132,9 +133,9 @@ function StarDestNode({ data, selected }) {
 
   return (
     <div style={{
-      minWidth: 170, maxWidth: 240, padding: '10px 14px', borderRadius: 12,
+      minWidth: 170, maxWidth: 240, padding: '12px 16px', borderRadius: 16,
       background: isNote ? 'rgba(250,204,21,0.12)' : 'var(--px-surface)',
-      border: `1px solid ${selected ? k.color : 'var(--px-border)'}`,
+      border: `1px solid ${selected ? k.color : 'var(--px-glass-border)'}`,
       boxShadow: selected ? `0 0 0 3px ${k.color}33` : '0 4px 16px rgba(0,0,0,0.12)',
       transition: 'border-color .15s, box-shadow .15s',
     }}>
@@ -168,14 +169,14 @@ const nodeTypes = { stardest: StarDestNode }; // fuera del componente para que n
 /* ─── Estilos ─── */
 const muted = { color: 'var(--px-muted)', fontSize: 13 };
 const btn = (variant = 'default') => ({
-  padding: '7px 12px', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
+  padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
   border: `1px solid ${variant === 'danger' ? 'rgba(239,68,68,0.4)' : 'var(--px-border)'}`,
   background: variant === 'primary' ? 'var(--px-white)' : variant === 'danger' ? 'rgba(239,68,68,0.08)' : 'transparent',
   color: variant === 'primary' ? 'var(--px-bg)' : variant === 'danger' ? RED : 'var(--px-white)',
 });
 const field = {
-  width: '100%', boxSizing: 'border-box', padding: '8px 10px', fontSize: 13, borderRadius: 8, outline: 'none',
-  border: '1px solid var(--px-border)', background: 'var(--px-bg)', color: 'var(--px-white)', fontFamily: 'inherit',
+  width: '100%', boxSizing: 'border-box', padding: '9px 12px', fontSize: 13, borderRadius: 12, outline: 'none',
+  border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-hover)', color: 'var(--px-white)', fontFamily: 'inherit',
 };
 const labelStyle = { display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--px-muted)', margin: '14px 0 6px' };
 
@@ -336,7 +337,7 @@ function BoardEditor({ boardId }) {
       <div className="board-root" style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: 'var(--px-bg)' }}>
 
         {/* Barra superior */}
-        <div className="board-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--px-border)', overflowX: 'auto' }}>
+        <div className="board-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--px-glass-border)', overflowX: 'auto', background: 'var(--px-glass-menu-bg)', backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)' }}>
           <button style={btn()} onClick={() => navigate('/board')}>{b.back}</button>
           <input
             aria-label={b.name_label}
@@ -369,7 +370,7 @@ function BoardEditor({ boardId }) {
         <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative' }}>
 
           {/* Paleta */}
-          <aside className="board-palette" style={{ width: 190, flexShrink: 0, padding: 12, borderRight: '1px solid var(--px-border)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <aside className="board-palette" style={{ width: 190, flexShrink: 0, padding: 12, borderRight: '1px solid var(--px-glass-border)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--px-glass-bg)', backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)' }}>
             {Object.keys(KINDS).map(kind => (
               <div
                 key={kind}
@@ -384,7 +385,7 @@ function BoardEditor({ boardId }) {
                 }}
                 onClick={() => addAtCenter(kind)}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addAtCenter(kind); } }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 10, cursor: 'grab', border: '1px solid var(--px-border)', background: 'var(--px-surface)', fontSize: 13, color: 'var(--px-white)', userSelect: 'none' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 12, cursor: 'grab', border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-hover)', fontSize: 13, color: 'var(--px-white)', userSelect: 'none' }}
               >
                 <KindIcon kind={kind} />
                 <span className="palette-label">{b.kinds[kind]}</span>
@@ -419,7 +420,7 @@ function BoardEditor({ boardId }) {
 
           {/* Inspector */}
           {(selectedNode || selectedEdge) && (
-            <aside className="board-inspector" style={{ width: 270, flexShrink: 0, padding: 16, borderLeft: '1px solid var(--px-border)', background: 'var(--px-surface)', overflowY: 'auto' }}>
+            <aside className="board-inspector" style={{ width: 270, flexShrink: 0, padding: 16, borderLeft: '1px solid var(--px-glass-border)', background: 'var(--px-glass-menu-bg)', backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)', overflowY: 'auto' }}>
               {selectedNode && (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--px-white)' }}>
@@ -527,9 +528,10 @@ function BoardList() {
 
   return (
     <div className="page-transition" style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+      <VideoBackground veil="strong" />
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: 'var(--px-white)' }}>{b.title}</h1>
+          <h1 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.035em', margin: 0, color: 'var(--px-white)' }}>{b.title}</h1>
           <p style={{ ...muted, margin: '6px 0 0' }}>{b.subtitle}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -542,7 +544,7 @@ function BoardList() {
       {!boards && !error && <p style={muted}>{b.loading}</p>}
 
       {boards && boards.length === 0 && (
-        <div style={{ padding: 48, textAlign: 'center', borderRadius: 16, border: '1px dashed var(--px-border)', ...muted }}>
+        <div className="glass" style={{ padding: 48, textAlign: 'center', borderRadius: 24, ...muted }}>
           {b.empty}
         </div>
       )}
@@ -554,9 +556,9 @@ function BoardList() {
               onClick={() => navigate(`/board/${board.id}`)}
               onKeyDown={e => { if (e.key === 'Enter') navigate(`/board/${board.id}`); }}
               style={{
-                padding: 20, borderRadius: 14, cursor: 'pointer',
+                padding: 22, borderRadius: 20, cursor: 'pointer',
                 border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-bg)',
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: 'var(--px-glass-shadow)',
+                backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)', boxShadow: 'var(--px-glass-shadow)',
               }}>
               <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--px-white)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{board.name}</div>
               <div style={{ ...muted, fontSize: 12, marginTop: 6 }}>

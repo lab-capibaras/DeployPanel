@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import VideoBackground from '../components/VideoBackground';
 
 /* ─── API ─── */
 // La sesión de StarDest va en la cookie httpOnly auth_token (credentials: 'include');
@@ -96,13 +97,14 @@ const mono = "'JetBrains Mono', monospace";
 
 const card = {
   background: 'var(--px-glass-bg)', border: '1px solid var(--px-glass-border)',
-  borderRadius: 14, padding: 20, boxShadow: 'var(--px-glass-shadow)',
+  borderRadius: 20, padding: 20, boxShadow: 'var(--px-glass-shadow)',
+  backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
 };
 const muted = { color: 'var(--px-muted)', fontSize: 13 };
 const title = { fontWeight: 700, color: 'var(--px-white)', marginBottom: 12 };
 const grid = (min) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${min}px, 1fr))`, gap: 12 });
 const btn = (variant = 'default') => ({
-  padding: '6px 12px', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer',
+  padding: '7px 14px', fontSize: 13, fontWeight: 600, borderRadius: 999, cursor: 'pointer',
   border: `1px solid ${variant === 'danger' ? 'rgba(239,68,68,0.4)' : 'var(--px-border)'}`,
   background: variant === 'primary' ? 'var(--px-white)' : variant === 'danger' ? 'rgba(239,68,68,0.08)' : 'transparent',
   color: variant === 'primary' ? 'var(--px-bg)' : variant === 'danger' ? RED : 'var(--px-white)',
@@ -330,7 +332,7 @@ function DeploysTab({ onLocked }) {
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Buscar por subdominio, repo o usuario..."
         aria-label="Buscar deploys"
-        style={{ padding: '10px 14px', fontSize: 14, borderRadius: 10, outline: 'none', border: '1px solid var(--px-border)', background: 'var(--px-surface)', color: 'var(--px-white)' }}
+        style={{ padding: '12px 18px', fontSize: 14, borderRadius: 999, outline: 'none', border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-bg)', backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)', color: 'var(--px-white)' }}
       />
       <div style={muted}>{deploys.length} de {data.deploys.length} deploys</div>
 
@@ -351,7 +353,7 @@ function DeploysTab({ onLocked }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {d.containers.map(c => (
-              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 8, background: 'var(--px-bg)' }}>
+              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', borderRadius: 12, background: 'var(--px-glass-hover)' }}>
                 <span style={{ fontFamily: mono, fontSize: 12, color: 'var(--px-white)', minWidth: 220 }}>{c.name}</span>
                 <Badge value={c.state} />
                 <span style={{ ...muted, fontSize: 12, flex: 1 }}>{c.status}</span>
@@ -520,7 +522,7 @@ export default function Console() {
   }, [user, loading, navigate]);
 
   if (loading || !user?.isAdmin) return null;
-  if (!unlocked) return <TotpGate onUnlock={() => setUnlocked(true)} />;
+  if (!unlocked) return <><VideoBackground veil="strong" /><TotpGate onUnlock={() => setUnlocked(true)} /></>;
 
   function lock() {
     sessionStorage.removeItem('admin_token');
@@ -529,21 +531,22 @@ export default function Console() {
 
   return (
     <div className="page-transition" style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 24px 80px' }}>
+      <VideoBackground veil="strong" />
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
         <div>
-          <span className="swiss-index" style={{ display: 'block', marginBottom: 4 }}>Admin</span>
-          <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, letterSpacing: '-0.03em', margin: 0, color: 'var(--px-white)' }}>Console</h1>
+          <span className="px-badge" style={{ display: 'inline-block', marginBottom: 14 }}>Admin</span>
+          <h1 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 800, letterSpacing: '-0.035em', margin: 0, color: 'var(--px-white)' }}>Console</h1>
           <p style={{ ...muted, margin: '6px 0 0' }}>Administración de StarDest</p>
         </div>
         <button style={btn()} onClick={lock}>Bloquear</button>
       </div>
 
-      <div role="tablist" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 12, marginBottom: 24, width: 'fit-content', maxWidth: '100%', overflowX: 'auto', background: 'var(--px-surface)', border: '1px solid var(--px-border)' }}>
+      <div role="tablist" className="glass" style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 999, marginBottom: 24, width: 'fit-content', maxWidth: '100%', overflowX: 'auto' }}>
         {TABS.map(t => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} style={{
-            padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 9, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-            background: tab === t.id ? 'var(--px-bg)' : 'transparent',
-            color: tab === t.id ? 'var(--px-white)' : 'var(--px-muted)',
+            padding: '8px 18px', fontSize: 14, fontWeight: 600, borderRadius: 999, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
+            background: tab === t.id ? 'var(--px-accent)' : 'transparent',
+            color: tab === t.id ? 'var(--px-accent-fg)' : 'var(--px-muted)',
           }}>
             {t.label}
           </button>

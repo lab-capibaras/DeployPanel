@@ -4,7 +4,8 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function VideoBackground({ src, poster }) {
+// veil='strong' oscurece más el video: para páginas con mucho texto (Deploy, Dashboard...)
+export default function VideoBackground({ src = '/home-bg.mp4', poster = '/home-bg-poster.jpg', veil = 'soft' }) {
   const ref = useRef(null);
 
   // Con "reducir movimiento" activado queda el primer fotograma (poster), sin animación
@@ -34,7 +35,7 @@ export default function VideoBackground({ src, poster }) {
         preload="auto"
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
       />
-      <div style={{ position: 'absolute', inset: 0, background: 'var(--px-video-veil)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: veil === 'strong' ? 'var(--px-video-veil-strong)' : 'var(--px-video-veil)' }} />
     </div>,
     document.body
   );

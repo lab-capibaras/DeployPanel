@@ -85,7 +85,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                     style={{
                         flex: 1, minWidth: 200,
                         padding: '10px 14px', fontSize: 14,
-                        border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                        border: '1px solid var(--px-border)', borderRadius: 12,
                         background: 'var(--px-bg)', color: 'var(--px-white)',
                         outline: 'none',
                     }}
@@ -96,7 +96,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                         onClick={() => setFilter(f)}
                         style={{
                             padding: '8px 14px', fontSize: 13, cursor: 'pointer',
-                            borderRadius: 'var(--px-radius-sm)', border: '1px solid var(--px-border)',
+                            borderRadius: 999, border: '1px solid var(--px-border)',
                             background: filter === f ? 'var(--px-accent)' : 'transparent',
                             color: filter === f ? 'var(--px-accent-fg)' : 'var(--px-muted)',
                             transition: 'all 0.15s ease',
@@ -112,7 +112,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                     padding: 32, textAlign: 'center',
                     border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-lg)',
                     background: 'var(--px-glass-bg)',
-                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                     color: 'var(--px-muted)', fontSize: 14,
                 }}>
                     {dash.gh_repos_empty}
@@ -131,7 +131,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                                     border: '1px solid var(--px-glass-border)',
                                     borderRadius: 'var(--px-radius)',
                                     background: 'var(--px-glass-bg)',
-                                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                                    backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                                     flexWrap: 'wrap',
                                     transition: 'transform 0.2s cubic-bezier(0.23,1,0.32,1), border-color 0.2s ease',
                                 }}
@@ -205,7 +205,7 @@ function RepoList({ repos, deployedSet, loading, error, dash }) {
                                     style={{
                                         fontFamily: "'Inter',sans-serif",
                                         padding: '9px 18px', fontSize: 12, fontWeight: 600,
-                                        borderRadius: 'var(--px-radius-sm)', cursor: 'pointer',
+                                        borderRadius: 999, cursor: 'pointer',
                                         background: isDeployed ? 'transparent' : 'var(--px-accent)',
                                         color: isDeployed ? 'var(--px-muted)' : 'var(--px-accent-fg)',
                                         border: isDeployed ? '1px solid var(--px-border)' : 'none',
@@ -238,7 +238,7 @@ function OrgCard({ org, onClick, dash }) {
                 gap: 12, textAlign: 'center',
                 background: 'var(--px-glass-bg)',
                 borderColor: 'var(--px-glass-border)',
-                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
             }}
         >
             <img
@@ -371,7 +371,7 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
                         disabled={myLoading}
                         style={{
                             padding: '6px 14px', fontSize: 13, cursor: myLoading ? 'not-allowed' : 'pointer',
-                            border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                            border: '1px solid var(--px-border)', borderRadius: 999,
                             background: 'transparent', color: 'var(--px-muted)',
                             opacity: myLoading ? 0.6 : 1,
                         }}
@@ -386,7 +386,7 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
                     padding: '10px 16px', marginBottom: 16,
                     border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-sm)',
                     background: 'var(--px-glass-bg)',
-                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                     fontSize: 13,
                     color: 'var(--px-muted)',
                 }}>
@@ -414,7 +414,7 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
                                     fontFamily: "'Inter',sans-serif",
                                     display: 'flex', alignItems: 'center', gap: 8,
                                     marginBottom: 20, padding: '6px 14px',
-                                    border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                    border: '1px solid var(--px-border)', borderRadius: 999,
                                     background: 'transparent', color: 'var(--px-muted)',
                                     fontSize: 13, cursor: 'pointer',
                                 }}
@@ -459,7 +459,7 @@ export default function GitHubReposPanel({ deployedRepos = [] }) {
                             padding: 32, textAlign: 'center',
                             border: '1px solid var(--px-glass-border)', borderRadius: 'var(--px-radius-lg)',
                             background: 'var(--px-glass-bg)',
-                            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                            backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                             color: 'var(--px-muted)', fontSize: 14,
                         }}>
                             {dash.gh_orgs_empty}{!hasToken && dash.gh_orgs_empty_hint}

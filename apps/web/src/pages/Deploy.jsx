@@ -7,6 +7,7 @@ import JSZip from 'jszip';
 import { useAuth } from '../hooks/useAuth';
 import WebhookInstructions from '../components/WebhookInstructions';
 import DeployLogs from '../components/DeployLogs';
+import VideoBackground from '../components/VideoBackground';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -410,22 +411,22 @@ export default function Deploy() {
   const u = t.deploy.upload;
 
   // ===== DESIGN CONSTANTS (todo por tokens: ver index.css) =====
-  const pageBg = 'var(--px-bg)';
+  const pageBg = 'transparent'; // deja ver el video de fondo
   const pageTextColor = 'var(--px-white)';
-  const cardBg = 'var(--px-surface)';
-  const cardBorder = 'var(--px-border)';
-  const cardShadow = 'var(--px-shadow-md)';
+  const cardBg = 'var(--px-glass-bg)';
+  const cardBorder = 'var(--px-glass-border)';
+  const cardShadow = 'var(--px-glass-shadow), var(--px-shadow-md)';
 
   const textTitle = 'var(--px-white)';
   const textMuted = 'var(--px-muted)';
   const labelColor = 'var(--px-muted)';
 
   // Input styles
-  const inputBg = 'var(--px-bg)';
+  const inputBg = 'var(--px-glass-hover)';
   const inputColor = 'var(--px-white)';
-  const inputBorder = 'var(--px-border)';
+  const inputBorder = 'var(--px-glass-border)';
   const inputShadow = 'none';
-  const inputRadius = 10;
+  const inputRadius = 12;
 
   // Button styles (pastilla azul)
   const btnGradient = 'var(--px-accent)';
@@ -439,8 +440,7 @@ export default function Deploy() {
   return (
     <div className="relative min-h-screen overflow-x-hidden page-transition" style={{ backgroundColor: pageBg, color: pageTextColor }}>
 
-      {/* Brillo azul sutil arriba, como en tradingview.com */}
-      <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(50% 35% at 50% 0%, var(--px-glow-blue), transparent 70%)' }} />
+      <VideoBackground veil="strong" />
 
       <div className="relative min-h-screen flex flex-col items-center px-4 pt-16 pb-20">
 
@@ -466,6 +466,8 @@ export default function Deploy() {
             border: `1px solid ${cardBorder}`,
             borderRadius: cardRadius,
             boxShadow: cardShadow,
+            backdropFilter: 'var(--px-glass-blur)',
+            WebkitBackdropFilter: 'var(--px-glass-blur)',
           }}>
 
             {/* ── Tab switcher ── */}
@@ -474,8 +476,9 @@ export default function Deploy() {
                 display: 'flex',
                 gap: 4,
                 marginBottom: 32,
-                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                borderRadius: 12,
+                background: 'var(--px-glass-hover)',
+                border: '1px solid var(--px-glass-border)',
+                borderRadius: 999,
                 padding: 4,
               }}>
                 {[
@@ -493,20 +496,16 @@ export default function Deploy() {
                         flex: 1,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         padding: '10px 16px',
-                        borderRadius: 9,
-                        background: isActive
-                          ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')
-                          : 'transparent',
+                        borderRadius: 999,
+                        background: isActive ? 'var(--px-accent)' : 'transparent',
                         border: 'none',
-                        color: isActive ? 'var(--px-white)' : textMuted,
+                        color: isActive ? 'var(--px-accent-fg)' : textMuted,
                         fontFamily: "'Inter',sans-serif",
                         fontWeight: 700,
                         fontSize: 'clamp(12px, 3.5vw, 13px)',
                         cursor: 'pointer',
                         transition: 'all 0.2s cubic-bezier(0.23,1,0.32,1)',
-                        boxShadow: isActive
-                          ? (isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)')
-                          : 'none',
+                        boxShadow: 'none',
                       }}
                     >
                       <svg style={{ width: 14, height: 14, flexShrink: 0 }} fill={tab.id === 'git' ? 'currentColor' : 'none'} stroke={tab.id === 'upload' ? 'currentColor' : 'none'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -528,7 +527,7 @@ export default function Deploy() {
                   <label style={{
                     display: 'block',
                     fontFamily: "'Inter',sans-serif",
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     color: labelColor,
                     marginBottom: 8,
@@ -540,8 +539,8 @@ export default function Deploy() {
                       value={formData.repoUrl}
                       onChange={e => setFormData(f => ({ ...f, repoUrl: e.target.value }))}
                       onFocus={(e) => {
-                        e.target.style.borderColor = 'var(--px-border-glow)';
-                        e.target.style.boxShadow = '0 0 0 1px var(--px-border-glow), inset 0 0 12px rgba(128,128,128,0.08)';
+                        e.target.style.borderColor = 'var(--px-accent)';
+                        e.target.style.boxShadow = '0 0 0 3px var(--px-accent-soft)';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = inputBorder;
@@ -580,14 +579,14 @@ export default function Deploy() {
                         border: '1px solid var(--px-accent)',
                         color: 'var(--px-accent-fg)',
                         fontFamily: "'Inter',sans-serif",
-                        fontSize: 16,
-                        letterSpacing: '0.05em',
+                        fontSize: 15,
+                        fontWeight: 600,
                         cursor: loadingBranches ? 'not-allowed' : 'pointer',
                         boxShadow: btnShadow,
                         transition: 'all 0.15s ease',
                         opacity: loadingBranches ? 0.6 : 1,
                         whiteSpace: 'nowrap',
-                        borderRadius: `0 ${btnRadius}px ${btnRadius}px 0`,
+                        borderRadius: btnRadius,
                       }}
                     >
                       {loadingBranches ? (
@@ -620,8 +619,8 @@ export default function Deploy() {
                       value={formData.branch}
                       onChange={e => setFormData(f => ({ ...f, branch: e.target.value }))}
                       onFocus={(e) => {
-                        e.target.style.borderColor = 'var(--px-border-glow)';
-                        e.target.style.boxShadow = '0 0 0 1px var(--px-border-glow), inset 0 0 12px rgba(128,128,128,0.08)';
+                        e.target.style.borderColor = 'var(--px-accent)';
+                        e.target.style.boxShadow = '0 0 0 3px var(--px-accent-soft)';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = inputBorder;
@@ -651,7 +650,7 @@ export default function Deploy() {
                   <label style={{
                     display: 'block',
                     fontFamily: "'Inter',sans-serif",
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     color: labelColor,
                     marginBottom: 8,
@@ -663,8 +662,8 @@ export default function Deploy() {
                       value={formData.subdomain}
                       onChange={handleSubdomainChange}
                       onFocus={(e) => {
-                        e.target.style.borderColor = subdomainError ? '#ef4444' : 'var(--px-border-glow)';
-                        e.target.style.boxShadow = subdomainError ? '0 0 0 1px #ef4444' : '0 0 0 1px var(--px-border-glow), inset 0 0 12px rgba(128,128,128,0.08)';
+                        e.target.style.borderColor = subdomainError ? '#ef4444' : 'var(--px-accent)';
+                        e.target.style.boxShadow = subdomainError ? '0 0 0 3px rgba(239,68,68,0.15)' : '0 0 0 3px var(--px-accent-soft)';
                       }}
                       onBlur={(e) => {
                         e.target.style.borderColor = subdomainError ? '#ef4444' : inputBorder;
@@ -1167,7 +1166,7 @@ export default function Deploy() {
                           cursor: uploadFile ? 'default' : 'pointer',
                           transition: 'all 0.2s ease',
                           textAlign: 'center',
-                          boxShadow: isDragOver ? `0 0 0 2px var(--px-border-glow)` : 'none',
+                          boxShadow: isDragOver ? '0 0 0 3px var(--px-accent-soft)' : 'none',
                         }}
                       >
                         {uploadFile ? (
@@ -1188,7 +1187,7 @@ export default function Deploy() {
                                 marginTop: 4, padding: '4px 14px',
                                 background: 'transparent', border: `1px solid ${inputBorder}`,
                                 color: textMuted, fontFamily: "'Inter',sans-serif", fontSize: 14,
-                                cursor: 'pointer', letterSpacing: '0.04em',
+                                cursor: 'pointer',
                                 borderRadius: 8,
                               }}
                             >{u.file_change}</button>
@@ -1238,8 +1237,8 @@ export default function Deploy() {
                           value={uploadSubdomain}
                           onChange={handleUploadSubdomainChange}
                           onFocus={(e) => {
-                            e.target.style.borderColor = uploadSubdomainError ? '#ef4444' : 'var(--px-border-glow)';
-                            e.target.style.boxShadow = uploadSubdomainError ? '0 0 0 1px #ef4444' : '0 0 0 1px var(--px-border-glow)';
+                            e.target.style.borderColor = uploadSubdomainError ? '#ef4444' : 'var(--px-accent)';
+                            e.target.style.boxShadow = uploadSubdomainError ? '0 0 0 3px rgba(239,68,68,0.15)' : '0 0 0 3px var(--px-accent-soft)';
                           }}
                           onBlur={(e) => {
                             e.target.style.borderColor = uploadSubdomainError ? '#ef4444' : inputBorder;

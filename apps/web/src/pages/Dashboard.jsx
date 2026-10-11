@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../i18n';
 import { CopyIcon, CheckIcon } from '../components/Icons';
 import GitHubReposPanel from '../components/GitHubReposPanel';
+import VideoBackground from '../components/VideoBackground';
 
 // Debe coincidir con MAX_DEPLOYS_PER_USER en apps/builder/index.js
 const MAX_DEPLOYS_PER_USER = 5;
@@ -91,7 +92,7 @@ function GitHubTokenSection() {
         <div style={{
             padding: 24, borderRadius: 'var(--px-radius-lg)',
             border: '1px solid var(--px-glass-border)', background: 'var(--px-glass-bg)',
-            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
             marginBottom: 32,
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -116,7 +117,7 @@ function GitHubTokenSection() {
                     </span>
                     <button onClick={handleDisconnect} style={{
                         padding: '6px 14px', fontSize: 13, cursor: 'pointer',
-                        border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                        border: '1px solid var(--px-border)', borderRadius: 999,
                         background: 'transparent', color: 'var(--px-muted)',
                     }}>
                         {dash.gh_disconnect}
@@ -132,14 +133,14 @@ function GitHubTokenSection() {
                             placeholder={dash.gh_placeholder}
                             style={{
                                 flex: 1, padding: '10px 14px', fontSize: 14,
-                                border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                border: '1px solid var(--px-border)', borderRadius: 12,
                                 background: 'var(--px-bg)', color: 'var(--px-white)', outline: 'none',
                             }}
                         />
                         <button onClick={handleSave} disabled={saving || !token.trim()} style={{
                             padding: '10px 20px', fontSize: 14, fontWeight: 600,
                             background: 'var(--px-accent)', color: 'var(--px-accent-fg)',
-                            border: 'none', borderRadius: 'var(--px-radius-sm)', cursor: saving ? 'not-allowed' : 'pointer',
+                            border: 'none', borderRadius: 999, cursor: saving ? 'not-allowed' : 'pointer',
                             opacity: saving || !token.trim() ? 0.5 : 1,
                         }}>
                             {saving ? dash.gh_saving : dash.gh_save}
@@ -213,7 +214,7 @@ function CustomDomainSection({ deploy, dash }) {
                 style={{
                     fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
                     padding: '7px 14px',
-                    border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                    border: '1px solid var(--px-border)', borderRadius: 999,
                     background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
                     transition: 'border-color 0.15s ease, color 0.15s ease',
                 }}
@@ -247,7 +248,7 @@ function CustomDomainSection({ deploy, dash }) {
                             style={{
                                 flex: 1, padding: '7px 10px', fontSize: 13,
                                 fontFamily: "'JetBrains Mono',monospace",
-                                border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                border: '1px solid var(--px-border)', borderRadius: 12,
                                 background: 'var(--px-bg)', color: 'var(--px-white)', outline: 'none',
                             }}
                         />
@@ -258,7 +259,7 @@ function CustomDomainSection({ deploy, dash }) {
                                 fontFamily: "'Inter',sans-serif",
                                 padding: '7px 14px', fontSize: 13, fontWeight: 600,
                                 background: 'var(--px-accent)', color: 'var(--px-accent-fg)',
-                                border: 'none', borderRadius: 'var(--px-radius-sm)',
+                                border: 'none', borderRadius: 999,
                                 cursor: saving ? 'not-allowed' : 'pointer',
                                 opacity: saving || !domain.trim() ? 0.6 : 1,
                             }}
@@ -400,6 +401,7 @@ export default function Dashboard() {
 
     return (
         <div className="page-transition" style={{ minHeight: '100vh' }}>
+            <VideoBackground veil="strong" />
 
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
@@ -448,7 +450,7 @@ export default function Dashboard() {
                     border: '1px solid var(--px-glass-border)',
                     borderRadius: 'var(--px-radius-lg)',
                     background: 'var(--px-glass-bg)',
-                    backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                     boxShadow: 'var(--px-glass-shadow)',
                 }}>
                     <span style={{
@@ -482,7 +484,7 @@ export default function Dashboard() {
                                 border: '1px solid var(--px-glass-border)',
                                 borderRadius: 'var(--px-radius-lg)',
                                 background: 'var(--px-glass-bg)',
-                                backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                                backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
                                 boxShadow: 'var(--px-glass-shadow)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -560,7 +562,7 @@ export default function Dashboard() {
                                         padding: '9px 16px',
                                         background: 'transparent',
                                         border: '1px solid var(--px-border)',
-                                        borderRadius: 'var(--px-radius-sm)',
+                                        borderRadius: 999,
                                         color: 'var(--px-white)', textDecoration: 'none',
                                         textAlign: 'center',
                                         transition: 'border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
@@ -585,7 +587,7 @@ export default function Dashboard() {
                                                 padding: '9px 16px',
                                                 background: 'transparent',
                                                 border: '1px solid var(--px-border)',
-                                                borderRadius: 'var(--px-radius-sm)',
+                                                borderRadius: 999,
                                                 color: disabled ? 'var(--px-muted)' : 'var(--px-white)',
                                                 cursor: disabled ? 'not-allowed' : 'pointer',
                                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -613,7 +615,7 @@ export default function Dashboard() {
                                         padding: '9px 16px',
                                         background: 'rgba(255,43,0,0.06)',
                                         border: '1px solid rgba(255,43,0,0.25)',
-                                        borderRadius: 'var(--px-radius-sm)',
+                                        borderRadius: 999,
                                         color: deleting === deploy.subdomain ? 'var(--px-muted)' : 'var(--px-red)',
                                         cursor: deleting === deploy.subdomain ? 'not-allowed' : 'pointer',
                                         
@@ -637,7 +639,7 @@ export default function Dashboard() {
                                             padding: '7px 14px',
                                             background: 'rgba(255,180,0,0.08)',
                                             border: '1px solid rgba(255,180,0,0.3)',
-                                            borderRadius: 'var(--px-radius-sm)',
+                                            borderRadius: 999,
                                             color: '#ffb400',
                                             cursor: 'pointer',
                                             transition: 'background 0.15s ease, color 0.15s ease',
@@ -755,7 +757,7 @@ export default function Dashboard() {
                                         style={{
                                             fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 11,
                                             padding: '7px 14px',
-                                            border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
+                                            border: '1px solid var(--px-border)', borderRadius: 999,
                                             background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
                                             
                                             transition: 'border-color 0.15s ease, color 0.15s ease',

@@ -66,6 +66,7 @@ html[data-lang="en"] .nav-tools-es { display: none; }
   --px-glass-blur:    blur(24px) saturate(170%);
   /* Velo sobre el video del Home (en claro lo aclara para que no quede oscuro) */
   --px-video-veil:    rgba(15, 15, 15, 0.15);
+  --px-video-veil-strong: rgba(15, 15, 15, 0.55);
 }
 
 /* ─── Suppress nav tap highlight ────────────────────────────────── */
@@ -547,6 +548,7 @@ html.light-mode {
   --px-glass-menu-bg: rgba(255, 255, 255, 0.82);
   --px-glass-hover:   rgba(19, 23, 34, 0.05);
   --px-video-veil:    rgba(255, 255, 255, 0.78);
+  --px-video-veil-strong: rgba(255, 255, 255, 0.88);
 }
 
 html.light-mode .noise-overlay  { opacity: 0.015; }
