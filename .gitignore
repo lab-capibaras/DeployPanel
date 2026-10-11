@@ -25,3 +25,4 @@ dist-ssr
 
 # Datos en tiempo de ejecución del builder (DEPLOYS_DIR por defecto = raíz del repo)
 boards/
+webhooks/

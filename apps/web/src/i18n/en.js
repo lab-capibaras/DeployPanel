@@ -357,6 +357,7 @@ const en = {
       'Settings → Webhooks → Add webhook',
       'Paste the URL below into "Payload URL"',
       'Content type: application/json',
+      'Secret: paste the secret below',
       'Events: Just the push event',
       'Enable the webhook and save',
     ],
@@ -364,6 +365,14 @@ const en = {
     copied:        '✓ Copied',
     goto_settings: 'Go to GitHub Settings →',
     close:         'Close',
+    url_label:     'Payload URL',
+    secret_label:  'Secret',
+    secret_loading:'Loading secret...',
+    secret_error:  "Couldn't load the secret. Try again from the Dashboard.",
+    rotate:        'Generate new secret',
+    rotate_confirm:'The current secret will stop working and you will need to update it on GitHub. Continue?',
+    title_for:     (sub) => `Webhook for ${sub}`,
+    button:        'Webhook',
   },
 
   // ── Login ───────────────────────────────────────────────

@@ -55,8 +55,10 @@ const upload = multer({
     },
 });
 
-app.use(express.json({ limit: '1mb' })); // una pizarra grande pasa el default de 100 KB
-app.use(express.urlencoded({ extended: true }));
+// rawBody: la firma de los webhooks de GitHub se calcula sobre los bytes exactos recibidos
+const keepRawBody = (req, _res, buf) => { req.rawBody = buf; };
+app.use(express.json({ limit: '1mb', verify: keepRawBody })); // una pizarra grande pasa el default de 100 KB
+app.use(express.urlencoded({ extended: true, verify: keepRawBody }));
 app.use(express.static('public'));
 app.use(cookieParser());
 app.use(cors({
@@ -339,7 +341,11 @@ function writeCustomDomains(data) {
 }
 
 function normalizeUrl(url) {
-    return url.trim().replace(/\.git$/, '').toLowerCase();
+    return String(url || '').trim()
+        .replace(/\/+$/, '')
+        .replace(/\.git$/, '')
+        .replace(/\/+$/, '')
+        .toLowerCase();
 }
 
 function saveDeployment(repoUrl, branch, subdomain) {
@@ -356,18 +362,6 @@ function saveDeployment(repoUrl, branch, subdomain) {
     db[key] = subdomain;
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
     console.log(`[DB] Registro guardado: ${key} -> ${subdomain}`);
-}
-
-function getSubdomain(repoUrl, branch) {
-    if (!fs.existsSync(DB_FILE)) return null;
-    try {
-        const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-        const key = `${normalizeUrl(repoUrl)}#${branch}`;
-        return db[key] || null;
-    } catch (e) {
-        console.error("Error consultando DB_FILE:", e.message);
-        return null;
-    }
 }
 
 // ==========================================
@@ -2632,59 +2626,187 @@ app.get('/github-org-repos', requireAuth, async (req, res) => {
     }
 });
 
-// 2. Webhook Automático
-app.post('/webhook', async (req, res) => {
-    const payload = req.body;
-    console.log(`[Webhook] Petición recibida de GitHub`);
+// ==========================================
+// --- WEBHOOK DE GITHUB (push → redeploy, firmado) ---
+// ==========================================
+// Un secreto HMAC por deploy, guardado en un archivo persistente (no en labels de
+// Docker: no aparece en `docker inspect` y se puede generar para deploys existentes).
+// (misma base que DEPLOYS_DIR, que se declara más abajo en el archivo)
+const WEBHOOKS_DIR = path.join(process.env.DEPLOYS_DIR || path.join(__dirname, '..', '..'), 'webhooks');
+const WEBHOOK_SECRETS_FILE = path.join(WEBHOOKS_DIR, 'secrets.json');
 
-    if (payload.zen) {
-        return res.status(200).send('Ping recibido OK');
+function readWebhookSecrets() {
+    try {
+        return JSON.parse(fs.readFileSync(WEBHOOK_SECRETS_FILE, 'utf8'));
+    } catch {
+        return {};
     }
-    if (!payload.repository || !payload.ref) {
-        return res.status(400).send('Payload incompleto');
+}
+
+function writeWebhookSecrets(data) {
+    fs.mkdirSync(WEBHOOKS_DIR, { recursive: true });
+    const tmp = `${WEBHOOK_SECRETS_FILE}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
+    fs.renameSync(tmp, WEBHOOK_SECRETS_FILE);
+}
+
+function getOrCreateWebhookSecret(subdomain, { rotate = false } = {}) {
+    const all = readWebhookSecrets();
+    if (!all[subdomain] || rotate) {
+        all[subdomain] = { secret: crypto.randomBytes(24).toString('hex'), createdAt: new Date().toISOString() };
+        writeWebhookSecrets(all);
     }
+    return all[subdomain].secret;
+}
 
-    const repoUrl = payload.repository.html_url;
-    const pushBranch = payload.ref.replace('refs/heads/', '');
+function deleteWebhookSecret(subdomain) {
+    const all = readWebhookSecrets();
+    if (all[subdomain]) {
+        delete all[subdomain];
+        writeWebhookSecrets(all);
+    }
+}
 
-    if (normalizeUrl(repoUrl) === normalizeUrl('https://github.com/lab-capibaras/DeployPanel')) {
-        if (pushBranch === 'test' || pushBranch === 'master' || pushBranch === 'main') {
-            console.log(`[Webhook] Actualizando DeployPanel automáticamente desde rama: ${pushBranch}`);
-            res.status(200).send('Panel actualizando');
-            const updateCommand = `git pull origin ${pushBranch} && npm install && docker compose up -d --build deploy_panel web_frontend`;
-            exec(updateCommand, (error) => {
-                if (error) return console.error(`Error actualizando panel: ${error.message}`);
-                console.log(`Panel y Frontend actualizados con éxito. Reiniciando proceso...`);
-                setTimeout(() => process.exit(0), 2000);
-            });
-        } else {
-            res.status(200).send('Push en rama secundaria del panel ignorado');
-        }
+// Comparación en tiempo constante para no filtrar información por tiempos de respuesta
+function verifyGithubSignature(rawBody, header, secret) {
+    if (!rawBody || !header || !String(header).startsWith('sha256=')) return false;
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+    const a = Buffer.from(String(header));
+    const b = Buffer.from(expected);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const webhookRunning = new Set();  // subdominios construyéndose por webhook
+const webhookPending = new Set();  // subdominios con otro push en cola
+
+// Un push que llega mientras se construye ese mismo deploy se encola y corre al terminar
+async function runWebhookRedeploy(job) {
+    const { subdomain } = job;
+    if (webhookRunning.has(subdomain)) {
+        webhookPending.add(subdomain);
+        console.log(`[Webhook] ${subdomain} ya se está construyendo; el push queda en cola`);
         return;
     }
-
-    const subdomain = getSubdomain(repoUrl, pushBranch);
-    if (!subdomain) {
-        console.log(`[Webhook] Repo ${repoUrl} en rama ${pushBranch} no registrado en memoria.`);
-        return res.status(200).send('No registrado');
-    }
-
-    // 503 para que el push aparezca como fallido en "Recent Deliveries" de GitHub
-    if (deploysPaused) {
-        console.log(`[Webhook] Deploys en pausa — se ignora el push de ${subdomain}`);
-        return res.status(503).send('Deploys en pausa (mantenimiento)');
-    }
-
-    console.log(`[Webhook] Cambios detectados para ${subdomain}. Actualizando...`);
-    recordDeployEvent('webhook', { subdomain, repoUrl, branch: pushBranch });
-    res.status(200).send('Actualización iniciada');
+    webhookRunning.add(subdomain);
     try {
-        await deployApp(repoUrl, subdomain, pushBranch);
-        console.log(`[Webhook] ${subdomain} actualizado con éxito.`);
-        recordDeployEvent('success', { subdomain, repoUrl, source: 'webhook' });
-    } catch (error) {
-        console.error(`[Webhook] Error actualizando ${subdomain}:`, error.message);
-        recordDeployEvent('error', { subdomain, repoUrl, error: error.message, source: 'webhook' });
+        if (deploysPaused) {
+            console.log(`[Webhook] Deploys en pausa — se descarta el push encolado de ${subdomain}`);
+            return;
+        }
+        recordDeployEvent('webhook', { subdomain, userId: job.userId, userEmail: job.userEmail, repoUrl: job.repoUrl, branch: job.branch });
+        // Conserva dueño y variables de entorno del contenedor actual
+        await deployApp(job.repoUrl, subdomain, job.branch, job.userId, job.userEmail, job.userEnv);
+        recordDeployEvent('success', { subdomain, userId: job.userId, userEmail: job.userEmail, repoUrl: job.repoUrl, source: 'webhook' });
+        console.log(`[Webhook] ${subdomain} actualizado con éxito`);
+    } catch (e) {
+        recordDeployEvent('error', { subdomain, userId: job.userId, userEmail: job.userEmail, repoUrl: job.repoUrl, error: e.message, source: 'webhook' });
+        console.error(`[Webhook] Error actualizando ${subdomain}: ${e.message}`);
+    } finally {
+        webhookRunning.delete(subdomain);
+        if (webhookPending.delete(subdomain)) runWebhookRedeploy(job); // hubo otro push durante el build
+    }
+}
+
+app.post('/webhook', async (req, res) => {
+    const event = req.headers['x-github-event'];
+    if (event === 'ping') return res.status(200).send('pong');
+    if (event !== 'push') return res.status(200).send('Evento ignorado');
+
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature || !req.rawBody) return res.status(401).send('Firma requerida');
+
+    // Soporta content type JSON y form-urlencoded (payload=<json>)
+    let payload = req.body;
+    try {
+        if (typeof req.body?.payload === 'string') payload = JSON.parse(req.body.payload);
+    } catch {
+        return res.status(400).send('Payload inválido');
+    }
+
+    const repoUrl = payload?.repository?.html_url;
+    const branch = String(payload?.ref || '').replace('refs/heads/', '');
+    if (!repoUrl || !branch) return res.status(400).send('Payload incompleto');
+
+    try {
+        // Todos los deploys de este repo y rama (un mismo repo puede estar en varios subdominios)
+        const containers = await docker.listContainers({ all: true });
+        const candidates = new Map();
+        for (const c of containers) {
+            const name = c.Names[0].slice(1);
+            if (!name.startsWith('container-')) continue;
+            const L = c.Labels;
+            if (!L['deploy.repo'] || normalizeUrl(L['deploy.repo']) !== normalizeUrl(repoUrl)) continue;
+            if ((L['deploy.branch'] || 'main') !== branch) continue;
+            const sub = L['deploy.subdomain'] || name.replace(/^container-/, '').replace(/-(backend|frontend)$/, '');
+            if (candidates.has(sub)) continue;
+            let userEnv = [];
+            try { userEnv = JSON.parse(L['deploy.userEnv'] || '[]'); } catch { userEnv = []; }
+            candidates.set(sub, {
+                subdomain: sub,
+                repoUrl: L['deploy.repo'],
+                branch,
+                userId: L['deploy.userId'] || 'anonymous',
+                userEmail: L['deploy.userEmail'] || 'anonymous',
+                userEnv,
+            });
+        }
+
+        // La firma decide qué deploy(s) disparar: cada webhook firma con el secreto de su subdominio
+        const secrets = readWebhookSecrets();
+        const matched = [...candidates.values()].filter(job =>
+            secrets[job.subdomain] && verifyGithubSignature(req.rawBody, signature, secrets[job.subdomain].secret));
+
+        if (matched.length === 0) {
+            console.warn(`[Webhook] Push rechazado para ${repoUrl}#${branch} (firma inválida o deploy inexistente)`);
+            return res.status(401).send('Firma inválida o deploy no encontrado');
+        }
+
+        // 503 para que el push aparezca como fallido en "Recent Deliveries" de GitHub
+        if (deploysPaused) {
+            console.log(`[Webhook] Deploys en pausa — se ignora el push de ${matched.map(j => j.subdomain).join(', ')}`);
+            return res.status(503).send('Deploys en pausa (mantenimiento)');
+        }
+
+        res.status(202).send(`Redeploy iniciado: ${matched.map(j => j.subdomain).join(', ')}`);
+        for (const job of matched) runWebhookRedeploy(job);
+    } catch (e) {
+        console.error('[Webhook] Error:', e.message);
+        if (!res.headersSent) res.status(500).send('Error interno');
+    }
+});
+
+async function findOwnedDeploy(subdomain, user) {
+    const containers = await docker.listContainers({ all: true });
+    const names = [`/container-${subdomain}`, `/container-${subdomain}-backend`, `/container-${subdomain}-frontend`];
+    return containers.find(c =>
+        c.Names.some(n => names.includes(n)) && c.Labels['deploy.userId'] === String(user.id));
+}
+
+// Ver (o crear) el secreto del webhook de un deploy propio
+app.get('/deploys/:subdomain/webhook', requireAuth, async (req, res) => {
+    const { subdomain } = req.params;
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(subdomain)) return res.status(400).json({ error: 'Subdominio inválido' });
+    try {
+        if (!(await findOwnedDeploy(subdomain, req.user))) return res.status(404).json({ error: 'Deploy no encontrado' });
+        res.json({
+            url: `${process.env.FRONTEND_URL || 'https://stardest.com'}/webhook`,
+            secret: getOrCreateWebhookSecret(subdomain),
+            contentType: 'application/json',
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Generar un secreto nuevo (el anterior deja de servir)
+app.post('/deploys/:subdomain/webhook/rotate', requireAuth, async (req, res) => {
+    const { subdomain } = req.params;
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(subdomain)) return res.status(400).json({ error: 'Subdominio inválido' });
+    try {
+        if (!(await findOwnedDeploy(subdomain, req.user))) return res.status(404).json({ error: 'Deploy no encontrado' });
+        res.json({ secret: getOrCreateWebhookSecret(subdomain, { rotate: true }) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -2708,6 +2830,8 @@ async function removeDeployContainers(subdomain, containers) {
             removed.push(n.slice(1));
         }
     }
+    // Si alguien crea después un deploy con el mismo subdominio, no hereda el secreto
+    deleteWebhookSecret(subdomain);
     return removed;
 }
 

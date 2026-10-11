@@ -6,6 +6,7 @@ import { useTranslation } from '../i18n';
 import { CopyIcon, CheckIcon } from '../components/Icons';
 import GitHubReposPanel from '../components/GitHubReposPanel';
 import VideoBackground from '../components/VideoBackground';
+import WebhookInstructions from '../components/WebhookInstructions';
 
 // Debe coincidir con MAX_DEPLOYS_PER_USER en apps/builder/index.js
 const MAX_DEPLOYS_PER_USER = 5;
@@ -304,6 +305,7 @@ export default function Dashboard() {
     const [now, setNow] = useState(Date.now());
     const [showDb, setShowDb] = useState({});
     const [showEnv, setShowEnv] = useState({});
+    const [webhookFor, setWebhookFor] = useState(null);
     const [copiedField, setCopiedField] = useState(null);
 
     const deployedRepoUrls = useMemo(() => {
@@ -402,6 +404,14 @@ export default function Dashboard() {
     return (
         <div className="page-transition" style={{ minHeight: '100vh' }}>
             <VideoBackground veil="strong" />
+            {webhookFor && (
+                <WebhookInstructions
+                    subdomain={webhookFor.subdomain}
+                    repoUrl={webhookFor.repo}
+                    title={t.webhook.title_for(webhookFor.subdomain)}
+                    onClose={() => setWebhookFor(null)}
+                />
+            )}
 
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
@@ -606,6 +616,26 @@ export default function Dashboard() {
                                         </button>
                                     );
                                 })()}
+                                {deploy.repo !== 'unknown' && deploy.repo !== 'zip-upload' && (
+                                    <button
+                                        onClick={() => setWebhookFor(deploy)}
+                                        className="flex-1 sm:flex-none"
+                                        style={{
+                                            fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 12,
+                                            padding: '9px 16px',
+                                            background: 'transparent',
+                                            border: '1px solid var(--px-border)',
+                                            borderRadius: 999,
+                                            color: 'var(--px-white)',
+                                            cursor: 'pointer',
+                                            transition: 'border-color 0.15s ease, background 0.15s ease',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--px-border)'; }}
+                                    >
+                                        {t.webhook.button}
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => handleDelete(deploy.subdomain)}
                                     disabled={deleting === deploy.subdomain}

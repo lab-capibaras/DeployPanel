@@ -356,6 +356,7 @@ const es = {
       'Settings → Webhooks → Add webhook',
       'Pega la URL de abajo en "Payload URL"',
       'Content type: application/json',
+      'Secret: pega el secreto de abajo',
       'Events: Just the push event',
       'Activa el webhook y guarda',
     ],
@@ -363,6 +364,14 @@ const es = {
     copied:        '✓ Copiado',
     goto_settings: 'Ir a GitHub Settings →',
     close:         'Cerrar',
+    url_label:     'Payload URL',
+    secret_label:  'Secret',
+    secret_loading:'Cargando secreto...',
+    secret_error:  'No se pudo obtener el secreto. Vuelve a intentarlo desde el Dashboard.',
+    rotate:        'Generar nuevo secreto',
+    rotate_confirm:'El secreto actual dejará de funcionar y tendrás que actualizarlo en GitHub. ¿Continuar?',
+    title_for:     (sub) => `Webhook de ${sub}`,
+    button:        'Webhook',
   },
 
   // ── Login ───────────────────────────────────────────────
