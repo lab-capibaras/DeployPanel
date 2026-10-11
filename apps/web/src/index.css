@@ -468,16 +468,6 @@ textarea:focus-visible {
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);
 }
 
-/* ─── Home: tarjeta del hero (terminal + gráfico) ───────────────── */
-.home-hero-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-.home-hero-chart {
-  border-left: 1px solid var(--px-border);
-  min-height: 300px;
-  padding: 24px 0 0;
-}
 .home-footer-link {
   font-size: 14px;
   color: var(--px-muted);
@@ -486,10 +476,6 @@ textarea:focus-visible {
 }
 .home-footer-link:hover { color: var(--px-white); }
 
-@media (max-width: 900px) {
-  .home-hero-grid { grid-template-columns: 1fr; }
-  .home-hero-chart { border-left: none; border-top: 1px solid var(--px-border); min-height: 200px; height: 200px; }
-}
 
 /* ─── Reduced motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

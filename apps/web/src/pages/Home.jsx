@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { DeployIcon, ShieldIcon, GlobeIcon, ChartIcon, CommitIcon, BuildIcon } from '../components/Icons';
@@ -20,102 +20,6 @@ function Reveal({ children, delay = 0, style = {} }) {
   return (
     <div ref={ref} className="reveal" style={{ '--reveal-delay': `${delay}ms`, ...style }}>
       {children}
-    </div>
-  );
-}
-
-/* ─── Terminal simulado (dentro de la tarjeta del hero) ─── */
-const TERMINAL_DELAYS = [0, 800, 1600, 2400, 3400, 4200, 5000, 5800];
-
-function LiveTerminal() {
-  const lines = useTranslation().home.terminal_lines;
-  const [shown, setShown] = useState(0);
-
-  useEffect(() => {
-    let timers = [];
-    const run = () => {
-      timers.forEach(clearTimeout);
-      timers = TERMINAL_DELAYS.map((d, i) => setTimeout(() => setShown(i + 1), d));
-    };
-    run();
-    const loop = setInterval(() => { setShown(0); run(); }, 9000);
-    return () => { clearInterval(loop); timers.forEach(clearTimeout); };
-  }, []);
-
-  return (
-    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13.5, lineHeight: 2.05 }}>
-      {lines.map((txt, i) => (
-        <div key={i} style={{
-          color: txt.startsWith('  ✓') ? 'var(--px-green)' : txt.startsWith('  >>') ? 'var(--px-accent)' : 'var(--px-muted)',
-          fontWeight: txt.startsWith('  >>') ? 600 : 400,
-          opacity: i < shown ? 1 : 0,
-          transform: i < shown ? 'none' : 'translateX(-8px)',
-          transition: 'opacity 0.3s, transform 0.3s',
-          whiteSpace: 'pre',
-        }}>{txt}</div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Gráfico decorativo (línea + área, estilo TradingView) ─── */
-const CHART_POINTS = [62, 58, 64, 55, 60, 52, 57, 49, 54, 44, 50, 41, 46, 36, 42, 33, 38, 27, 31, 22, 26, 18, 21, 12];
-
-function HeroChart() {
-  const W = 480, H = 260;
-  const step = W / (CHART_POINTS.length - 1);
-  const pts = CHART_POINTS.map((v, i) => [i * step, (v / 70) * H]);
-  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-  const area = `${line} L${W},${H} L0,${H} Z`;
-  const [lx, ly] = pts[pts.length - 1];
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: '100%', height: '100%', display: 'block' }} aria-hidden>
-      <defs>
-        <linearGradient id="hero-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2962ff" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#2962ff" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {[0.25, 0.5, 0.75].map(f => (
-        <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} stroke="var(--px-border)" strokeWidth="1" strokeDasharray="4 6" vectorEffect="non-scaling-stroke" />
-      ))}
-      <path d={area} fill="url(#hero-area)" />
-      <path d={line} fill="none" stroke="#2962ff" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      <circle cx={lx} cy={ly} r="5" fill="#2962ff" />
-      <circle cx={lx} cy={ly} r="5" fill="none" stroke="#2962ff" strokeWidth="2">
-        <animate attributeName="r" from="5" to="16" dur="1.8s" repeatCount="indefinite" />
-        <animate attributeName="opacity" from="0.8" to="0" dur="1.8s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
-
-/* ─── Franja de stacks (tipo "ticker tape") ─── */
-const STACKS = [
-  ['Next.js', '#f2f2f2'], ['React', '#61dafb'], ['Vite', '#a78bfa'], ['Node.js', '#3c873a'],
-  ['Express', '#b2b5be'], ['Python', '#3776ab'], ['FastAPI', '#089981'], ['Flask', '#b2b5be'],
-  ['Django', '#0c8f55'], ['PHP', '#777bb4'], ['Laravel', '#f23645'], ['Docker', '#2496ed'],
-  ['PostgreSQL', '#4169e1'], ['MySQL', '#f29111'],
-];
-
-function StackTicker() {
-  const items = [...STACKS, ...STACKS]; // duplicado para el loop continuo
-  return (
-    <div style={{ overflow: 'hidden', maskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)' }}>
-      {/* paddingRight = gap: así el -50% del loop cae justo al inicio de la copia */}
-      <div className="swiss-marquee" style={{ gap: 12, paddingRight: 12 }}>
-        {items.map(([name, color], i) => (
-          <span key={i} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px',
-            borderRadius: 999, border: '1px solid var(--px-border)', background: 'var(--px-surface)',
-            fontSize: 15, fontWeight: 600, color: 'var(--px-white)', whiteSpace: 'nowrap',
-          }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-            {name}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -146,13 +50,12 @@ export default function Home() {
     <div className="page-transition" style={{ overflowX: 'hidden' }}>
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
-      <section style={{ position: 'relative', padding: 'clamp(72px, 10vw, 120px) 24px 64px', textAlign: 'center' }}>
+      <section style={{ position: 'relative', padding: 'clamp(96px, 12vw, 160px) 24px clamp(48px, 6vw, 80px)', textAlign: 'center' }}>
         <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(55% 45% at 50% 0%, var(--px-glow-blue), transparent 70%)' }} />
 
         <div style={{ position: 'relative', ...container }}>
-          <div className="fade-up"><span className="px-badge">{h.badge}</span></div>
 
-          <h1 className="fade-up fade-up-1" style={{ margin: '28px auto 24px', fontWeight: 800, fontSize: 'clamp(52px, 10vw, 128px)', letterSpacing: '-0.045em', lineHeight: 0.98, color: 'var(--px-white)' }}>
+          <h1 className="fade-up fade-up-1" style={{ margin: '0 auto 24px', fontWeight: 800, fontSize: 'clamp(52px, 10vw, 128px)', letterSpacing: '-0.045em', lineHeight: 0.98, color: 'var(--px-white)' }}>
             {h.h1_1}
             <br />
             <span style={{ background: 'linear-gradient(90deg, #2962ff, #7aa2ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{h.h1_2}</span>
@@ -167,29 +70,7 @@ export default function Home() {
             <a href="#como-funciona" className="px-btn-ghost" style={{ textDecoration: 'none', padding: '15px 30px', fontSize: 17 }}>{h.cta_explore}</a>
           </div>
 
-          {/* Tarjeta principal: terminal + gráfico */}
-          <div className="fade-up fade-up-4 tv-card home-hero-card" style={{ marginTop: 72, textAlign: 'left', overflow: 'hidden', boxShadow: 'var(--px-shadow-md)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 20px', borderBottom: '1px solid var(--px-border)' }}>
-              {['#f23645', '#f29111', '#089981'].map(c => <span key={c} style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />)}
-              <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--px-muted)', fontFamily: "'JetBrains Mono',monospace" }}>mission-control — deploy</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--px-green)' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--px-green)' }} />
-                {h.live_simulation}
-              </span>
-            </div>
-            <div className="home-hero-grid">
-              <div style={{ padding: '24px 28px', minHeight: 300 }}><LiveTerminal /></div>
-              <div className="home-hero-chart"><HeroChart /></div>
-            </div>
-          </div>
         </div>
-      </section>
-
-      {/* ══ STACKS ═════════════════════════════════════════════════ */}
-      <section style={{ padding: '24px 0 40px' }}>
-        <p style={{ textAlign: 'center', fontSize: 15, fontWeight: 600, color: 'var(--px-muted)', margin: '0 0 20px', padding: '0 24px' }}>{h.stacks_label}</p>
-        <StackTicker />
       </section>
 
       {/* ══ FEATURES ═══════════════════════════════════════════════ */}

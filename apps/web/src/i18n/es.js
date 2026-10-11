@@ -27,8 +27,6 @@ const es = {
     cta_start:  'Comenzar Despliegue',
     cta_explore:'Explorar Arquitectura',
 
-    stacks_label:   'Despliega con el stack que ya usas',
-
     features_title: 'Infraestructura como Experiencia',
     features_sub:   'No lidies con servidores. Hemos abstraído la complejidad operativa para que te enfoques solo en enviar código.',
     features_label: 'FUNCIONALIDADES',
