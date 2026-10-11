@@ -13,57 +13,56 @@ html[data-lang="en"] .nav-tools-en { display: contents; }
 html[data-lang="en"] .nav-tools-es { display: none; }
 
 /* ─── Design tokens ─────────────────────────────────────────────── */
+/* Estilo inspirado en tradingview.com: fondo casi negro, superficies sólidas,
+   azul #2962FF como acento, rojo #F23645, tipografía grande y bordes redondeados. */
 :root {
   /* Colors */
-  --px-bg:          #09090b;
-  --px-bg2:         #111113;
-  --px-surface:     #18181b;
-  --px-white:       #fafafa;
-  --px-muted:       #a1a1aa;
-  --px-border:      #27272a;
-  --px-border-glow: #3f3f46;
+  --px-bg:          #0f0f0f;
+  --px-bg2:         #161616;
+  --px-surface:     #1e1e1e;
+  --px-white:       #f2f2f2;
+  --px-muted:       #b2b5be;
+  --px-border:      #2e2e2e;
+  --px-border-glow: #434651;
 
   /* Brand */
-  --px-red:         #ff2b00;
-  --px-accent:      #fafafa;
-  --px-accent-fg:   #09090b;
+  --px-red:          #f23645;
+  --px-accent:       #2962ff;
+  --px-accent-hover: #1e53e5;
+  --px-accent-fg:    #ffffff;
+  --px-accent-soft:  rgba(41, 98, 255, 0.14);
+  --px-green:        #089981;
 
   /* Glow helpers */
-  --px-glow-blue:   rgba(255, 255, 255, 0.04);
-  --px-glow-cyan:   rgba(255, 255, 255, 0.03);
+  --px-glow-blue:   rgba(41, 98, 255, 0.22);
+  --px-glow-cyan:   rgba(41, 98, 255, 0.10);
 
   /* Typography */
-  --px-font-pixel:  'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --px-font-pixel:  'Inter', -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, sans-serif;
   --px-font-mono:   'JetBrains Mono', monospace;
-  --px-font-vt:     'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --px-font-vt:     'Inter', -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, sans-serif;
 
   /* Shape */
-  --px-radius:      8px;
-  --px-radius-sm:   4px;
-  --px-radius-lg:   16px;
+  --px-radius:      12px;
+  --px-radius-sm:   8px;
+  --px-radius-lg:   20px;
+  --px-radius-xl:   28px;
 
   /* Shadows */
-  --px-shadow-sm:   0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
-  --px-shadow-md:   0 8px 32px rgba(0,0,0,0.5);
-  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08);
+  --px-shadow-sm:   0 1px 2px rgba(0,0,0,0.4);
+  --px-shadow-md:   0 12px 32px rgba(0,0,0,0.5);
+  --px-shadow-hover:0 16px 40px rgba(0,0,0,0.55);
 
   /* Nav */
-  --nav-bg:         rgba(9, 9, 11, 0.82);
-  --drawer-bg:      rgba(9, 9, 11, 0.98);
+  --nav-bg:         #0f0f0f;
+  --drawer-bg:      #1e1e1e;
 
-  /* Glass surfaces (dashboard/repo cards) — algo de transparencia + blur,
-     pero legibles: no tan lavadas como el navbar, que es una franja angosta. */
-  --px-glass-bg:     rgba(16, 16, 18, 0.94);
-  --px-glass-border: rgba(255, 255, 255, 0.08);
-  --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.55);
-  /* Menús flotantes: más translúcidos que las cards, como el navbar */
-  --px-glass-menu-bg: rgba(16, 16, 18, 0.62);
+  /* Superficies de tarjetas y menús: sólidas, sin glassmorphism */
+  --px-glass-bg:      #1e1e1e;
+  --px-glass-border:  #2e2e2e;
+  --px-glass-shadow:  0 1px 2px rgba(0,0,0,0.4);
+  --px-glass-menu-bg: #1e1e1e;
   --px-glass-hover:   rgba(255, 255, 255, 0.06);
-
-  /* Halo detrás de texto que queda flotando sobre el fondo animado de puntos
-     (DotCloud), fuera de cualquier card opaca — sin esto el contraste del
-     texto gris/mudo varía según qué esté animando justo detrás. */
-  --px-text-halo: 0 0 3px var(--px-bg), 0 0 8px var(--px-bg), 0 0 14px var(--px-bg);
 }
 
 /* ─── Suppress nav tap highlight ────────────────────────────────── */
@@ -162,43 +161,44 @@ html.theme-transitioning * {
   box-shadow: var(--px-shadow-hover);
 }
 
-/* ─── Primary button ────────────────────────────────────────────── */
+/* ─── Primary button (pastilla azul) ────────────────────────────── */
 .px-btn {
   font-family: var(--px-font-pixel);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--px-accent-fg);
   background: var(--px-accent);
   border: 1px solid var(--px-accent);
-  border-radius: var(--px-radius-sm);
-  padding: 10px 20px;
+  border-radius: 999px;
+  padding: 11px 24px;
   cursor: pointer;
-  letter-spacing: 0.04em;
-  transition: all 0.2s ease;
-  text-transform: uppercase;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 .px-btn:hover {
-  background: transparent;
-  color: var(--px-white);
-  border-color: var(--px-white);
-  box-shadow: none;
-  transform: translateY(-1px);
+  background: var(--px-accent-hover);
+  border-color: var(--px-accent-hover);
+  color: var(--px-accent-fg);
 }
 .px-btn:active { transform: scale(0.98); }
 
-/* ─── Outline button ────────────────────────────────────────────── */
+/* ─── Secondary button (pastilla con borde) ─────────────────────── */
+.px-btn-ghost,
 .px-btn-cyan {
-  background: transparent;
-  border-color: var(--px-border);
-  border-radius: var(--px-radius-sm);
+  font-family: var(--px-font-pixel);
+  font-size: 15px;
+  font-weight: 600;
   color: var(--px-white);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  background: transparent;
+  border: 1px solid var(--px-border-glow);
+  border-radius: 999px;
+  padding: 11px 24px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
+.px-btn-ghost:hover,
 .px-btn-cyan:hover {
-  background: var(--px-surface);
-  border-color: var(--px-border-glow);
+  background: var(--px-glass-hover);
+  border-color: var(--px-white);
   color: var(--px-white);
 }
 
@@ -220,15 +220,13 @@ html.theme-transitioning * {
 /* ─── Badge ─────────────────────────────────────────────────────── */
 .px-badge {
   font-family: var(--px-font-pixel);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 4px 10px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.14);
+  padding: 6px 14px;
+  background: var(--px-accent-soft);
+  border: 1px solid transparent;
   border-radius: 999px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--px-white);
+  color: var(--px-accent);
 }
 
 /* ─── Terminal card ─────────────────────────────────────────────── */
@@ -257,9 +255,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--px-border-glow);
+  outline: 2px solid var(--px-accent);
   outline-offset: 2px;
-  border-radius: var(--px-radius-sm);
 }
 
 /* ─── Entrance animation (legacy - still used in some places) ────── */
@@ -278,15 +275,8 @@ textarea:focus-visible {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-/* Cualquier elemento con una animación de CSS que toque opacity/transform
-   forma su propio stacking context mientras esa animación esté asociada
-   (incluso en reposo, con fill-mode: forwards) — sin este z-index explícito,
-   ese stacking context compite contra el canvas de DotCloud (position:fixed,
-   z-index:0, montado como hermano en <body> vía portal) usando solo orden de
-   DOM, y como el canvas se inserta después, terminaba pintándose ENCIMA de
-   toda la página (Home, Dashboard, Deploy) sin importar los z-index puestos
-   más adentro. Con z-index:1 explícito acá, .page-transition le gana al
-   canvas directamente por valor, sin depender del empate por orden de DOM. */
+/* La animación (opacity/transform) hace que esto forme un stacking context;
+   los modales de una página se montan en <body> vía portal para quedar arriba del navbar. */
 .page-transition { position: relative; z-index: 1; animation: page-enter 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
 
 /* ─── OAuth button hover shimmer ────────────────────────────────── */
@@ -345,13 +335,10 @@ textarea:focus-visible {
 
 /* ─── Section index label ───────────────────────────────────────── */
 .swiss-index {
-  font-family: var(--px-font-mono);
+  font-family: var(--px-font-pixel);
   font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  color: var(--px-muted);
-  text-transform: uppercase;
-  text-shadow: var(--px-text-halo);
+  font-size: 14px;
+  color: var(--px-accent);
 }
 
 /* ─── Link hover sweep ──────────────────────────────────────────── */
@@ -400,34 +387,61 @@ textarea:focus-visible {
 
 /* ─── Mega menu ─────────────────────────────────────────────────── */
 .mega-menu-panel {
-  background: var(--px-glass-menu-bg) !important;
-  border: 1px solid var(--px-glass-border) !important;
-  border-radius: var(--px-radius-lg) !important;
-  box-shadow: var(--px-glass-shadow) !important;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: var(--px-glass-menu-bg);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-lg);
+  box-shadow: var(--px-shadow-md);
 }
 
-/* ─── Pref trigger button ───────────────────────────────────────── */
+/* ─── Pref trigger button (ícono redondo del navbar) ─────────────── */
 .pref-trigger-btn {
-  border: 1px solid var(--px-border) !important;
-  background: var(--px-surface) !important;
-  color: var(--px-white) !important;
-  border-radius: var(--px-radius-sm) !important;
+  border: none;
+  background: transparent;
+  color: var(--px-white);
+  border-radius: 999px;
+  transition: background 0.15s ease;
 }
 .pref-trigger-btn:hover,
 .pref-trigger-btn.active {
-  border-color: var(--px-border-glow) !important;
-  background: var(--px-bg2) !important;
+  background: var(--px-glass-hover);
 }
 
 /* ─── Pref dropdown panel ───────────────────────────────────────── */
 .pref-dropdown-panel {
-  background: var(--px-surface) !important;
-  border: 1px solid var(--px-border) !important;
-  border-radius: var(--px-radius) !important;
-  box-shadow: var(--px-shadow-md) !important;
+  background: var(--px-surface);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius);
+  box-shadow: var(--px-shadow-md);
 }
+
+/* ─── Navbar links (TradingView: texto medio, pastilla al hover) ── */
+.tv-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--px-white);
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.tv-nav-link:hover,
+.tv-nav-link.active { background: var(--px-glass-hover); }
+
+/* ─── Tarjeta grande (secciones del Home) ──────────────────────── */
+.tv-card {
+  background: var(--px-surface);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-xl);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.tv-card:hover { border-color: var(--px-border-glow); }
 
 /* ─── Noise texture overlay ─────────────────────────────────────── */
 .noise-overlay {
@@ -454,38 +468,27 @@ textarea:focus-visible {
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);
 }
 
-/* ─── Hero circle ───────────────────────────────────────────────── */
-.hero-circle-container {
-  position: absolute;
-  right: -5%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: clamp(320px, 44vw, 580px);
-  aspect-ratio: 1;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ─── Hero text column width (responsive) ───────────────────────── */
-.hero-headline,
-.hero-lower {
-  max-width: 68%;
-}
-
-/* ─── Terminal section two-column grid ──────────────────────────── */
-.terminal-grid {
+/* ─── Home: tarjeta del hero (terminal + gráfico) ───────────────── */
+.home-hero-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 64px;
-  align-items: center;
 }
+.home-hero-chart {
+  border-left: 1px solid var(--px-border);
+  min-height: 300px;
+  padding: 24px 0 0;
+}
+.home-footer-link {
+  font-size: 14px;
+  color: var(--px-muted);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.home-footer-link:hover { color: var(--px-white); }
 
-/* ─── Responsive breakpoints ────────────────────────────────────── */
 @media (max-width: 900px) {
-  .hero-circle-container { display: none; }
-  .hero-headline,
-  .hero-lower { max-width: 100%; }
-  .terminal-grid { grid-template-columns: 1fr; gap: 40px; }
+  .home-hero-grid { grid-template-columns: 1fr; }
+  .home-hero-chart { border-left: none; border-top: 1px solid var(--px-border); min-height: 200px; height: 200px; }
 }
 
 /* ─── Reduced motion ────────────────────────────────────────────── */
@@ -503,82 +506,40 @@ textarea:focus-visible {
    LIGHT MODE
 ═══════════════════════════════════════════════════════════════════ */
 html.light-mode {
-  --px-bg:          #fafafa;
-  --px-bg2:         #f4f4f5;
+  --px-bg:          #ffffff;
+  --px-bg2:         #f8f9fd;
   --px-surface:     #ffffff;
-  --px-white:       #09090b;
-  --px-muted:       #71717a;
-  --px-border:      #e4e4e7;
-  --px-border-glow: #d4d4d8;
-  --px-red:         #ff2b00;
-  --px-accent:      #09090b;
+  --px-white:       #131722;
+  --px-muted:       #6a6d78;
+  --px-border:      #e0e3eb;
+  --px-border-glow: #c1c4cd;
+  --px-red:         #f23645;
+  --px-accent:      #2962ff;
+  --px-accent-hover:#1e53e5;
   --px-accent-fg:   #ffffff;
-  --px-glow-blue:   rgba(0, 0, 0, 0.04);
-  --px-glow-cyan:   rgba(0, 0, 0, 0.02);
-  --nav-bg:         rgba(250, 250, 250, 0.85);
-  --drawer-bg:      rgba(250, 250, 250, 0.98);
-  --px-shadow-sm:   0 1px 3px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04);
-  --px-shadow-md:   0 8px 32px rgba(0,0,0,0.08);
-  --px-shadow-hover:0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.1);
-  --px-glass-bg:     rgba(255, 255, 255, 0.94);
-  --px-glass-border: rgba(0, 0, 0, 0.08);
-  --px-glass-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  --px-glass-menu-bg: rgba(255, 255, 255, 0.62);
-  --px-glass-hover:   rgba(0, 0, 0, 0.04);
-}
-
-html.light-mode body {
-  background-color: var(--px-bg);
-  color: #09090b;
-}
-
-html.light-mode .swiss-line { background: var(--px-border); }
-
-html.light-mode .px-card {
-  background: #ffffff !important;
-  border-color: var(--px-border) !important;
-  color: #09090b !important;
-  box-shadow: var(--px-shadow-sm) !important;
-}
-
-html.light-mode .px-terminal {
-  background: #f4f4f5 !important;
-  border-color: var(--px-border) !important;
-  color: #09090b !important;
-}
-
-html.light-mode .pref-dropdown-panel {
-  background: #ffffff !important;
-  border-color: var(--px-border) !important;
-  box-shadow: var(--px-shadow-md) !important;
-}
-
-html.light-mode .pref-trigger-btn {
-  background: #ffffff !important;
-  border-color: var(--px-border) !important;
-  color: #09090b !important;
-}
-html.light-mode .pref-trigger-btn:hover {
-  background: #f4f4f5 !important;
-  border-color: var(--px-border-glow) !important;
-}
-
-html.light-mode input[type="text"],
-html.light-mode select {
-  background-color: #ffffff !important;
-  border-color: var(--px-border) !important;
-  color: #09090b !important;
+  --px-accent-soft: rgba(41, 98, 255, 0.10);
+  --px-green:       #089981;
+  --px-glow-blue:   rgba(41, 98, 255, 0.14);
+  --px-glow-cyan:   rgba(41, 98, 255, 0.06);
+  --nav-bg:         #ffffff;
+  --drawer-bg:      #ffffff;
+  --px-shadow-sm:   0 1px 3px rgba(19,23,34,0.06);
+  --px-shadow-md:   0 12px 32px rgba(19,23,34,0.10);
+  --px-shadow-hover:0 16px 40px rgba(19,23,34,0.12);
+  --px-glass-bg:      #ffffff;
+  --px-glass-border:  #e0e3eb;
+  --px-glass-shadow:  0 1px 3px rgba(19,23,34,0.06);
+  --px-glass-menu-bg: #ffffff;
+  --px-glass-hover:   rgba(19, 23, 34, 0.04);
 }
 
 html.light-mode .noise-overlay  { opacity: 0.015; }
 html.light-mode .grid-overlay   { opacity: 0.15; }
-html.light-mode .px-btn { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-html.light-mode .px-badge { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.12); }
 
 html.light-mode .hero-blob { opacity: 0.5; }
 
 /* ─── Board (pizarra) ──────────────────────────────────────────── */
-.board-root { padding-top: 70px; }
+.board-root { padding-top: 64px; }
 @media (max-width: 767px) {
   /* En móvil no hay navbar arriba pero sí la barra flotante abajo */
   .board-root { padding-top: 0; padding-bottom: 92px; }

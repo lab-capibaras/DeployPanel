@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
+import BrandMark from '../components/BrandMark';
 
 function Login() {
   const t = useTranslation();
@@ -39,7 +40,7 @@ function Login() {
       {/* Background glow */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 65%)',
+        background: 'radial-gradient(ellipse 60% 50% at 50% 0%, var(--px-glow-blue) 0%, transparent 65%)',
       }} />
 
       <div className="fade-up" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>
@@ -47,11 +48,8 @@ function Login() {
         {/* Logo */}
         <div style={{ marginBottom: 32, textAlign: 'center' }}>
           <Link to="/" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 8, height: 8, background: 'var(--px-white)', display: 'inline-block' }} />
-            <span style={{
-              fontFamily: "'Inter',sans-serif", fontWeight: 800, fontSize: 18,
-              color: 'var(--px-white)', textTransform: 'uppercase', letterSpacing: '0.05em',
-            }}>StarDest</span>
+            <BrandMark size={32} />
+            <span style={{ fontWeight: 800, fontSize: 22, color: 'var(--px-white)', letterSpacing: '-0.02em' }}>StarDest</span>
           </Link>
         </div>
 
@@ -60,16 +58,16 @@ function Login() {
           padding: '40px 36px',
           background: 'var(--px-surface)',
           border: '1px solid var(--px-border)',
-          borderRadius: 'var(--px-radius-lg)',
+          borderRadius: 'var(--px-radius-xl)',
           boxShadow: 'var(--px-shadow-md)',
         }}>
 
           {/* Heading */}
           <div style={{ marginBottom: 32, textAlign: 'center' }}>
             <h1 style={{
-              fontFamily: "'Inter',sans-serif", fontWeight: 900,
-              fontSize: 'clamp(26px, 5vw, 34px)', color: 'var(--px-white)',
-              margin: '0 0 8px', letterSpacing: '-0.02em', lineHeight: 1.1,
+              fontWeight: 800,
+              fontSize: 'clamp(28px, 5vw, 36px)', color: 'var(--px-white)',
+              margin: '0 0 8px', letterSpacing: '-0.035em', lineHeight: 1.1,
             }}>{l.welcome || 'Bienvenido'}</h1>
             <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 15, color: 'var(--px-muted)', margin: 0 }}>
               {l.subtitle || 'Inicia sesión para continuar'}
@@ -80,8 +78,8 @@ function Login() {
           {error && (
             <div style={{
               marginBottom: 24, padding: '12px 16px',
-              background: 'rgba(255,43,0,0.08)',
-              border: '1px solid rgba(255,43,0,0.3)',
+              background: 'rgba(242,54,69,0.08)',
+              border: '1px solid rgba(242,54,69,0.3)',
               borderRadius: 'var(--px-radius-sm)',
               color: 'var(--px-white)',
               fontFamily: "'Inter',sans-serif", fontSize: 14,
@@ -132,10 +130,11 @@ function OAuthButton({ href, icon, label }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '13px 18px',
-        background: hov ? 'var(--px-bg)' : 'transparent',
-        border: `1px solid ${hov ? 'var(--px-border-glow)' : 'var(--px-border)'}`,
-        borderRadius: 'var(--px-radius-sm)',
-        color: hov ? 'var(--px-white)' : 'var(--px-muted)',
+        background: hov ? 'var(--px-glass-hover)' : 'transparent',
+        border: `1px solid ${hov ? 'var(--px-white)' : 'var(--px-border-glow)'}`,
+        borderRadius: 999,
+        justifyContent: 'center',
+        color: 'var(--px-white)',
         textDecoration: 'none',
         fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 15,
         cursor: 'pointer',

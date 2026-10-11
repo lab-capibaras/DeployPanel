@@ -3,7 +3,13 @@ const en = {
   nav: {
     tools:     'Tools',
     menu:      'Menu',
-    login:     'Login',
+    login:     'Log in',
+    get_started:'Get started',
+    home:      'Home',
+    deploy:    'Deploy',
+    board:     'Board',
+    dashboard: 'Dashboard',
+    theme:     'Theme',
     appearance:'Appearance',
     language:  'Language',
     light:     'Light',
@@ -20,6 +26,8 @@ const en = {
     subtitle:   'Fully automated cloud architecture. Connect your repository, orchestrate your environments, and deploy global infrastructure with zero downtime.',
     cta_start:  'Start Deployment',
     cta_explore:'Explore Architecture',
+
+    stacks_label:   'Deploy with the stack you already use',
 
     features_title: 'Infrastructure as Experience',
     features_sub:   "Don't wrestle with servers. We've abstracted operational complexity so you can focus solely on shipping code.",

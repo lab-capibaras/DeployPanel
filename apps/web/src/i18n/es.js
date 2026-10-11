@@ -3,7 +3,13 @@ const es = {
   nav: {
     tools:     'Herramientas',
     menu:      'Menú',
-    login:     'Login',
+    login:     'Iniciar sesión',
+    get_started:'Empezar gratis',
+    home:      'Inicio',
+    deploy:    'Deploy',
+    board:     'Pizarra',
+    dashboard: 'Dashboard',
+    theme:     'Tema',
     appearance:'Aspecto',
     language:  'Idioma',
     light:     'Claro',
@@ -20,6 +26,8 @@ const es = {
     subtitle:   'Arquitectura en la nube completamente automatizada. Integra tu repositorio, orquesta tus entornos y despliega infraestructura global con zero-downtime.',
     cta_start:  'Comenzar Despliegue',
     cta_explore:'Explorar Arquitectura',
+
+    stacks_label:   'Despliega con el stack que ya usas',
 
     features_title: 'Infraestructura como Experiencia',
     features_sub:   'No lidies con servidores. Hemos abstraído la complejidad operativa para que te enfoques solo en enviar código.',

@@ -5,18 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../i18n';
 import { CopyIcon, CheckIcon } from '../components/Icons';
 import GitHubReposPanel from '../components/GitHubReposPanel';
-import DotCloud from '../components/DotCloud';
-import { getPrefs, subscribePrefs } from '../store/prefs';
 
 // Debe coincidir con MAX_DEPLOYS_PER_USER en apps/builder/index.js
 const MAX_DEPLOYS_PER_USER = 5;
-
-/* ─── Theme hook ─── */
-function useTheme() {
-    const [p, setP] = useState(getPrefs);
-    useEffect(() => subscribePrefs(setP), []);
-    return p.theme === 'dark';
-}
 
 function timeAgo(dateStr, dash) {
     if (!dateStr || dateStr === 'unknown') return dash.unknown_date;
@@ -224,7 +215,6 @@ function CustomDomainSection({ deploy, dash }) {
                     padding: '7px 14px',
                     border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
                     background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
-                    textTransform: 'uppercase', letterSpacing: '0.06em',
                     transition: 'border-color 0.15s ease, color 0.15s ease',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
@@ -301,7 +291,6 @@ function CustomDomainSection({ deploy, dash }) {
 }
 
 export default function Dashboard() {
-    const isDark = useTheme();
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const t = useTranslation();
@@ -403,30 +392,28 @@ export default function Dashboard() {
 
     if (authLoading || loading) return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontFamily: "'Inter',sans-serif", color: 'var(--px-muted)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{dash.loading}</p>
+            <p style={{ color: 'var(--px-muted)', fontSize: 16 }}>{dash.loading}</p>
         </div>
     );
 
     if (!user) return null;
 
     return (
-        <div className="page-transition" style={{ position: 'relative', minHeight: '100vh' }}>
-            <DotCloud isDark={isDark} />
+        <div className="page-transition" style={{ minHeight: '100vh' }}>
 
-            <div style={{ position: 'relative', zIndex: 1, maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 24px 80px' }}>
 
             {/* Header */}
             <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap', gap: 16, paddingBottom: 24 }}>
                 <div>
-                    <span className="swiss-index" style={{ display: 'block', marginBottom: 4 }}>{dash.title}</span>
                     <h1 style={{
-                        fontFamily: "'Inter',sans-serif", fontWeight: 900,
-                        fontSize: 'clamp(32px, 7vw, 64px)', color: 'var(--px-white)',
-                        margin: '8px 0 0', textTransform: 'uppercase', letterSpacing: '-0.02em', lineHeight: 1,
+                        fontWeight: 800,
+                        fontSize: 'clamp(32px, 5vw, 52px)', color: 'var(--px-white)',
+                        margin: 0, letterSpacing: '-0.035em', lineHeight: 1.05,
                     }}>
                         {dash.title}
                     </h1>
-                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--px-muted)', margin: '12px 0 0', textShadow: 'var(--px-text-halo)' }}>
+                    <p style={{ fontSize: 15, color: 'var(--px-muted)', margin: '10px 0 0' }}>
                         {String(deploys.length).padStart(2, '0')} / {MAX_DEPLOYS_PER_USER} — {deploys.length !== 1 ? dash.projects_many : dash.projects_one}
                         {deploys.length >= MAX_DEPLOYS_PER_USER && (
                             <span style={{ color: 'var(--px-red)', marginLeft: 8 }}>{dash.limit_reached}</span>
@@ -439,7 +426,6 @@ export default function Dashboard() {
                     style={{
                         textDecoration: 'none',
                         display: 'inline-flex', alignItems: 'center',
-                        fontSize: 13, padding: '14px 28px',
                         opacity: deploys.length >= MAX_DEPLOYS_PER_USER ? 0.4 : 1,
                         pointerEvents: deploys.length >= MAX_DEPLOYS_PER_USER ? 'none' : 'auto',
                         cursor: deploys.length >= MAX_DEPLOYS_PER_USER ? 'not-allowed' : 'pointer',
@@ -525,7 +511,7 @@ export default function Dashboard() {
                             {/* Info */}
                             <div style={{ flex: 1, minWidth: 200 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
-                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 18, color: 'var(--px-white)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+                                    <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 19, color: 'var(--px-white)', fontWeight: 700, letterSpacing: '-0.015em' }}>
                                         {deploy.subdomain}
                                     </span>
                                     <span style={{
@@ -576,7 +562,7 @@ export default function Dashboard() {
                                         border: '1px solid var(--px-border)',
                                         borderRadius: 'var(--px-radius-sm)',
                                         color: 'var(--px-white)', textDecoration: 'none',
-                                        textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        textAlign: 'center',
                                         transition: 'border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
                                     }}
                                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.background = 'var(--px-bg)'; }}
@@ -603,7 +589,7 @@ export default function Dashboard() {
                                                 color: disabled ? 'var(--px-muted)' : 'var(--px-white)',
                                                 cursor: disabled ? 'not-allowed' : 'pointer',
                                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                
                                                 transition: 'opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
                                                 opacity: disabled ? 0.5 : 1,
                                             }}
@@ -630,7 +616,7 @@ export default function Dashboard() {
                                         borderRadius: 'var(--px-radius-sm)',
                                         color: deleting === deploy.subdomain ? 'var(--px-muted)' : 'var(--px-red)',
                                         cursor: deleting === deploy.subdomain ? 'not-allowed' : 'pointer',
-                                        textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        
                                         transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
                                         opacity: deleting === deploy.subdomain ? 0.5 : 1,
                                     }}
@@ -654,8 +640,6 @@ export default function Dashboard() {
                                             borderRadius: 'var(--px-radius-sm)',
                                             color: '#ffb400',
                                             cursor: 'pointer',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.06em',
                                             transition: 'background 0.15s ease, color 0.15s ease',
                                         }}
                                         onMouseEnter={e => { e.currentTarget.style.background = '#ffb400'; e.currentTarget.style.color = '#000'; }}
@@ -686,7 +670,7 @@ export default function Dashboard() {
                                             borderRadius: 'var(--px-radius-sm)',
                                             color: active ? '#10b981' : 'var(--px-muted)',
                                             cursor: 'pointer',
-                                            textTransform: 'uppercase', letterSpacing: '0.04em',
+                                            
                                             whiteSpace: 'nowrap',
                                             transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
                                         });
@@ -743,15 +727,13 @@ export default function Dashboard() {
                                                                 fontSize: 12,
                                                                 padding: '9px 16px',
                                                                 background: 'transparent',
-                                                                border: '1px solid #00c8ff',
-                                                                color: '#00c8ff',
+                                                                border: '1px solid var(--px-accent)', borderRadius: 999,
+                                                                color: 'var(--px-accent)',
                                                                 textDecoration: 'none',
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.06em',
                                                                 transition: 'background 0.15s ease, color 0.15s ease',
                                                             }}
-                                                            onMouseEnter={e => { e.currentTarget.style.background = '#00c8ff'; e.currentTarget.style.color = '#000'; }}
-                                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#00c8ff'; }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--px-accent)'; e.currentTarget.style.color = '#fff'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--px-accent)'; }}
                                                         >
                                                             {dash.db_adminer}
                                                         </a>
@@ -775,7 +757,7 @@ export default function Dashboard() {
                                             padding: '7px 14px',
                                             border: '1px solid var(--px-border)', borderRadius: 'var(--px-radius-sm)',
                                             background: 'transparent', color: 'var(--px-muted)', cursor: 'pointer',
-                                            textTransform: 'uppercase', letterSpacing: '0.06em',
+                                            
                                             transition: 'border-color 0.15s ease, color 0.15s ease',
                                         }}
                                         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--px-border-glow)'; e.currentTarget.style.color = 'var(--px-white)'; }}
