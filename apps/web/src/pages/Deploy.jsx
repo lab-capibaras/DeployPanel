@@ -215,7 +215,7 @@ export default function Deploy() {
         subdomain: formData.subdomain,
         repoUrl: formData.repoUrl,
       });
-    }, 3200);
+    }, 3800); // duración de la animación de despegue (RocketLaunch)
   };
 
   const handleDeployFail = (message) => {
@@ -385,7 +385,7 @@ export default function Deploy() {
         setTimeout(() => {
           setShowRocketLaunch(false);
           setUploadPhase('success');
-        }, 3200);
+        }, 3800);
       } catch (err) {
         setUploadErrorMsg(err.message);
         setUploadPhase('error');
