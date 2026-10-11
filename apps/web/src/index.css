@@ -555,6 +555,11 @@ textarea:focus-visible {
   margin-right: -0.08em;
 }
 
+/* En claro, azules más profundos: los celestes del tema oscuro se pierden sobre blanco */
+html.light-mode .text-gradient-blue {
+  background-image: linear-gradient(90deg, #0b2a8a, #1e3fae, #2962ff, #4f7dff, #2962ff, #1e3fae, #0b2a8a);
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-up-4,
@@ -595,8 +600,8 @@ html.light-mode {
   --px-glass-shadow:  inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 8px 32px rgba(19, 23, 34, 0.08);
   --px-glass-menu-bg: rgba(255, 255, 255, 0.82);
   --px-glass-hover:   rgba(19, 23, 34, 0.05);
-  --px-video-veil:    rgba(255, 255, 255, 0.78);
-  --px-video-veil-strong: rgba(255, 255, 255, 0.88);
+  --px-video-veil:    rgba(255, 255, 255, 0.05);
+  --px-video-veil-strong: rgba(255, 255, 255, 0.45);
 }
 
 html.light-mode .noise-overlay  { opacity: 0.015; }

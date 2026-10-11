@@ -3,13 +3,15 @@
 // (animaciones de entrada, cards glass) atrape el position:fixed.
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { getPrefs, subscribePrefs } from '../store/prefs';
 
-// Horizontal para escritorio y vertical para celulares: con un solo video 16:9,
-// object-fit:cover en una pantalla vertical lo agranda y recorta el centro.
-const SOURCES = {
-  landscape: { src: '/bg-planets-ascii.mp4', poster: '/bg-planets-ascii-poster.jpg' },
-  portrait:  { src: '/bg-planets-ascii-portrait.mp4', poster: '/bg-planets-ascii-portrait-poster.jpg' },
-};
+// Horizontal para escritorio y vertical para celulares (con un solo video 16:9,
+// object-fit:cover en una pantalla vertical lo agranda y recorta el centro).
+// En tema claro se usa una versión con tinta azul sobre fondo blanco.
+function sourceFor(orientation, theme) {
+  const base = `/bg-planets-ascii${orientation === 'portrait' ? '-portrait' : ''}${theme === 'light' ? '-light' : ''}`;
+  return { src: `${base}.mp4`, poster: `${base}-poster.jpg` };
+}
 const PORTRAIT_QUERY = '(max-aspect-ratio: 1/1)';
 
 // veil='strong' oscurece más el video: para páginas con mucho texto (Deploy, Dashboard...)
@@ -23,7 +25,7 @@ export default function VideoBackground({ veil = 'soft' }) {
     const apply = () => {
       const v = ref.current;
       if (!v) return;
-      const { src, poster } = SOURCES[portrait.matches ? 'portrait' : 'landscape'];
+      const { src, poster } = sourceFor(portrait.matches ? 'portrait' : 'landscape', getPrefs().theme);
       if (!v.src.endsWith(src)) {
         v.poster = poster;
         v.src = src;
@@ -36,9 +38,11 @@ export default function VideoBackground({ veil = 'soft' }) {
     apply();
     portrait.addEventListener('change', apply);
     reduce.addEventListener('change', apply);
+    const unsubscribe = subscribePrefs(apply); // cambio de tema claro/oscuro
     return () => {
       portrait.removeEventListener('change', apply);
       reduce.removeEventListener('change', apply);
+      unsubscribe();
     };
   }, []);
 
