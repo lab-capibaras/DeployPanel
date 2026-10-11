@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { useAuth } from '../hooks/useAuth';
 import BrandMark from '../components/BrandMark';
+import VideoBackground from '../components/VideoBackground';
 
 function Login() {
   const t = useTranslation();
@@ -22,7 +23,7 @@ function Login() {
         <div style={{ textAlign: 'center' }}>
           <div style={{
             width: 32, height: 32, margin: '0 auto 16px',
-            border: '2px solid var(--px-border)', borderTopColor: 'var(--px-red)',
+            border: '2px solid var(--px-border)', borderTopColor: 'var(--px-accent)',
             borderRadius: '50%', animation: 'spin 0.8s linear infinite',
           }} />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -35,13 +36,9 @@ function Login() {
   return (
     <div className="page-transition" style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px', background: 'var(--px-bg)', position: 'relative', overflow: 'hidden',
+      padding: '24px', position: 'relative', overflow: 'hidden',
     }}>
-      {/* Background glow */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse 60% 50% at 50% 0%, var(--px-glow-blue) 0%, transparent 65%)',
-      }} />
+      <VideoBackground />
 
       <div className="fade-up" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>
 
@@ -54,12 +51,10 @@ function Login() {
         </div>
 
         {/* Panel */}
-        <div style={{
+        <div className="glass" style={{
           padding: '40px 36px',
-          background: 'var(--px-surface)',
-          border: '1px solid var(--px-border)',
           borderRadius: 'var(--px-radius-xl)',
-          boxShadow: 'var(--px-shadow-md)',
+          boxShadow: 'var(--px-glass-shadow), var(--px-shadow-md)',
         }}>
 
           {/* Heading */}
@@ -80,7 +75,7 @@ function Login() {
               marginBottom: 24, padding: '12px 16px',
               background: 'rgba(242,54,69,0.08)',
               border: '1px solid rgba(242,54,69,0.3)',
-              borderRadius: 'var(--px-radius-sm)',
+              borderRadius: 12,
               color: 'var(--px-white)',
               fontFamily: "'Inter',sans-serif", fontSize: 14,
             }}>
@@ -130,8 +125,9 @@ function OAuthButton({ href, icon, label }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '13px 18px',
-        background: hov ? 'var(--px-glass-hover)' : 'transparent',
-        border: `1px solid ${hov ? 'var(--px-white)' : 'var(--px-border-glow)'}`,
+        background: hov ? 'var(--px-glass-hover)' : 'var(--px-glass-bg)',
+        border: `1px solid ${hov ? 'var(--px-border-glow)' : 'var(--px-glass-border)'}`,
+        backdropFilter: 'var(--px-glass-blur)', WebkitBackdropFilter: 'var(--px-glass-blur)',
         borderRadius: 999,
         justifyContent: 'center',
         color: 'var(--px-white)',
@@ -139,7 +135,7 @@ function OAuthButton({ href, icon, label }) {
         fontFamily: "'Inter',sans-serif", fontWeight: 600, fontSize: 15,
         cursor: 'pointer',
         transform: pressed ? 'scale(0.98)' : hov ? 'scale(1.01)' : 'scale(1)',
-        boxShadow: hov ? 'var(--px-shadow-sm)' : 'none',
+        boxShadow: 'var(--px-glass-shadow)',
         transition: 'all 0.18s cubic-bezier(0.23,1,0.32,1)',
         position: 'relative', overflow: 'hidden',
       }}
