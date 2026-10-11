@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../i18n';
 import { getPrefs, subscribePrefs } from '../store/prefs';
-import { CheckCircleIcon } from '../components/Icons';
 import JSZip from 'jszip';
 import { useAuth } from '../hooks/useAuth';
 import WebhookInstructions from '../components/WebhookInstructions';
 import DeployLogs from '../components/DeployLogs';
 import VideoBackground from '../components/VideoBackground';
+import RocketLaunch from '../components/RocketLaunch';
 
 
 /** Lightweight hook: re-renders when theme/lang changes */
@@ -1483,37 +1483,8 @@ export default function Deploy() {
         })}
       </div>
 
-      {/* ======= DEPLOY OVERLAY ======= */}
-      {showRocketLaunch && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background: 'var(--px-bg)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <div style={{
-            color: 'var(--px-white)',
-            animation: 'deploy-check-pop 0.4s ease-out forwards',
-          }}>
-            <CheckCircleIcon size={72} />
-          </div>
-
-          <div style={{
-            fontFamily: "'Inter',sans-serif",
-            fontWeight: 700,
-            fontSize: 22,
-            color: 'var(--px-white)',
-            marginTop: 24,
-            textAlign: 'center',
-          }}>
-            {d.progress.title}
-          </div>
-        </div>
-      )}
+      {/* ======= DESPEGUE (deploy exitoso) ======= */}
+      {showRocketLaunch && <RocketLaunch title={d.success.title} />}
       {/* ======= WEBHOOK INSTRUCTIONS MODAL ======= */}
       {webhookInfo && (
         <WebhookInstructions
@@ -1528,10 +1499,6 @@ export default function Deploy() {
         .animate-fade-in { animation: fade-in 0.3s ease-out; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes deploy-check-pop {
-          0% { opacity: 0; transform: scale(0.7); }
-          100% { opacity: 1; transform: scale(1); }
-        }
       `}</style>
     </div>
   );
