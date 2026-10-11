@@ -52,7 +52,7 @@ export default function Home() {
       <VideoBackground />
 
       {/* ══ HERO ═══════════════════════════════════════════════════ */}
-      <section style={{ position: 'relative', padding: 'clamp(96px, 12vw, 160px) 24px clamp(48px, 6vw, 80px)', textAlign: 'center' }}>
+      <section className="home-hero" style={{ position: 'relative', padding: 'clamp(96px, 12vw, 160px) 24px clamp(48px, 6vw, 80px)', textAlign: 'center' }}>
 
         <div style={{ position: 'relative', ...container }}>
 
@@ -62,7 +62,7 @@ export default function Home() {
             <span className="text-gradient-blue">{h.h1_2}</span>
           </h1>
 
-          <p className="fade-up fade-up-2" style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: 'var(--px-muted)', maxWidth: 660, margin: '0 auto', lineHeight: 1.55 }}>
+          <p className="fade-up fade-up-2" style={{ fontSize: 'clamp(17px, 2vw, 21px)', color: 'var(--px-muted)', maxWidth: 660, margin: '0 auto', lineHeight: 1.55, textShadow: '0 0 6px var(--px-bg), 0 0 18px var(--px-bg)' }}>
             {h.subtitle}
           </p>
 

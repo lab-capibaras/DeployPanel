@@ -498,6 +498,17 @@ textarea:focus-visible {
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 80%);
 }
 
+/* En el celular el hero ocupa la primera pantalla (menos la barra flotante de abajo) */
+@media (max-width: 767px) {
+  .home-hero {
+    min-height: calc(100svh - 110px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 48px !important;
+  }
+}
+
 .home-footer-link {
   font-size: 14px;
   color: var(--px-muted);
@@ -506,6 +517,23 @@ textarea:focus-visible {
 }
 .home-footer-link:hover { color: var(--px-white); }
 
+
+/* ─── Video de fondo (VideoBackground) ──────────────────────────── */
+/* 100lvh = alto con la barra del navegador móvil escondida: así el video no deja
+   una franja sin cubrir (y el glass no se ve opaco) al scrollear en el celular.
+   100vh queda como respaldo para navegadores sin unidades lvh. */
+.video-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--px-bg);
+}
 
 /* ─── Texto con degradado azul animado (titular del Home) ───────── */
 @keyframes text-gradient-flow {
