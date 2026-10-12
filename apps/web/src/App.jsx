@@ -154,7 +154,7 @@ function MobileBottomNav() {
   };
 
   return (
-    <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 12, left: 12, right: 12 }}>
+    <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))', left: 12, right: 12 }}>
 
       {showPrefs && (
         <div className="glass-menu" style={{ ...popupStyle, right: 0 }}>
@@ -414,7 +414,8 @@ const Navbar = React.memo(function Navbar() {
     <nav
       className="fixed z-50 hidden md:block"
       style={{
-        top: scrolled ? 12 : 0,
+        // safe-area: en la PWA instalada (iPad) la barra de estado es translúcida
+        top: scrolled ? 'calc(12px + env(safe-area-inset-top))' : 'env(safe-area-inset-top)',
         left: side,
         right: side,
         height: scrolled ? 56 : 64,
@@ -525,7 +526,7 @@ function App() {
     <>
       <Navbar />
       <MobileBottomNav />
-      <div className="pt-0 md:pt-16 pb-28 md:pb-0 min-h-screen">
+      <div className="app-content min-h-screen">
         <Routes>
           <Route path="/"          element={<Home />} />
           <Route path="/login"     element={<Login />} />

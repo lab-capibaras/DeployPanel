@@ -9,8 +9,14 @@ const _init = {
   lang:  localStorage.getItem('sd-lang')  || 'es',
 };
 
+// Color de la barra del sistema / ventana de la PWA (igual a --px-bg de cada tema)
+function _applyThemeColor(theme) {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#ffffff' : '#0f0f0f');
+}
+
 // Apply on module load (before any component mounts)
 document.documentElement.classList.toggle('light-mode', _init.theme === 'light');
+_applyThemeColor(_init.theme);
 document.documentElement.setAttribute('data-lang', _init.lang);
 
 let _prefs = { ..._init };
@@ -24,6 +30,7 @@ export function setTheme(theme) {
   _prefs.theme = theme;
   localStorage.setItem('sd-theme', theme);
   document.documentElement.classList.toggle('light-mode', theme === 'light');
+  _applyThemeColor(theme);
   _notify();
 }
 

@@ -646,11 +646,21 @@ html.light-mode .grid-overlay   { opacity: 0.15; }
 
 html.light-mode .hero-blob { opacity: 0.5; }
 
+/* ─── Contenedor de páginas (debajo del navbar / sobre la barra móvil) ─── */
+/* env(safe-area-inset-*) vale 0 salvo en la PWA instalada con notch / home indicator */
+.app-content { padding-top: calc(64px + env(safe-area-inset-top)); }
+@media (max-width: 767px) {
+  .app-content {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: calc(112px + env(safe-area-inset-bottom));
+  }
+}
+
 /* ─── Board (pizarra) ──────────────────────────────────────────── */
-.board-root { padding-top: 64px; }
+.board-root { padding-top: calc(64px + env(safe-area-inset-top)); }
 @media (max-width: 767px) {
   /* En móvil no hay navbar arriba pero sí la barra flotante abajo */
-  .board-root { padding-top: 0; padding-bottom: 92px; }
+  .board-root { padding-top: env(safe-area-inset-top); padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
   .board-palette { width: 52px !important; padding: 8px 6px !important; }
   .board-palette .palette-label, .board-palette .palette-hint { display: none; }
   .board-inspector { position: absolute; right: 0; top: 0; bottom: 0; z-index: 5; }

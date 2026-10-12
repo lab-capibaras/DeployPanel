@@ -9,10 +9,16 @@ RUN npm run build
 # Etapa 2: Servidor Nginx
 FROM nginx:alpine
 
+# PWA: sw.js e index.html sin caché (si no, los usuarios quedan con una versión vieja);
+# /assets lleva hash de Vite, así que se cachea un año; el manifest con su MIME type.
 RUN echo 'server { \
     listen 80; \
+    root /usr/share/nginx/html; \
+    location = /sw.js { add_header Cache-Control "no-cache"; } \
+    location = /index.html { add_header Cache-Control "no-cache"; } \
+    location = /manifest.webmanifest { default_type application/manifest+json; add_header Cache-Control "no-cache"; } \
+    location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; } \
     location / { \
-        root /usr/share/nginx/html; \
         index index.html index.htm; \
         try_files $uri $uri/ /index.html; \
     } \
