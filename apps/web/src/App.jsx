@@ -73,8 +73,8 @@ const ChevronIcon = ({ size = 14 }) => (
 );
 
 const HomeNavIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
-const DeployNavIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>;
 const GridNavIcon   = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+const ToolsNavIcon  = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l9 5-9 5-9-5 9-5z" /><path d="M3 12l9 5 9-5" /><path d="M3 17l9 5 9-5" /></svg>;
 const PersonNavIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
 
 function Avatar({ user, size = 28 }) {
@@ -130,20 +130,22 @@ function MobileBottomNav() {
   const { user, loading, logout } = useAuth();
   const t = useTranslation();
   const loc = useLocation();
+  const { lang } = usePrefs();
   const [showPrefs, setShowPrefs]   = useState(false);
+  const [showTools, setShowTools]   = useState(false);
   const [showUser, setShowUser]     = useState(false);
   const wrapRef = useRef(null);
 
-  const closeAll = () => { setShowPrefs(false); setShowUser(false); };
+  const closeAll = () => { setShowPrefs(false); setShowUser(false); setShowTools(false); };
 
   useEffect(() => {
-    const anyOpen = showPrefs || showUser;
+    const anyOpen = showPrefs || showUser || showTools;
     if (!anyOpen) return;
     const h = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) closeAll(); };
     document.addEventListener('mousedown', h);
     document.addEventListener('touchstart', h, { passive: true });
     return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
-  }, [showPrefs, showUser]);
+  }, [showPrefs, showUser, showTools]);
 
   useEffect(() => { closeAll(); }, [loc.pathname]);
 
@@ -155,6 +157,13 @@ function MobileBottomNav() {
 
   return (
     <div ref={wrapRef} className="fixed md:hidden z-50" style={{ bottom: 'calc(12px + env(safe-area-inset-bottom))', left: 12, right: 12 }}>
+
+      {showTools && (
+        <div className="glass-menu" style={{ ...popupStyle, left: 0, right: 0, padding: 8 }}>
+          {(NAV_TOOLS[lang] || NAV_TOOLS.es).map((tool) => <ToolLink key={tool.label} tool={tool} onSelect={closeAll} />)}
+          <AdminToolLink lang={lang === 'en' ? 'en' : 'es'} onSelect={closeAll} />
+        </div>
+      )}
 
       {showPrefs && (
         <div className="glass-menu" style={{ ...popupStyle, right: 0 }}>
@@ -187,18 +196,22 @@ function MobileBottomNav() {
         borderRadius: 999, display: 'flex', alignItems: 'stretch', padding: '4px 6px',
       }}>
         <BottomNavItem to="/" icon={<HomeNavIcon />} label={t.nav.home} active={loc.pathname === '/'} />
-        <BottomNavItem to="/deploy" icon={<DeployNavIcon />} label={t.nav.deploy} active={loc.pathname === '/deploy'} />
+        <BottomNavItem
+          icon={<ToolsNavIcon />} label={t.nav.tools}
+          active={showTools || ['/deploy', '/board', '/console'].some(p => loc.pathname.startsWith(p))}
+          onClick={() => { setShowPrefs(false); setShowUser(false); setShowTools(o => !o); }}
+        />
         {user && <BottomNavItem to="/dashboard" icon={<GridNavIcon />} label={t.nav.dashboard} active={loc.pathname === '/dashboard'} />}
         <BottomNavItem
           icon={<ContrastIcon size={20} />} label={t.nav.theme}
           active={showPrefs}
-          onClick={() => { setShowUser(false); setShowPrefs(o => !o); }}
+          onClick={() => { setShowUser(false); setShowTools(false); setShowPrefs(o => !o); }}
         />
         {user ? (
           <BottomNavItem
             active={showUser}
             label={(user.name?.split(' ')[0] || '').slice(0, 8)}
-            onClick={() => { setShowPrefs(false); setShowUser(o => !o); }}
+            onClick={() => { setShowPrefs(false); setShowTools(false); setShowUser(o => !o); }}
             icon={<Avatar user={user} size={22} />}
           />
         ) : (
@@ -442,27 +455,7 @@ const Navbar = React.memo(function Navbar() {
           <span style={{ fontWeight: 800, fontSize: 20, color: 'var(--px-white)', letterSpacing: '-0.02em' }}>StarDest</span>
         </Link>
 
-        {/* Herramientas: mega-menú al pasar el mouse */}
-        <div className="relative group">
-          <button className="tv-nav-link" aria-haspopup="true">
-            <span className="nav-label-es">Herramientas</span>
-            <span className="nav-label-en">Tools</span>
-            <span className="group-hover:rotate-180" style={{ display: 'inline-flex', transition: 'transform 0.2s', color: 'var(--px-muted)' }}><ChevronIcon /></span>
-          </button>
-          <div className="absolute top-full left-0 w-full h-3" />
-          <div className="absolute top-[calc(100%+8px)] left-0 w-[520px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 -translate-y-1 group-hover:translate-y-0">
-            <div className="mega-menu-panel" style={{ padding: 10 }}>
-              <div className="grid grid-cols-2 gap-1 nav-tools-es">
-                {NAV_TOOLS.es.map((tool) => <ToolLink key={tool.label} tool={tool} />)}
-                <AdminToolLink lang="es" />
-              </div>
-              <div className="grid grid-cols-2 gap-1 nav-tools-en">
-                {NAV_TOOLS.en.map((tool) => <ToolLink key={tool.label} tool={tool} />)}
-                <AdminToolLink lang="en" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <ToolsMenu />
 
         <Link to="/deploy" className={linkClass('/deploy')}>Deploy</Link>
         <Link to="/board" className={linkClass('/board')}>
@@ -487,9 +480,71 @@ function DashboardNavLink({ className }) {
   return <Link to="/dashboard" className={className}>Dashboard</Link>;
 }
 
-function ToolLink({ tool }) {
+/* Herramientas: se abre con clic/tap (pantallas táctiles, PWA) y también con
+   hover en dispositivos con mouse. Antes era solo CSS :hover, que en táctil no existe. */
+function ToolsMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const closeTimer = useRef(null);
+  const canHover = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  const onEnter = () => { if (canHover()) { clearTimeout(closeTimer.current); setOpen(true); } };
+  // Pequeña demora: deja cruzar el hueco entre el botón y el panel sin que se cierre
+  const onLeave = () => { if (canHover()) { closeTimer.current = setTimeout(() => setOpen(false), 120); } };
+  const close = () => setOpen(false);
+
   return (
-    <Link to={tool.to} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 14, padding: 14, borderRadius: 12, transition: 'background 0.15s' }}
+    <div ref={ref} style={{ position: 'relative' }} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      <button
+        className={`tv-nav-link ${open ? 'active' : ''}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="nav-label-es">Herramientas</span>
+        <span className="nav-label-en">Tools</span>
+        <span style={{ display: 'inline-flex', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none', color: 'var(--px-muted)' }}><ChevronIcon /></span>
+      </button>
+      {/* Puente invisible entre el botón y el panel (para el hover) */}
+      {open && <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', height: 10 }} />}
+      <div style={{
+        position: 'absolute', top: 'calc(100% + 8px)', left: 0, width: 520, maxWidth: 'calc(100vw - 32px)',
+        opacity: open ? 1 : 0, visibility: open ? 'visible' : 'hidden',
+        transform: open ? 'translateY(0)' : 'translateY(-4px)',
+        transition: 'opacity 0.18s ease, transform 0.18s ease, visibility 0.18s',
+      }}>
+        <div className="mega-menu-panel" style={{ padding: 10 }}>
+          <div className="grid grid-cols-2 gap-1 nav-tools-es">
+            {NAV_TOOLS.es.map((tool) => <ToolLink key={tool.label} tool={tool} onSelect={close} />)}
+            <AdminToolLink lang="es" onSelect={close} />
+          </div>
+          <div className="grid grid-cols-2 gap-1 nav-tools-en">
+            {NAV_TOOLS.en.map((tool) => <ToolLink key={tool.label} tool={tool} onSelect={close} />)}
+            <AdminToolLink lang="en" onSelect={close} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToolLink({ tool, onSelect }) {
+  return (
+    <Link to={tool.to} onClick={onSelect} style={{ textDecoration: 'none', display: 'flex', alignItems: 'flex-start', gap: 14, padding: 14, borderRadius: 12, transition: 'background 0.15s' }}
       onMouseEnter={hoverOn}
       onMouseLeave={hoverOff}
     >
@@ -512,10 +567,10 @@ const CONSOLE_TOOL = {
 };
 const CONSOLE_ICON = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />;
 
-function AdminToolLink({ lang }) {
+function AdminToolLink({ lang, onSelect }) {
   const { user } = useAuth();
   if (!user?.isAdmin) return null;
-  return <ToolLink tool={{ ...CONSOLE_TOOL[lang], icon: CONSOLE_ICON }} />;
+  return <ToolLink tool={{ ...CONSOLE_TOOL[lang], icon: CONSOLE_ICON }} onSelect={onSelect} />;
 }
 
 /* ═══════════════════════════════════════════════════════════
