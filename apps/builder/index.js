@@ -405,6 +405,14 @@ function detectDatabase(repoPath) {
         if (req.includes('psycopg') || req.includes('asyncpg') || req.includes('postgres')) content += ' postgres';
     }
 
+    // Servidores Dart: solo drivers específicos (señales ambiguas no cuentan)
+    const dartPub = readPubspec(repoPath);
+    if (dartPub && !dartPub.dependencies?.flutter) {   // una app Flutter no usa drivers de servidor
+        const dartDeps = Object.keys({ ...dartPub.dependencies, ...dartPub.dev_dependencies });
+        if (dartDeps.some(d => ['postgres', 'postgres_pool', 'drift_postgres'].includes(d))) content += ' postgres';
+        if (dartDeps.some(d => ['mysql1', 'mysql_client', 'mysql'].includes(d))) content += ' mysql';
+    }
+
     const phpFiles = ['config/db.php', 'config/database.php', 'app/config/database.php'];
     for (const phpFile of phpFiles) {
         const phpPath = path.join(repoPath, phpFile);
@@ -823,6 +831,7 @@ function classifyService(serviceName, serviceConfig, dockerfileContent) {
 
     // 2. Por imagen base del Dockerfile, si se pudo leer
     if (dockerfileContent) {
+        if (/flutter build web/.test(dockerfileContent)) return 'frontend';
         const content = dockerfileContent.toLowerCase();
         if (/from\s+(node|nginx)/.test(content) && /(vite|react|vue|npm run build|next)/.test(content)) {
             return 'frontend';
@@ -891,6 +900,9 @@ EXPOSE 3000
 function findOrphanServiceDirs(repoPath, compose) {
     const usedContexts = getComposeBuildContexts(compose);
     const orphans = [];
+    // Si la raíz ya es un proyecto Dart/Flutter, sus subcarpetas Flutter (p. ej. example/
+    // de un paquete) no son servicios: se desplegaría eso en lugar de la app principal.
+    const rootIsDart = !!readPubspec(repoPath);
 
     let entries;
     try {
@@ -913,6 +925,16 @@ function findOrphanServiceDirs(repoPath, compose) {
             orphans.push({ dirName, dockerfilePath });
             console.log(`[Compose] Carpeta huérfana con Dockerfile encontrada: ${dirName}/`);
             continue;
+        }
+
+        // No tiene Dockerfile — ¿frontend Flutter sin contenerizar?
+        if (!rootIsDart) {
+            const dart = detectDartProject(dirFullPath);
+            if (dart?.kind === 'flutter' && fs.existsSync(path.join(dirFullPath, 'lib', 'main.dart'))) {
+                dockerfilePath = writeFlutterWebDockerfile(dirFullPath, detectFlutterVersion(dirFullPath));
+                orphans.push({ dirName, dockerfilePath });
+                continue;
+            }
         }
 
         // No tiene Dockerfile — verificar si es un proyecto Vite/React/Next sin contenerizar
@@ -1242,11 +1264,17 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     // 3. Parchar y construir imagen del FRONTEND
     ensureDockerfileCopiesSource(frontend.dockerfilePath);
     console.log(`[Dual] Construyendo frontend desde ${frontend.buildContext}...`);
-    stream = await docker.buildImage(
-        { context: frontend.buildContext, src: ['.'] },
-        { t: frontendImageName, dockerfile: path.basename(frontend.dockerfilePath) }
-    );
-    await runDockerBuild(stream, subdomain);
+    const buildFrontend = async () => {
+        const fstream = await docker.buildImage(
+            { context: frontend.buildContext, src: ['.'] },
+            { t: frontendImageName, dockerfile: path.basename(frontend.dockerfilePath) }
+        );
+        await runDockerBuild(fstream, subdomain);
+    };
+    // Un frontend Flutter entra en la cola de builds de Flutter (uno a la vez por la RAM)
+    const isFlutterFrontend = /flutter build web/.test(fs.readFileSync(frontend.dockerfilePath, 'utf8'));
+    if (isFlutterFrontend) await runExclusiveFlutterBuild(subdomain, buildFrontend);
+    else await buildFrontend();
 
     // 4. Limpiar contenedores anteriores (backend, frontend, y el legacy single si existía)
     const containers = await docker.listContainers({ all: true });
@@ -1728,6 +1756,165 @@ async function runMigrations(containerName, migrationCmd, maxWait = 30000) {
 // ==========================================
 // --- FUNCIÓN MAESTRA DE DESPLIEGUE ---
 // ==========================================
+// ── Flutter / Dart ─────────────────────────────────────────────
+// (usa `yaml` = js-yaml, importado en la sección de monorepos)
+
+function readPubspec(dir) {
+    const file = path.join(dir, 'pubspec.yaml');
+    if (!fs.existsSync(file)) return null;
+    try {
+        const doc = yaml.load(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+        return doc && typeof doc === 'object' ? doc : null;
+    } catch {
+        return null;
+    }
+}
+
+// Archivo de arranque de un servidor Dart: pubspec.executables → server.dart → main.dart → <nombre>.dart → único archivo
+function detectDartEntrypoint(dir, pub) {
+    const binDir = path.join(dir, 'bin');
+    if (!fs.existsSync(binDir)) return null;
+    const files = fs.readdirSync(binDir).filter(f => f.endsWith('.dart'));
+    if (files.length === 0) return null;
+
+    for (const [name, script] of Object.entries(pub.executables || {})) {
+        const file = `${script || name}.dart`;
+        if (files.includes(file)) return `bin/${file}`;
+    }
+    const preferred = ['server.dart', 'main.dart', `${pub.name}.dart`].find(f => files.includes(f));
+    if (preferred) return `bin/${preferred}`;
+    return files.length === 1 ? `bin/${files[0]}` : null;
+}
+
+// → { kind: 'flutter' | 'dart' | 'unsupported', ... } o null si no es un proyecto Dart
+function detectDartProject(dir) {
+    const pub = readPubspec(dir);
+    if (!pub) return null;
+    const deps = pub.dependencies || {};
+
+    if (deps.flutter || pub.flutter) return { kind: 'flutter', name: pub.name };
+
+    if (deps.dart_frog || deps.serverpod) {
+        return {
+            kind: 'unsupported',
+            reason: 'dart_frog y Serverpod todavía no están soportados: necesitan un paso de generación de código antes de compilar.',
+        };
+    }
+
+    const entry = detectDartEntrypoint(dir, pub);
+    return entry ? { kind: 'dart', name: pub.name, entry } : null;
+}
+
+// Versión de Flutter fijada con FVM (.fvmrc o el formato anterior). Si no hay, usa 'stable'.
+function detectFlutterVersion(dir) {
+    const sources = [
+        [path.join(dir, '.fvmrc'), j => j.flutter],
+        [path.join(dir, '.fvm', 'fvm_config.json'), j => j.flutterSdkVersion],
+    ];
+    for (const [file, pick] of sources) {
+        try {
+            const v = String(pick(JSON.parse(fs.readFileSync(file, 'utf8'))) || '');
+            if (/^\d+\.\d+\.\d+$/.test(v)) return v;
+        } catch { /* sin archivo o JSON inválido */ }
+    }
+    return 'stable';
+}
+
+// nginx de Flutter en un archivo aparte (no con echo/printf en el Dockerfile: evita problemas de escape)
+const FLUTTER_NGINX_CONF = `server {
+    listen 3000;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Estos archivos deciden qué versión de la app carga el navegador.
+    # Si se cachean, los usuarios siguen viendo la versión anterior tras un redeploy.
+    location = /index.html                { add_header Cache-Control "no-cache"; }
+    location = /flutter_service_worker.js { add_header Cache-Control "no-cache"; }
+    location = /flutter_bootstrap.js      { add_header Cache-Control "no-cache"; }
+    location = /version.json              { add_header Cache-Control "no-cache"; }
+    location = /main.dart.js              { add_header Cache-Control "no-cache"; }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+`;
+
+// Escribe el Dockerfile de Flutter Web y devuelve su ruta
+function writeFlutterWebDockerfile(dir, flutterVersion) {
+    const hasWeb = fs.existsSync(path.join(dir, 'web', 'index.html'));
+    if (!hasWeb) console.log('[Flutter] El proyecto no tiene web/: se agregará con "flutter create . --platforms web"');
+
+    fs.writeFileSync(path.join(dir, 'stardest-nginx.conf'), FLUTTER_NGINX_CONF);
+    if (!fs.existsSync(path.join(dir, '.dockerignore'))) {
+        fs.writeFileSync(path.join(dir, '.dockerignore'), '.git\n.dart_tool\nbuild\nandroid\nios\nmacos\nlinux\nwindows\n');
+    }
+
+    const dockerfile = `FROM ghcr.io/cirruslabs/flutter:${flutterVersion} AS builder
+WORKDIR /app
+ENV CI=true
+RUN flutter config --no-analytics --no-cli-animations
+COPY pubspec.* ./
+RUN flutter pub get || true
+COPY . .
+${hasWeb ? '' : 'RUN flutter create . --platforms web\n'}RUN flutter pub get
+RUN flutter build web --release || flutter build web --release --no-tree-shake-icons
+
+FROM nginx:alpine
+COPY stardest-nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/build/web /usr/share/nginx/html
+EXPOSE 3000
+`;
+    const dockerfilePath = path.join(dir, 'Dockerfile');
+    fs.writeFileSync(dockerfilePath, dockerfile);
+    console.log(`[Flutter] Dockerfile generado (Flutter ${flutterVersion})`);
+    return dockerfilePath;
+}
+
+// Escribe el Dockerfile de un servidor Dart y devuelve su ruta
+function writeDartServerDockerfile(dir, entry) {
+    if (!fs.existsSync(path.join(dir, '.dockerignore'))) {
+        fs.writeFileSync(path.join(dir, '.dockerignore'), '.git\n.dart_tool\n');
+    }
+    // Se copia el código fuente a la imagen final para que funcionen los archivos
+    // (estáticos, plantillas) que el servidor lea en tiempo de ejecución.
+    const dockerfile = `FROM dart:stable AS build
+WORKDIR /app
+COPY pubspec.* ./
+RUN dart pub get || true
+COPY . .
+RUN dart pub get
+RUN mkdir -p /out && dart compile exe ${entry} -o /out/server
+
+FROM scratch
+COPY --from=build /runtime/ /
+COPY --from=build /app/ /app/
+COPY --from=build /out/server /server
+WORKDIR /app
+ENV HOST=0.0.0.0 PORT=3000
+EXPOSE 3000
+CMD ["/server"]
+`;
+    const dockerfilePath = path.join(dir, 'Dockerfile');
+    fs.writeFileSync(dockerfilePath, dockerfile);
+    console.log(`[Dart] Dockerfile generado (entrada: ${entry})`);
+    return dockerfilePath;
+}
+
+// Flutter compila con mucha RAM: un solo build a la vez, los demás esperan en cola
+let flutterBuildQueue = Promise.resolve();
+let flutterQueued = 0;
+function runExclusiveFlutterBuild(subdomain, task) {
+    if (flutterQueued > 0) {
+        console.log(`[Flutter] ${subdomain} en cola (${flutterQueued} antes)`);
+        deployLog(subdomain, 'info', `Build de Flutter en cola: hay ${flutterQueued} antes`);
+    }
+    flutterQueued++;
+    const run = flutterBuildQueue.then(task);
+    flutterBuildQueue = run.catch(() => {}).finally(() => { flutterQueued--; });
+    return run;
+}
+
 async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userEmail = 'anonymous', userEnv = []) {
     const tempDir = path.join(__dirname, 'temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
@@ -1806,6 +1993,9 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
         let isVite = false;
         let isPython = !!requirementsPath;
         let isNode = fs.existsSync(packageJsonPath);
+        const dartProject = detectDartProject(repoPath);
+        const isFlutter = dartProject?.kind === 'flutter';
+        const isDart = dartProject?.kind === 'dart';
         const hasIndexHtml = fs.existsSync(path.join(repoPath, 'index.html'));
         const hasPhpFiles = fs.readdirSync(repoPath).some(f => f.endsWith('.php'));
 
@@ -1898,6 +2088,37 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
                 { context: buildContext, src: ['.'] },
                 { t: imageName, dockerfile: dockerfileName }
             );
+            deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
+            await runDockerBuild(stream, subdomain);
+
+        // Flutter/Dart van antes de Next/Node: un proyecto Flutter con package.json en la
+        // raíz (p. ej. para Firebase Functions) se desplegaría como Node y fallaría.
+        } else if (dartProject?.kind === 'unsupported') {
+            throw new Error(dartProject.reason);
+
+        } else if (isFlutter) {
+            if (!fs.existsSync(path.join(repoPath, 'lib', 'main.dart'))) {
+                throw new Error('Proyecto Flutter sin lib/main.dart: parece un paquete o plugin, no una app que se pueda desplegar.');
+            }
+            const flutterVersion = detectFlutterVersion(repoPath);
+            console.log(`Proyecto Flutter detectado (Flutter ${flutterVersion}). Generando Dockerfile con nginx...`);
+            deployLog(subdomain, 'info', `Stack detectado: Flutter Web (${flutterVersion})`);
+            writeFlutterWebDockerfile(repoPath, flutterVersion);
+            appPort = '3000'; // detectPort corre antes de que exista el Dockerfile generado
+
+            await runExclusiveFlutterBuild(subdomain, async () => {
+                const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
+                deployLog(subdomain, 'info', `Construyendo imagen Docker (Flutter puede tardar varios minutos)...`);
+                await runDockerBuild(stream, subdomain);
+            });
+
+        } else if (isDart) {
+            console.log(`Servidor Dart detectado (${dartProject.entry}). Generando Dockerfile...`);
+            deployLog(subdomain, 'info', `Stack detectado: Dart (${dartProject.entry})`);
+            writeDartServerDockerfile(repoPath, dartProject.entry);
+            appPort = '3000';
+
+            const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
             deployLog(subdomain, 'info', `Construyendo imagen Docker...`);
             await runDockerBuild(stream, subdomain);
 
