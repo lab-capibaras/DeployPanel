@@ -1305,7 +1305,8 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
             `PGDATABASE=${dbCredentials.dbName}`,
             `PGUSER=${dbCredentials.dbUser}`,
             `PGPASSWORD=${dbCredentials.dbPassword}`,
-            `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+            `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}?sslmode=disable`,
+            `PGSSLMODE=disable`,
         ];
 
         const dbServiceName = Object.keys(deployPlan.backend.config).length
@@ -2484,7 +2485,8 @@ EXPOSE ${appPort}
                     `PGDATABASE=${dbCredentials.dbName}`,
                     `PGUSER=${dbCredentials.dbUser}`,
                     `PGPASSWORD=${dbCredentials.dbPassword}`,
-                    `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}`,
+                    `DATABASE_URL=postgresql://${dbCredentials.dbUser}:${dbCredentials.dbPassword}@${dbCredentials.dbHost}:${dbCredentials.dbPort}/${dbCredentials.dbName}?sslmode=disable`,
+                    `PGSSLMODE=disable`,
                 ];
             }
 

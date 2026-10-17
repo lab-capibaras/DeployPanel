@@ -684,7 +684,7 @@ export default function Dashboard() {
                                         const db = deploy.database;
                                         const url = db.type === 'mysql'
                                             ? `mysql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`
-                                            : `postgresql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}`;
+                                            : `postgresql://${db.user}:${db.password}@${db.host}:${db.port}/${db.name}?sslmode=disable`;
                                         const rows = [
                                             [dash.db_type, db.type.toUpperCase()],
                                             [dash.db_host, db.host],
