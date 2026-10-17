@@ -1222,7 +1222,9 @@ const runDockerBuild = (stream, subdomain) => new Promise((resolve, reject) => {
         });
         const errorLine = outputRes.find(l => l.error);
         if (errorLine) {
-            return reject(new Error(`Docker build falló: ${errorLine.error.trim()}`));
+            const e = new Error(`Docker build falló: ${errorLine.error.trim()}`);
+            e.buildOutput = outputRes.map(l => l.stream || l.error || '').join('');
+            return reject(e);
         }
         resolve(outputRes);
     });
@@ -1273,7 +1275,9 @@ async function deployDualService(deployPlan, subdomain, branch, repoUrl, userId,
     };
     // Un frontend Flutter entra en la cola de builds de Flutter (uno a la vez por la RAM)
     const isFlutterFrontend = /flutter build web/.test(fs.readFileSync(frontend.dockerfilePath, 'utf8'));
-    if (isFlutterFrontend) await runExclusiveFlutterBuild(subdomain, buildFrontend);
+    // (findOrphanServiceDirs es síncrono y no puede consultar la última estable: acá se
+    // resuelve la versión y se regenera el Dockerfile antes de construir)
+    if (isFlutterFrontend) await buildFlutterWithRetry(frontend.buildContext, subdomain, buildFrontend);
     else await buildFrontend();
 
     // 4. Limpiar contenedores anteriores (backend, frontend, y el legacy single si existía)
@@ -1820,6 +1824,56 @@ function detectFlutterVersion(dir) {
     return 'stable';
 }
 
+// Última versión estable de Flutter según el listado oficial de releases
+async function resolveLatestStableFlutter() {
+    try {
+        const res = await fetch('https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json', {
+            signal: AbortSignal.timeout(8000),
+        });
+        const data = await res.json();
+        const hash = data.current_release?.stable;
+        const release = data.releases.find(r => r.hash === hash && r.channel === 'stable');
+        return /^\d+\.\d+\.\d+$/.test(release?.version || '') ? release.version : null;
+    } catch {
+        return null;
+    }
+}
+
+// → { version, source }: 'pinned' (.fvmrc), 'latest' (listado oficial) o 'fallback' (imagen de Cirrus Labs)
+async function resolveFlutterVersion(dir) {
+    const pinned = detectFlutterVersion(dir);
+    if (pinned !== 'stable') return { version: pinned, source: 'pinned' };
+    const latest = await resolveLatestStableFlutter();
+    return latest ? { version: latest, source: 'latest' } : { version: 'stable', source: 'fallback' };
+}
+
+// Genera el Dockerfile de Flutter en `dir` y ejecuta `build()` dentro de la cola de Flutter.
+// Si `pub get` falla porque el proyecto necesita otro Dart, reintenta una vez con la
+// versión de Flutter que sugiere pub. La usan la app Flutter sola y el frontend de un monorepo.
+async function buildFlutterWithRetry(dir, subdomain, build) {
+    const resolved = await resolveFlutterVersion(dir);
+    console.log(`[Flutter] Versión: ${resolved.version} (${resolved.source})`);
+    deployLog(subdomain, 'info', `Flutter ${resolved.version} (${resolved.source === 'pinned' ? 'fijada en .fvmrc' : resolved.source === 'latest' ? 'última estable' : 'imagen de respaldo'})`);
+
+    const attempt = async (version) => {
+        writeFlutterWebDockerfile(dir, version);
+        await build();
+    };
+
+    await runExclusiveFlutterBuild(subdomain, async () => {
+        try {
+            await attempt(resolved.version);
+        } catch (e) {
+            // pub get dice qué versión de Flutter incluye el Dart que el proyecto necesita
+            const m = (e.buildOutput || '').match(/Try using the Flutter SDK version:\s*(\d+\.\d+\.\d+)\b/);
+            if (!m || m[1] === resolved.version) throw e;
+            console.log(`[Flutter] El proyecto necesita Flutter ${m[1]}; reintentando (usaba ${resolved.version})`);
+            deployLog(subdomain, 'info', `El proyecto necesita Flutter ${m[1]}; reintentando...`);
+            await attempt(m[1]);
+        }
+    });
+}
+
 // nginx de Flutter en un archivo aparte (no con echo/printf en el Dockerfile: evita problemas de escape)
 const FLUTTER_NGINX_CONF = `server {
     listen 3000;
@@ -1850,9 +1904,23 @@ function writeFlutterWebDockerfile(dir, flutterVersion) {
         fs.writeFileSync(path.join(dir, '.dockerignore'), '.git\n.dart_tool\nbuild\nandroid\nios\nmacos\nlinux\nwindows\n');
     }
 
-    const dockerfile = `FROM ghcr.io/cirruslabs/flutter:${flutterVersion} AS builder
+    // SDK desde el repositorio oficial (cualquier versión publicada). Siempre un tag concreto:
+    // un clon superficial de la rama "stable" no trae tags y el SDK reportaría una versión
+    // desconocida. La imagen de Cirrus Labs queda solo de respaldo (va atrasada).
+    // flutterVersion siempre es "stable" o X.Y.Z validado por regex: nunca texto arbitrario del repo.
+    const sdkStage = flutterVersion === 'stable'
+        ? `FROM ghcr.io/cirruslabs/flutter:stable AS builder
+ENV CI=true`
+        : `FROM debian:bookworm-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends git curl unzip xz-utils zip file ca-certificates && rm -rf /var/lib/apt/lists/*
+ENV PATH=/opt/flutter/bin:$PATH CI=true
+RUN git config --global --add safe.directory /opt/flutter \\
+ && git clone --depth 1 --branch ${flutterVersion} https://github.com/flutter/flutter.git /opt/flutter \\
+ && flutter precache --web \\
+ && flutter --version`;
+
+    const dockerfile = `${sdkStage}
 WORKDIR /app
-ENV CI=true
 RUN flutter config --no-analytics --no-cli-animations
 COPY pubspec.* ./
 RUN flutter pub get || true
@@ -2100,13 +2168,11 @@ async function deployApp(repoUrl, subdomain, branch, userId = 'anonymous', userE
             if (!fs.existsSync(path.join(repoPath, 'lib', 'main.dart'))) {
                 throw new Error('Proyecto Flutter sin lib/main.dart: parece un paquete o plugin, no una app que se pueda desplegar.');
             }
-            const flutterVersion = detectFlutterVersion(repoPath);
-            console.log(`Proyecto Flutter detectado (Flutter ${flutterVersion}). Generando Dockerfile con nginx...`);
-            deployLog(subdomain, 'info', `Stack detectado: Flutter Web (${flutterVersion})`);
-            writeFlutterWebDockerfile(repoPath, flutterVersion);
+            console.log(`Proyecto Flutter detectado. Generando Dockerfile con nginx...`);
+            deployLog(subdomain, 'info', `Stack detectado: Flutter Web`);
             appPort = '3000'; // detectPort corre antes de que exista el Dockerfile generado
 
-            await runExclusiveFlutterBuild(subdomain, async () => {
+            await buildFlutterWithRetry(repoPath, subdomain, async () => {
                 const stream = await docker.buildImage({ context: repoPath, src: ['.'] }, { t: imageName });
                 deployLog(subdomain, 'info', `Construyendo imagen Docker (Flutter puede tardar varios minutos)...`);
                 await runDockerBuild(stream, subdomain);
