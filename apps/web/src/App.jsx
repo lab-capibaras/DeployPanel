@@ -6,6 +6,7 @@ import Deploy from './pages/Deploy';
 import Dashboard from './pages/Dashboard';
 import Console from './pages/Console';
 import Board from './pages/Board';
+import Files from './pages/Files';
 import { useAuth } from './hooks/useAuth';
 import BrandMark from './components/BrandMark';
 
@@ -198,7 +199,7 @@ function MobileBottomNav() {
         <BottomNavItem to="/" icon={<HomeNavIcon />} label={t.nav.home} active={loc.pathname === '/'} />
         <BottomNavItem
           icon={<ToolsNavIcon />} label={t.nav.tools}
-          active={showTools || ['/deploy', '/board', '/console'].some(p => loc.pathname.startsWith(p))}
+          active={showTools || ['/deploy', '/board', '/console', '/files'].some(p => loc.pathname.startsWith(p))}
           onClick={() => { setShowPrefs(false); setShowUser(false); setShowTools(o => !o); }}
         />
         {user && <BottomNavItem to="/dashboard" icon={<GridNavIcon />} label={t.nav.dashboard} active={loc.pathname === '/dashboard'} />}
@@ -566,11 +567,21 @@ const CONSOLE_TOOL = {
   en: { to: '/console', label: 'Console', desc: 'Platform administration' },
 };
 const CONSOLE_ICON = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />;
+const FILES_TOOL = {
+  es: { to: '/files', label: 'Archivos', desc: 'Gestor de archivos del servidor' },
+  en: { to: '/files', label: 'Files',    desc: 'Server file manager' },
+};
+const FILES_ICON = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />;
 
 function AdminToolLink({ lang, onSelect }) {
   const { user } = useAuth();
   if (!user?.isAdmin) return null;
-  return <ToolLink tool={{ ...CONSOLE_TOOL[lang], icon: CONSOLE_ICON }} onSelect={onSelect} />;
+  return (
+    <>
+      <ToolLink tool={{ ...CONSOLE_TOOL[lang], icon: CONSOLE_ICON }} onSelect={onSelect} />
+      <ToolLink tool={{ ...FILES_TOOL[lang], icon: FILES_ICON }} onSelect={onSelect} />
+    </>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -590,6 +601,7 @@ function App() {
           <Route path="/console"   element={<Console />} />
           <Route path="/board"     element={<Board />} />
           <Route path="/board/:id" element={<Board />} />
+          <Route path="/files"     element={<Files />} />
         </Routes>
       </div>
     </>

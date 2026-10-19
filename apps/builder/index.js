@@ -4044,4 +4044,340 @@ app.delete('/boards/:id', requireAuth, (req, res) => {
     }
 });
 
+// ==========================================
+// --- ARCHIVOS (gestor de archivos, solo admin, sin TOTP) ---
+// ==========================================
+const FILES_BASE = path.join(DEPLOYS_DIR, 'files');
+const FILES_ROOT = path.join(FILES_BASE, 'data');   // lo que ve el usuario
+const FILES_TMP  = path.join(FILES_BASE, 'tmp');    // subidas en curso (mismo disco: el rename es atómico)
+const FILE_CHUNK_MAX      = 25 * 1024 * 1024;       // el cliente manda trozos de 20 MB
+const FILE_MAX_BYTES      = 10 * 1024 ** 3;         // 10 GB por archivo
+const FILE_MIN_FREE_BYTES = 5 * 1024 ** 3;          // el disco nunca debe quedar con menos de 5 GB libres
+// Derivada del mismo secreto que firma las sesiones (JWT_SECRET o SESSION_SECRET): si solo
+// se usara SESSION_SECRET y en producción solo existiera JWT_SECRET, la clave sería
+// 'dev-secret' y cualquiera podría fabricar enlaces de descarga.
+const FILE_LINK_KEY = crypto.createHash('sha256')
+    .update('files-download:' + (process.env.JWT_SECRET || process.env.SESSION_SECRET || 'dev-secret')).digest();
+
+// Tipos que se pueden abrir en el navegador. SVG y HTML quedan fuera a propósito: ejecutan JavaScript.
+const FILE_INLINE_TYPES = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif',
+    mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+    pdf: 'application/pdf',
+    txt: 'text/plain; charset=utf-8', log: 'text/plain; charset=utf-8', md: 'text/plain; charset=utf-8',
+    json: 'text/plain; charset=utf-8', csv: 'text/plain; charset=utf-8', xml: 'text/plain; charset=utf-8',
+};
+
+try {
+    fs.mkdirSync(FILES_ROOT, { recursive: true });
+    // Las subidas a medias de un arranque anterior ya no se pueden reanudar
+    fs.rmSync(FILES_TMP, { recursive: true, force: true });
+    fs.mkdirSync(FILES_TMP, { recursive: true });
+} catch (e) {
+    console.warn('[Files] No se pudo preparar la carpeta de archivos:', e.message);
+}
+
+// ── Helpers ──
+function httpError(status, message) {
+    const e = new Error(message);
+    e.status = status;
+    return e;
+}
+
+const filesHandler = (fn) => async (req, res) => {
+    try {
+        await fn(req, res);
+    } catch (e) {
+        if (res.headersSent) return;
+        const status = e.status || (e.code === 'ENOSPC' ? 507 : 500);
+        res.status(status).json({ error: e.code === 'ENOSPC' ? 'El disco está lleno' : e.message });
+    }
+};
+
+const FILE_BAD_CHARS = /[\\\/\u0000-\u001f\u007f]/;
+
+// Nombre de archivo o carpeta válido (sin rutas ni caracteres de control), o null
+function validFileName(name) {
+    if (typeof name !== 'string') return null;
+    const n = name.normalize('NFC').trim();
+    if (!n || n === '.' || n === '..' || FILE_BAD_CHARS.test(n) || Buffer.byteLength(n) > 255) return null;
+    return n;
+}
+
+// Ruta relativa del cliente → ruta absoluta dentro de FILES_ROOT
+function filesResolve(rel = '') {
+    if (typeof rel !== 'string') throw httpError(400, 'Ruta inválida');
+    const parts = rel.split('/').filter(Boolean);
+    if (parts.some(p => p === '.' || p === '..' || FILE_BAD_CHARS.test(p))) throw httpError(400, 'Ruta inválida');
+    return path.join(FILES_ROOT, ...parts);
+}
+
+// Además de revisar el texto de la ruta, comprueba la ruta real en disco: un enlace simbólico no puede sacar de FILES_ROOT
+async function filesPath(rel, { mustExist = true } = {}) {
+    const abs = filesResolve(rel);
+    const target = mustExist ? abs : path.dirname(abs);
+    const [real, realRoot] = await Promise.all([
+        fs.promises.realpath(target).catch(() => null),
+        fs.promises.realpath(FILES_ROOT),
+    ]);
+    if (!real) throw httpError(404, 'No existe');
+    if (real !== realRoot && !real.startsWith(realRoot + path.sep)) throw httpError(403, 'Ruta fuera de la carpeta de archivos');
+    return abs;
+}
+
+async function filesDir(rel) {
+    const abs = await filesPath(rel);
+    if (!(await fs.promises.stat(abs)).isDirectory()) throw httpError(400, 'No es una carpeta');
+    return abs;
+}
+
+const filesExists = (p) => fs.promises.access(p).then(() => true, () => false);
+
+// "foto.png" → "foto (1).png" si ya existe
+async function uniqueFilePath(dir, name) {
+    const ext = path.extname(name);
+    const base = ext ? name.slice(0, -ext.length) : name;
+    let candidate = name;
+    for (let i = 1; i < 1000 && await filesExists(path.join(dir, candidate)); i++) {
+        candidate = `${base} (${i})${ext}`;
+    }
+    return path.join(dir, candidate);
+}
+
+async function filesDisk() {
+    const s = await fs.promises.statfs(FILES_ROOT);
+    return { free: s.bavail * s.bsize, total: s.blocks * s.bsize };
+}
+
+let filesUsageCache = { at: 0, bytes: 0 };
+async function filesFolderBytes() {
+    if (Date.now() - filesUsageCache.at < 30000) return filesUsageCache.bytes;
+    let total = 0;
+    const walk = async (dir) => {
+        for (const e of await fs.promises.readdir(dir, { withFileTypes: true })) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) await walk(p);
+            else if (e.isFile()) total += (await fs.promises.stat(p)).size;
+        }
+    };
+    await walk(FILES_ROOT);
+    filesUsageCache = { at: Date.now(), bytes: total };
+    return total;
+}
+
+// ── Descarga con enlace firmado ──
+// Va ANTES del router: el enlace lleva su propio token de corta duración, así se puede
+// abrir en una pestaña nueva o pasarse al reproductor de video sin depender de la sesión.
+app.get('/admin/files/download', async (req, res) => {
+    try {
+        const payload = jwt.verify(String(req.query.t || ''), FILE_LINK_KEY);
+        if (!ADMIN_GITHUB_IDS.includes(String(payload.sub))) throw new Error('no admin');
+        const abs = await filesPath(payload.p);
+        if (!(await fs.promises.stat(abs)).isFile()) throw new Error('no es un archivo');
+
+        const name = path.basename(abs);
+        const ext = path.extname(name).slice(1).toLowerCase();
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'private, no-store');
+        if (payload.i === 1 && FILE_INLINE_TYPES[ext]) {
+            res.setHeader('Content-Type', FILE_INLINE_TYPES[ext]);
+            res.setHeader('Content-Disposition', 'inline');
+            // Defensa extra: aunque el tipo sea "seguro", la respuesta no puede ejecutar scripts
+            if (ext !== 'pdf') res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox");
+        } else {
+            res.attachment(name);
+        }
+        // sendFile soporta peticiones Range: se puede avanzar en videos y retomar descargas
+        res.sendFile(abs, { dotfiles: 'allow' }, (err) => {
+            if (err && !res.headersSent) res.status(err.status || 500).end();
+        });
+    } catch {
+        res.status(404).json({ error: 'Not found' });
+    }
+});
+
+// ── Router: sesión de GitHub + ID de admin, sin TOTP ──
+const filesRouter = express.Router();
+filesRouter.use(requireAdmin);
+app.use('/admin/files', filesRouter);
+
+// Listar una carpeta
+filesRouter.get('/list', filesHandler(async (req, res) => {
+    const rel = String(req.query.path || '');
+    const dir = await filesDir(rel);
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    const items = [];
+    for (const e of entries.slice(0, 5000)) {
+        if (e.isSymbolicLink() || (!e.isFile() && !e.isDirectory())) continue;
+        const st = await fs.promises.stat(path.join(dir, e.name)).catch(() => null);
+        if (!st) continue;
+        items.push({
+            name: e.name,
+            type: e.isDirectory() ? 'dir' : 'file',
+            size: e.isDirectory() ? null : st.size,
+            modified: st.mtime.toISOString(),
+            previewable: e.isFile() && !!FILE_INLINE_TYPES[path.extname(e.name).slice(1).toLowerCase()],
+        });
+    }
+    res.json({ path: rel, items, truncated: entries.length > 5000 });
+}));
+
+// Espacio: disco del servidor y lo que ocupa esta carpeta
+filesRouter.get('/usage', filesHandler(async (req, res) => {
+    res.json({ disk: await filesDisk(), filesBytes: await filesFolderBytes() });
+}));
+
+// Crear carpeta
+filesRouter.post('/mkdir', filesHandler(async (req, res) => {
+    const name = validFileName(req.body?.name);
+    if (!name) throw httpError(400, 'Nombre inválido');
+    const parent = await filesDir(String(req.body?.path || ''));
+    const target = path.join(parent, name);
+    try {
+        await fs.promises.mkdir(target);
+    } catch (e) {
+        if (e.code === 'EEXIST') throw httpError(409, 'Ya existe un elemento con ese nombre');
+        throw e;
+    }
+    audit(req, 'files_mkdir', path.relative(FILES_ROOT, target));
+    res.status(201).json({ ok: true });
+}));
+
+// Renombrar o mover: "to" es la ruta completa de destino, incluido el nombre final
+filesRouter.post('/move', filesHandler(async (req, res) => {
+    const fromRel = String(req.body?.from || '');
+    const toParts = String(req.body?.to || '').split('/').filter(Boolean);
+    if (!fromRel.split('/').filter(Boolean).length) throw httpError(400, 'No se puede mover la carpeta raíz');
+    const newName = validFileName(toParts[toParts.length - 1]);
+    if (!newName) throw httpError(400, 'Nombre inválido');
+
+    const from = await filesPath(fromRel);
+    const toParent = await filesDir(toParts.slice(0, -1).join('/'));
+    const to = path.join(toParent, newName);
+
+    if (to === from) return res.json({ ok: true });
+    if (to.startsWith(from + path.sep)) throw httpError(400, 'No puedes mover una carpeta dentro de sí misma');
+    if (await filesExists(to)) throw httpError(409, 'Ya existe un elemento con ese nombre');
+
+    await fs.promises.rename(from, to);
+    audit(req, 'files_move', `${fromRel} -> ${path.relative(FILES_ROOT, to)}`);
+    res.json({ ok: true });
+}));
+
+// Eliminar archivos y carpetas (las carpetas con todo su contenido)
+filesRouter.post('/delete', filesHandler(async (req, res) => {
+    const paths = Array.isArray(req.body?.paths) ? req.body.paths.slice(0, 500) : [];
+    if (!paths.length) throw httpError(400, 'Nada que eliminar');
+    let removed = 0;
+    for (const rel of paths.map(String)) {
+        if (!rel.split('/').filter(Boolean).length) continue;       // nunca la carpeta raíz
+        try {
+            await fs.promises.rm(await filesPath(rel), { recursive: true });
+            removed++;
+            audit(req, 'files_delete', rel);
+        } catch (e) {
+            if (e.status !== 404) throw e;
+        }
+    }
+    filesUsageCache.at = 0;
+    res.json({ ok: true, removed });
+}));
+
+// Enlace firmado para abrir o descargar un archivo
+filesRouter.post('/link', filesHandler(async (req, res) => {
+    const rel = String(req.body?.path || '');
+    const abs = await filesPath(rel);
+    if (!(await fs.promises.stat(abs)).isFile()) throw httpError(400, 'No es un archivo');
+    const ext = path.extname(abs).slice(1).toLowerCase();
+    const inline = req.body?.inline === true && !!FILE_INLINE_TYPES[ext];
+    const token = jwt.sign(
+        { sub: String(req.adminUser.id), p: rel, i: inline ? 1 : 0 },
+        FILE_LINK_KEY,
+        { expiresIn: inline ? '4h' : '2m' },
+    );
+    res.json({ url: `/api/admin/files/download?t=${encodeURIComponent(token)}` });
+}));
+
+// ── Subida por trozos (Cloudflare rechaza peticiones de más de 100 MB) ──
+const fileUploads = new Map();  // uploadId → { tmp, dir, name, size, received, last }
+
+filesRouter.post('/upload/init', filesHandler(async (req, res) => {
+    const name = validFileName(req.body?.name);
+    if (!name) throw httpError(400, 'Nombre de archivo inválido');
+    const size = Number(req.body?.size);
+    if (!Number.isSafeInteger(size) || size < 0) throw httpError(400, 'Tamaño inválido');
+    if (size > FILE_MAX_BYTES) throw httpError(413, `El límite por archivo es ${FILE_MAX_BYTES / 1024 ** 3} GB`);
+    if (fileUploads.size >= 20) throw httpError(429, 'Demasiadas subidas en curso');
+
+    const dir = await filesDir(String(req.body?.path || ''));
+    const { free } = await filesDisk();
+    if (free - size < FILE_MIN_FREE_BYTES) {
+        throw httpError(507, 'No hay espacio suficiente: se reservan 5 GB libres para el servidor');
+    }
+
+    const id = crypto.randomUUID();
+    const tmp = path.join(FILES_TMP, `${id}.part`);
+    await fs.promises.writeFile(tmp, '');
+    fileUploads.set(id, { tmp, dir, name, size, received: 0, last: Date.now() });
+    res.json({ uploadId: id });
+}));
+
+// Un trozo. Se escribe en su posición exacta, así que reintentar un trozo es seguro.
+filesRouter.put('/upload/:id',
+    express.raw({ type: 'application/octet-stream', limit: FILE_CHUNK_MAX }),
+    filesHandler(async (req, res) => {
+        const up = fileUploads.get(req.params.id);
+        if (!up) throw httpError(404, 'La subida expiró o el panel se reinició. Vuelve a subir el archivo.');
+        const offset = Number(req.query.offset);
+        const chunk = req.body;
+        if (!Number.isSafeInteger(offset) || offset < 0) throw httpError(400, 'Offset inválido');
+        if (!Buffer.isBuffer(chunk) || chunk.length === 0) throw httpError(400, 'Trozo vacío');
+        if (offset > up.received) return res.status(409).json({ error: 'Trozo fuera de orden', received: up.received });
+        if (offset + chunk.length > up.size) throw httpError(400, 'El trozo excede el tamaño declarado');
+
+        const fh = await fs.promises.open(up.tmp, 'r+');
+        try {
+            await fh.write(chunk, 0, chunk.length, offset);
+        } finally {
+            await fh.close();
+        }
+        up.received = Math.max(up.received, offset + chunk.length);
+        up.last = Date.now();
+        res.json({ received: up.received });
+    }));
+
+// Terminar: mueve el archivo a su carpeta (si ya existe uno igual, agrega " (1)")
+filesRouter.post('/upload/:id/complete', filesHandler(async (req, res) => {
+    const up = fileUploads.get(req.params.id);
+    if (!up) throw httpError(404, 'La subida expiró o el panel se reinició.');
+    if (up.received !== up.size) throw httpError(400, `Faltan datos: ${up.received} de ${up.size} bytes`);
+    const dest = await uniqueFilePath(up.dir, up.name);
+    await fs.promises.rename(up.tmp, dest);
+    fileUploads.delete(req.params.id);
+    filesUsageCache.at = 0;
+    audit(req, 'files_upload', path.relative(FILES_ROOT, dest));
+    res.json({ ok: true, name: path.basename(dest) });
+}));
+
+// Cancelar
+filesRouter.delete('/upload/:id', filesHandler(async (req, res) => {
+    const up = fileUploads.get(req.params.id);
+    if (up) {
+        fileUploads.delete(req.params.id);
+        await fs.promises.rm(up.tmp, { force: true });
+    }
+    res.json({ ok: true });
+}));
+
+// Subidas abandonadas: se borran a las 6 horas sin actividad
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, up] of fileUploads) {
+        if (now - up.last > 6 * 3600 * 1000) {
+            fileUploads.delete(id);
+            fs.promises.rm(up.tmp, { force: true }).catch(() => {});
+        }
+    }
+}, 10 * 60 * 1000).unref();
+
 app.listen(4000, () => console.log("StarDest en puerto 4000"));
