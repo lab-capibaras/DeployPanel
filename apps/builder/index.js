@@ -4224,7 +4224,7 @@ filesRouter.get('/list', filesHandler(async (req, res) => {
 
 // Espacio: disco del servidor y lo que ocupa esta carpeta
 filesRouter.get('/usage', filesHandler(async (req, res) => {
-    res.json({ disk: await filesDisk(), filesBytes: await filesFolderBytes() });
+    res.json({ disk: await filesDisk(), filesBytes: await filesFolderBytes(), reserve: FILE_MIN_FREE_BYTES });
 }));
 
 // Crear carpeta
@@ -4297,6 +4297,64 @@ filesRouter.post('/link', filesHandler(async (req, res) => {
     );
     res.json({ url: `/api/admin/files/download?t=${encodeURIComponent(token)}` });
 }));
+
+// ── Editor de texto ──
+const FILE_EDIT_MAX = 2 * 1024 * 1024;  // más que esto no es cómodo de editar en el navegador
+
+// Leer un archivo de texto. Se rechaza si es binario o no es UTF-8 válido: guardarlo lo corrompería.
+filesRouter.get('/content', filesHandler(async (req, res) => {
+    const abs = await filesPath(String(req.query.path || ''));
+    const st = await fs.promises.stat(abs);
+    if (!st.isFile()) throw httpError(400, 'No es un archivo');
+    if (st.size > FILE_EDIT_MAX) throw httpError(413, `Solo se pueden editar archivos de hasta ${FILE_EDIT_MAX / 1024 ** 2} MB`);
+    const buf = await fs.promises.readFile(abs);
+    const text = buf.toString('utf8');
+    if (buf.subarray(0, 8000).includes(0) || !Buffer.from(text, 'utf8').equals(buf)) {
+        throw httpError(415, 'El archivo no es texto UTF-8');
+    }
+    res.json({ content: text, modified: String(st.mtimeMs) });
+}));
+
+// Guardar (o crear con ?create=1). ?expected= es el "modified" que se leyó: si el archivo cambió
+// mientras tanto responde 409 en lugar de pisar los cambios de otro. El cuerpo va como texto plano
+// porque el JSON global tiene límite de 1 MB.
+filesRouter.put('/content',
+    express.text({ type: 'text/plain', limit: FILE_EDIT_MAX + 1024 }),
+    filesHandler(async (req, res) => {
+        const rel = String(req.query.path || '');
+        const create = req.query.create === '1';
+        if (typeof req.body !== 'string') throw httpError(400, 'Contenido inválido');
+        if (Buffer.byteLength(req.body) > FILE_EDIT_MAX) throw httpError(413, 'El contenido es demasiado grande');
+
+        let abs;
+        if (create) {
+            const parts = rel.split('/').filter(Boolean);
+            const name = validFileName(parts.pop());
+            if (!name) throw httpError(400, 'Nombre inválido');
+            abs = path.join(await filesDir(parts.join('/')), name);
+            if (await filesExists(abs)) throw httpError(409, 'Ya existe un elemento con ese nombre');
+        } else {
+            abs = await filesPath(rel);
+            const st = await fs.promises.stat(abs);
+            if (!st.isFile()) throw httpError(400, 'No es un archivo');
+            if (req.query.expected && String(st.mtimeMs) !== String(req.query.expected)) {
+                return res.status(409).json({ error: 'El archivo cambió desde que lo abriste', conflict: true });
+            }
+        }
+
+        // Escribir aparte y renombrar: si algo falla a la mitad, el archivo original queda intacto
+        const tmp = path.join(FILES_TMP, `${crypto.randomUUID()}.edit`);
+        try {
+            await fs.promises.writeFile(tmp, req.body, 'utf8');
+            await fs.promises.rename(tmp, abs);
+        } finally {
+            await fs.promises.rm(tmp, { force: true });
+        }
+        const st = await fs.promises.stat(abs);
+        filesUsageCache.at = 0;
+        audit(req, create ? 'files_create' : 'files_edit', path.relative(FILES_ROOT, abs));
+        res.json({ ok: true, modified: String(st.mtimeMs), size: st.size });
+    }));
 
 // ── Subida por trozos (Cloudflare rechaza peticiones de más de 100 MB) ──
 const fileUploads = new Map();  // uploadId → { tmp, dir, name, size, received, last }
