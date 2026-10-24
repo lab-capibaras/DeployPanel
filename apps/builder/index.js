@@ -2632,8 +2632,11 @@ app.post('/deploy', requireAuth, async (req, res) => {
         });
     }
 
-    const activeDeployCount = await countActiveDeploys(userId, subdomain);
-    if (activeDeployCount >= MAX_DEPLOYS_PER_USER) {
+    // El admin (ADMIN_GITHUB_IDS, sesión de GitHub) no tiene límite de proyectos, por hora ni simultáneos
+    const unlimited = isAdminUser(req.user);
+
+    const activeDeployCount = unlimited ? 0 : await countActiveDeploys(userId, subdomain);
+    if (!unlimited && activeDeployCount >= MAX_DEPLOYS_PER_USER) {
         logger.warn({
             event: 'deploy_limit_reached',
             userId: req.user?.id,
@@ -2650,7 +2653,7 @@ app.post('/deploy', requireAuth, async (req, res) => {
         });
     }
 
-    const rateCheck = canDeploy(userId);
+    const rateCheck = unlimited ? { allowed: true } : canDeploy(userId);
     if (!rateCheck.allowed) {
         logger.warn({
             event: 'deploy_rate_limited',
