@@ -10,7 +10,7 @@ const { exec } = require('child_process');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const pino = require('pino');
 
 const logger = pino({
@@ -66,10 +66,16 @@ app.use(cors({
     credentials: true
 }));
 
-// Limiter para autenticación — 10 intentos cada 15 minutos
+// Limiter para autenticación: solo cuentan los intentos que fallan
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 30,
+    skipSuccessfulRequests: true,   // el redirect (302) y el callback exitoso no cuentan
+    // Un login fallido también es un 302 (a /login?error=1): sin esto nunca contaría
+    requestWasSuccessful: (req, res) => res.statusCode < 400 && !String(res.getHeader('location') || '').includes('error='),
+    // Un contador por visitante. ipKeyGenerator agrupa IPv6 por /56 (si no, cada dirección
+    // de la misma red sería un visitante distinto) y evita el aviso de express-rate-limit 8.
+    keyGenerator: (req) => ipKeyGenerator(req.headers['cf-connecting-ip'] || req.ip),
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Demasiados intentos, espera 15 minutos' }
@@ -87,7 +93,7 @@ const apiLimiter = rateLimit({
 // Auth — más restrictivo
 app.use('/auth/google', authLimiter);
 app.use('/auth/github', authLimiter);
-app.use('/auth/logout', authLimiter);
+// /auth/logout sale del limitador
 
 // API general
 app.use('/api', apiLimiter);
